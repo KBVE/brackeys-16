@@ -84,6 +84,16 @@ const OUTBOUND_WIRE: Dictionary[StringName, String] = {
 	RUN_OVER: "game:run_over",
 }
 
+## &wire -> event -> ordered payload fields, passed to JS as positional
+## primitives. Absent = payload is not a flat primitive record, send it as JSON.
+const WIRE_FIELDS: Dictionary[String, Array] = {
+	"godot:ready": [],
+	"scene:changed": ["scene"],
+	"player:state": ["health", "max_health"],
+	"game:state": ["run", "flags"],
+	"game:score": ["score"],
+}
+
 ## JS wire name to bus name. [GameBridge] republishes every entry, so a command
 ## from React is indistinguishable from in-game intent downstream.
 const INBOUND_BUS: Dictionary[String, StringName] = {
