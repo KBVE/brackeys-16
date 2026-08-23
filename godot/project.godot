@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Brackeys 16"
-config/version="0.1.1"
+config/version="0.1.2"
 run/main_scene="res://scenes/opening/opening.tscn"
 config/features=PackedStringArray("4.7")
 config/icon="res://icon.png"
@@ -21,6 +21,7 @@ config/icon="res://icon.png"
 SceneLoader="*res://addons/maaacks_game_template/base/nodes/autoloads/scene_loader/scene_loader.tscn"
 ProjectMusicController="*res://addons/maaacks_game_template/base/nodes/autoloads/music_controller/project_music_controller.tscn"
 ProjectUISoundController="*res://addons/maaacks_game_template/base/nodes/autoloads/ui_sound_controller/project_ui_sound_controller.tscn"
+JsBridge="*res://scripts/JsBridge.gd"
 
 [display]
 
