@@ -64,9 +64,9 @@ jobs:
         working-directory: ${{ env.WEB_PATH }}
         run: npm ci
 
-      - name: Check generated state files are in sync
+      - name: Check generated contract files are in sync
         working-directory: ${{ env.WEB_PATH }}
-        run: npm run gen:state:check
+        run: npm run gen:check
 
       - name: Typecheck
         working-directory: ${{ env.WEB_PATH }}

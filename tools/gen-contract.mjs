@@ -20,13 +20,14 @@ import { dirname, join } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const spec = JSON.parse(readFileSync(join(root, 'shared/state.json'), 'utf8'));
+const events = JSON.parse(readFileSync(join(root, 'shared/events.json'), 'utf8'));
 const check = process.argv.includes('--check');
 
 const BANNER = [
   'GENERATED FILE - DO NOT EDIT.',
   '',
-  'Source: shared/state.json',
-  'Regenerate: npm run gen:state (from vite/)',
+  'Source: shared/state.json + shared/events.json',
+  'Regenerate: npm run gen (from vite/). Runs automatically on dev and build.',
 ];
 
 function snake(name) {
@@ -53,7 +54,7 @@ function wrapDoc(text, prefix, width = 88) {
         current = current ? current + ' ' + word : word;
       }
     }
-    out.push(prefix + current);
+    out.push(current ? prefix + current : prefix.trimEnd());
   }
   return out;
 }
@@ -170,9 +171,100 @@ function typescript() {
 }
 
 /* targets are just two for this scope */
+
+const TS_TYPES = { string: 'string', number: 'number', boolean: 'boolean' };
+
+function tsPayload(payload) {
+  if (payload === 'unknown') return 'Record<string, unknown>';
+  const entries = Object.entries(payload ?? {});
+  if (!entries.length) return 'Record<string, never>';
+  return `{ ${entries.map(([k, t]) => `${k}: ${TS_TYPES[t] ?? 'unknown'}`).join('; ')} }`;
+}
+
+function gdPayload(payload) {
+  if (payload === 'unknown') return 'game-defined';
+  const entries = Object.entries(payload ?? {});
+  if (!entries.length) return 'none';
+  return `{${entries.map(([k, t]) => `"${k}": ${t}`).join(', ')}}`;
+}
+
+function gameEvents() {
+  const out = Object.entries(events.outbound ?? {});
+  const inb = Object.entries(events.inbound ?? {});
+  const L = ['class_name GameEvents', ''];
+  L.push(...BANNER.map((l) => (l ? `## ${l}` : '##')));
+  L.push('##');
+  L.push('## The event vocabulary shared by the ECS world, the Maaack menus, and the');
+  L.push('## React shell. Gameplay emits these names and nothing else - the mapping onto');
+  L.push('## JS wire names lives in [constant OUTBOUND_WIRE], so producers stay unaware');
+  L.push('## that a browser exists.');
+  L.push('');
+
+  const section = (title, list) => {
+    L.push('# ' + '='.repeat(78));
+    L.push(`# ${title}`);
+    L.push('# ' + '='.repeat(78));
+    L.push('');
+    for (const [name, def] of list) {
+      L.push(...wrapDoc(`${def.description}\n\nPayload: ${gdPayload(def.payload)}. Reaches JS as "${def.wire}".`, '## '));
+      L.push(`const ${name} := &"${def.bus}"`, '');
+    }
+  };
+  section('Outbound - Godot to React', out);
+  section('Inbound - React to Godot', inb);
+
+  L.push('# ' + '='.repeat(78));
+  L.push('# Wire mapping');
+  L.push('# ' + '='.repeat(78));
+  L.push('');
+  L.push('## Bus name to JS wire name. [JsBridgeObserver] forwards every entry, so adding');
+  L.push('## an outbound event is a shared/events.json edit and nothing more.');
+  L.push('const OUTBOUND_WIRE: Dictionary[StringName, String] = {');
+  for (const [name, def] of out) L.push(`\t${name}: "${def.wire}",`);
+  L.push('}', '');
+  L.push('## JS wire name to bus name. [GameBridge] republishes every entry, so a command');
+  L.push('## from React is indistinguishable from in-game intent downstream.');
+  L.push('const INBOUND_BUS: Dictionary[String, StringName] = {');
+  for (const [name, def] of inb) L.push(`\t"${def.wire}": ${name},`);
+  L.push('}');
+  return L.join('\n').replace(/\n+$/, '\n');
+}
+
+function eventsTs() {
+  const L = ['/**', ...BANNER.map((l) => (l ? ` * ${l}` : ' *')), ' *'];
+  L.push(' * The bridge contract. Both sides are generated from the same file, so a wire');
+  L.push(' * name cannot drift between Godot and React.');
+  L.push(' *');
+  L.push(' * Keep payloads coarse: gameplay runs at 60/120fps inside WASM, but these cross');
+  L.push(' * the JS boundary only on real changes, or a few times a second for snapshots.');
+  L.push(' */', '');
+
+  const iface = (name, comment, list) => {
+    L.push(`/** ${comment} */`);
+    L.push(`export interface ${name} {`);
+    for (const [, def] of list) {
+      L.push(...wrapDoc(def.description.split('\n')[0], '  // '));
+      L.push(`  '${def.wire}': ${tsPayload(def.payload)};`);
+    }
+    L.push('}', '');
+  };
+
+  iface('GodotToJs', 'Godot -> React.', [
+    ...Object.entries(events.engine ?? {}),
+    ...Object.entries(events.outbound ?? {}),
+  ]);
+  iface('JsToGodot', 'React -> Godot.', Object.entries(events.inbound ?? {}));
+
+  L.push('export type GodotEvent = keyof GodotToJs;');
+  L.push('export type GodotCommand = keyof JsToGodot;');
+  return L.join('\n').replace(/\n+$/, '\n');
+}
+
 const targets = [
   ['godot/scripts/ecs/state_bits.gd', gdscript()],
   ['vite/src/godot/state.ts', typescript()],
+  ['godot/scripts/ecs/game_events.gd', gameEvents()],
+  ['vite/src/godot/events.ts', eventsTs()],
 ];
 
 let stale = false;
@@ -196,7 +288,7 @@ for (const [rel, content] of targets) {
 }
 
 if (check && stale) {
-  console.error('\nshared/state.json changed without regenerating; resolve via npm run gen:state');
+  console.error('\nshared/*.json changed without regenerating; resolve via npm run gen:state');
   process.exit(1);
 }
 if (check) console.log('hell ya brother, generated state files are up to date');
