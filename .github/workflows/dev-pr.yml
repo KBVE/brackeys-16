@@ -1,0 +1,80 @@
+name: Promote dev to main
+
+on:
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  PROJECT_PATH: godot
+
+jobs:
+  promote:
+    name: Open or refresh the dev to main PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+        with:
+          github-token: ${{ secrets.UNITY_PAT || secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs')
+            const params = { owner: context.repo.owner, repo: context.repo.repo }
+
+            const compare = await github.rest.repos.compareCommitsWithBasehead({
+              ...params, basehead: 'main...dev',
+            })
+            if (compare.data.ahead_by === 0) {
+              core.notice('dev has nothing main is missing - no PR needed.')
+              return
+            }
+
+            const file = `${process.env.PROJECT_PATH}/project.godot`
+            const match = fs.readFileSync(file, 'utf8').match(/^config\/version="(.*)"$/m)
+            const version = match ? match[1] : null
+
+            let status
+            if (!version) {
+              status = `**config/version is missing from \`${file}\`.** The release workflow will fail on merge.`
+            } else {
+              let tagged = true
+              try {
+                await github.rest.git.getRef({ ...params, ref: `tags/v${version}` })
+              } catch (error) {
+                if (error.status !== 404) throw error
+                tagged = false
+              }
+              status = tagged
+                ? `**\`v${version}\` is already tagged.** Merging will NOT publish - bump \`config/version\` on dev first.`
+                : `Merging publishes **v${version}** to itch and cuts the \`v${version}\` release.`
+            }
+
+            const body = [
+              status,
+              '',
+              `${compare.data.ahead_by} commit(s) ahead of main.`,
+            ].join('\n')
+
+            const open = await github.rest.pulls.list({
+              ...params, base: 'main', head: `${params.owner}:dev`, state: 'open',
+            })
+
+            if (open.data.length > 0) {
+              const number = open.data[0].number
+              await github.rest.pulls.update({ ...params, pull_number: number, body })
+              core.notice(`Refreshed PR #${number}.`)
+              return
+            }
+
+            const created = await github.rest.pulls.create({
+              ...params,
+              base: 'main',
+              head: 'dev',
+              title: version ? `release: v${version}` : 'release: dev to main',
+              body,
+            })
+            core.notice(`Opened PR #${created.data.number}.`)

@@ -25,7 +25,9 @@ var tween : Tween
 var next_image_index : int = 0
 
 func get_next_scene_path() -> String:
-	return MaaacksGameTemplatePlugin.get_main_menu_path(next_scene_path)
+	if (not next_scene_path.is_empty()) and FileAccess.file_exists(next_scene_path):
+		return next_scene_path
+	return ProjectSettings.get_setting("maaacks_game_template/main_menu_scene_path", next_scene_path)
 
 func _on_scene_loaded() -> void:
 		SceneLoader.change_scene_to_resource()
