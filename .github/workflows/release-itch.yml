@@ -24,9 +24,9 @@ jobs:
       next: ${{ steps.read.outputs.next }}
       publish: ${{ steps.read.outputs.publish }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         id: read
         with:
           script: |
@@ -66,7 +66,7 @@ jobs:
     env:
       VERSION: ${{ needs.check.outputs.version }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           lfs: true
 
@@ -110,20 +110,23 @@ jobs:
         run: (cd build/web && zip -qr ../../web.zip .)
 
       - name: Tag and cut GitHub Release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228
         with:
           tag_name: v${{ needs.check.outputs.version }}
           name: v${{ needs.check.outputs.version }}
           generate_release_notes: true
           files: web.zip
 
-  bump:
-    name: Open bump PR
+  sync:
+    name: Sync dev with main
     needs: [check, publish]
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
     steps:
-      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         with:
+          github-token: ${{ secrets.UNITY_PAT || secrets.GITHUB_TOKEN }}
           script: |
             const branch = process.env.DEV_BRANCH
             const params = { owner: context.repo.owner, repo: context.repo.repo }
@@ -132,14 +135,42 @@ jobs:
             } catch (error) {
               if (error.status !== 404) throw error
               await github.rest.git.createRef({ ...params, ref: `refs/heads/${branch}`, sha: context.sha })
-              core.notice(`Created ${branch} from ${context.sha}.`)
+              core.notice(`Created ${branch} at ${context.sha}.`)
+              return
+            }
+            try {
+              await github.rest.git.updateRef({ ...params, ref: `heads/${branch}`, sha: context.sha, force: false })
+              core.notice(`Fast-forwarded ${branch} to ${context.sha}.`)
+            } catch (error) {
+              if (error.status !== 422) throw error
+              core.warning(`${branch} has diverged from main - opening a sync PR instead of moving the ref.`)
+              const open = await github.rest.pulls.list({
+                ...params, base: branch, head: `${params.owner}:main`, state: 'open',
+              })
+              if (open.data.length > 0) {
+                core.notice(`Sync PR #${open.data[0].number} is already open.`)
+                return
+              }
+              const created = await github.rest.pulls.create({
+                ...params,
+                base: branch,
+                head: 'main',
+                title: `chore: sync ${branch} with main`,
+                body: `\`${branch}\` has commits that are not on main, so it could not be fast-forwarded after v${process.env.VERSION} shipped. Merge this to bring it back in line.`,
+              })
+              core.notice(`Opened sync PR #${created.data.number}.`)
             }
 
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+  bump:
+    name: Open bump PR
+    needs: [check, publish, sync]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ env.DEV_BRANCH }}
 
-      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         env:
           NEXT: ${{ needs.check.outputs.next }}
         with:
@@ -147,14 +178,21 @@ jobs:
             const fs = require('fs')
             const file = `${process.env.PROJECT_PATH}/project.godot`
             const source = fs.readFileSync(file, 'utf8')
-            const updated = source.replace(/^config\/version=".*"$/m, `config/version="${process.env.NEXT}"`)
-            if (updated === source) {
+            const current = source.match(/^config\/version="(.*)"$/m)
+            if (!current) {
+              core.setFailed(
+                `config/version is missing from ${file} on ${process.env.DEV_BRANCH}. ` +
+                `The sync job could not fast-forward that branch - merge the open sync PR first.`
+              )
+              return
+            }
+            if (current[1] === process.env.NEXT) {
               core.notice(`${process.env.DEV_BRANCH} is already at ${process.env.NEXT} - nothing to bump.`)
               return
             }
-            fs.writeFileSync(file, updated)
+            fs.writeFileSync(file, source.replace(/^config\/version=".*"$/m, `config/version="${process.env.NEXT}"`))
 
-      - uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676
+      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
         with:
           token: ${{ secrets.UNITY_PAT || secrets.GITHUB_TOKEN }}
           base: ${{ env.DEV_BRANCH }}
