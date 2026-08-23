@@ -11,6 +11,7 @@ permissions:
 env:
   GODOT_VERSION: 4.7.1
   PROJECT_PATH: godot
+  WEB_PATH: vite
   ITCH_USER: kbve
   ITCH_GAME: brackeys-16
   DEV_BRANCH: dev
@@ -77,17 +78,25 @@ jobs:
           use-dotnet: false
           include-templates: true
 
-      - name: Import assets
-        working-directory: ${{ env.PROJECT_PATH }}
-        run: godot --headless --import
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ${{ env.WEB_PATH }}/package-lock.json
 
-      - name: Export web build
+      - name: Install web dependencies
+        working-directory: ${{ env.WEB_PATH }}
+        run: npm ci
+
+      - name: Export Godot into the web app
+        working-directory: ${{ env.WEB_PATH }}
+        run: npm run build:godot
+
+      - name: Build web bundle
+        working-directory: ${{ env.WEB_PATH }}
         run: |
-          mkdir -p build/web
-          out="$(realpath build/web)"
-          cd "${PROJECT_PATH}"
-          godot --headless --export-release "Web" "${out}/index.html"
-          ls -lh "${out}"
+          npm run build
+          ls -lh dist dist/godot
 
       - name: Install butler
         run: |
@@ -104,10 +113,10 @@ jobs:
             echo "::error::ITCH_API resolved empty - check the KBVE org secret's repository visibility."
             exit 1
           fi
-          ./butler push build/web "${ITCH_USER}/${ITCH_GAME}:html5" --userversion "${VERSION}"
+          ./butler push "${WEB_PATH}/dist" "${ITCH_USER}/${ITCH_GAME}:html5" --userversion "${VERSION}"
 
       - name: Zip web build
-        run: (cd build/web && zip -qr ../../web.zip .)
+        run: (cd "${WEB_PATH}/dist" && zip -qr "${GITHUB_WORKSPACE}/web.zip" .)
 
       - name: Tag and cut GitHub Release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228

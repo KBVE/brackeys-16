@@ -1,0 +1,58 @@
+:root { color-scheme: dark; }
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  height: 100%;
+  background: #0b0b0f;
+  color: #e8e8ef;
+  font-family: system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.app { position: relative; height: 100%; }
+
+.godot-layer { position: absolute; inset: 0; }
+
+#godot-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Godot needs real keyboard focus; without this the outline flashes on click. */
+  outline: none;
+}
+
+/*
+ * The UI layer sits above the canvas but must not eat pointer events, or the
+ * canvas loses focus and keyboard input dies. Re-enable per interactive child.
+ */
+.ui-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ui-layer > * { pointer-events: auto; }
+
+.hud {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgba(0, 0, 0, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.godot-status {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.godot-error { color: #ff8080; }
+.godot-error pre { white-space: pre-wrap; max-width: 40rem; }

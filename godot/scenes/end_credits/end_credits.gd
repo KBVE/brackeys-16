@@ -14,7 +14,9 @@ extends "res://scenes/credits/scrolling_credits.gd"
 @onready var init_mouse_filter : MouseFilter = mouse_filter
 
 func get_main_menu_scene_path() -> String:
-	return MaaacksGameTemplatePlugin.get_main_menu_path(main_menu_scene_path)
+	if (not main_menu_scene_path.is_empty()) and FileAccess.file_exists(main_menu_scene_path):
+		return main_menu_scene_path
+	return ProjectSettings.get_setting("maaacks_game_template/main_menu_scene_path", main_menu_scene_path)
 
 func _end_reached() -> void:
 	end_message_panel.show()
