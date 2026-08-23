@@ -1,0 +1,73 @@
+name: Tests
+# TODO - 08/23/2026 - on failure, create issue ticket, pinned to pre-release loop, auto close on resolve.
+
+on:
+  pull_request:
+  push:
+    branches: [dev]
+  
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7.1
+  PROJECT_PATH: godot
+  WEB_PATH: vite
+
+jobs:
+  godot:
+    name: gdUnit4
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          lfs: true
+
+      - name: Set up Godot ${{ env.GODOT_VERSION }}
+        uses: chickensoft-games/setup-godot@f166999204a4f2722c6fe042fbaa3b3ea0d9c789
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+          include-templates: false
+
+      - name: Import assets
+        run: godot --headless --path "${PROJECT_PATH}" --import
+
+      - name: Run tests
+        run: |
+          godot --headless --path "${PROJECT_PATH}" \
+            -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
+            --ignoreHeadlessMode -a res://tests
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: gdunit4-report
+          path: ${{ env.PROJECT_PATH }}/reports
+          retention-days: 7
+
+  web:
+    name: Typecheck and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ${{ env.WEB_PATH }}/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: ${{ env.WEB_PATH }}
+        run: npm ci
+
+      - name: Check generated state files are in sync
+        working-directory: ${{ env.WEB_PATH }}
+        run: npm run gen:state:check
+
+      - name: Typecheck
+        working-directory: ${{ env.WEB_PATH }}
+        run: npm run typecheck
