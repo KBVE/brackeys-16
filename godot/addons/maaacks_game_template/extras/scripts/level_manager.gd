@@ -56,7 +56,9 @@ func _close_scene(node:Node) -> void:
 	node.queue_free()
 
 func get_main_menu_scene_path() -> String:
-	return MaaacksGameTemplatePlugin.get_main_menu_path(main_menu_scene_path)
+	if (not main_menu_scene_path.is_empty()) and FileAccess.file_exists(main_menu_scene_path):
+		return main_menu_scene_path
+	return ProjectSettings.get_setting("maaacks_game_template/main_menu_scene_path", main_menu_scene_path)
 
 func _load_main_menu() -> void:
 	SceneLoader.load_scene(get_main_menu_scene_path())
@@ -85,7 +87,9 @@ func get_prev_level_path() -> String:
 	return get_relative_level_path(-1)
 
 func get_ending_scene_path() -> String:
-	return MaaacksGameTemplatePlugin.get_ending_scene_path(ending_scene_path)
+	if (not ending_scene_path.is_empty()) and FileAccess.file_exists(ending_scene_path):
+		return ending_scene_path
+	return ProjectSettings.get_setting("maaacks_game_template/ending_scene_path", ending_scene_path)
 
 func _load_ending() -> void:
 	if not get_ending_scene_path().is_empty():

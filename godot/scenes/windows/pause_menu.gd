@@ -22,7 +22,9 @@ var open_window : Node
 var restarting : bool = false
 
 func get_main_menu_scene_path() -> String:
-	return MaaacksGameTemplatePlugin.get_main_menu_path(main_menu_scene_path)
+	if (not main_menu_scene_path.is_empty()) and FileAccess.file_exists(main_menu_scene_path):
+		return main_menu_scene_path
+	return ProjectSettings.get_setting("maaacks_game_template/main_menu_scene_path", main_menu_scene_path)
 
 func close_window() -> void:
 	if open_window != null:

@@ -1,0 +1,8 @@
+
+# Vite / React web layer
+vite/node_modules/
+vite/dist/
+
+# Godot web export output (regenerate with `npm run build:godot`)
+vite/public/godot/*
+!vite/public/godot/.gitkeep
