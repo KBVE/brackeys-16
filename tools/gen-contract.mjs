@@ -172,6 +172,8 @@ function typescript() {
 
 /* targets are just two for this scope */
 
+const MAX_WIRE_ARGS = 4;
+
 const TS_TYPES = { string: 'string', number: 'number', boolean: 'boolean' };
 
 function tsPayload(payload) {
@@ -222,6 +224,24 @@ function gameEvents() {
   L.push('const OUTBOUND_WIRE: Dictionary[StringName, String] = {');
   for (const [name, def] of out) L.push(`\t${name}: "${def.wire}",`);
   L.push('}', '');
+  const emitted = [...Object.entries(events.engine ?? {}), ...out];
+  const primitive = emitted.filter(([, d]) => d.payload !== 'unknown');
+  const over = primitive.filter(([, d]) => Object.keys(d.payload ?? {}).length > MAX_WIRE_ARGS);
+  if (over.length) {
+    throw new Error(
+      `events.json: ${over.map(([n]) => n).join(', ')} declare more than ${MAX_WIRE_ARGS} `
+      + `payload fields. Raise MAX_WIRE_ARGS in gen-contract.mjs and add the matching `
+      + `match arm in JsBridge.emit_event(), or give the event an "unknown" payload.`,
+    );
+  }
+  L.push('## &wire -> event -> ordered payload fields, passed to JS as positional');
+  L.push('## primitives. Absent = payload is not a flat primitive record, send it as JSON.');
+  L.push('const WIRE_FIELDS: Dictionary[String, Array] = {');
+  for (const [, def] of primitive) {
+    const keys = Object.keys(def.payload ?? {});
+    L.push(`\t"${def.wire}": [${keys.map((k) => `"${k}"`).join(', ')}],`);
+  }
+  L.push('}', '');
   L.push('## JS wire name to bus name. [GameBridge] republishes every entry, so a command');
   L.push('## from React is indistinguishable from in-game intent downstream.');
   L.push('const INBOUND_BUS: Dictionary[String, StringName] = {');
@@ -255,6 +275,15 @@ function eventsTs() {
   ]);
   iface('JsToGodot', 'React -> Godot.', Object.entries(events.inbound ?? {}));
 
+  const emitted = [...Object.entries(events.engine ?? {}), ...Object.entries(events.outbound ?? {})];
+  L.push('/** Wire name -> ordered payload fields, matching the positional args Godot sends. */');
+  L.push('export const WIRE_FIELDS: Record<string, readonly string[]> = {');
+  for (const [, def] of emitted) {
+    if (def.payload === 'unknown') continue;
+    const keys = Object.keys(def.payload ?? {});
+    L.push(`  '${def.wire}': [${keys.map((k) => `'${k}'`).join(', ')}],`);
+  }
+  L.push('};', '');
   L.push('export type GodotEvent = keyof GodotToJs;');
   L.push('export type GodotCommand = keyof JsToGodot;');
   return L.join('\n').replace(/\n+$/, '\n');

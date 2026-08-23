@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { installGodotBridge } from './bridge';
+import { boot, useBoot, useProgress, useBootError } from '../state/gameStore';
 
-/** Inject a classic <script> once; resolve on load. */
+
 function loadScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const existing = document.querySelector(`script[data-godot="${src}"]`);
@@ -20,13 +21,11 @@ function loadScript(src: string): Promise<void> {
 }
 
 /**
- * Mirrors the exported index.html's GODOT_CONFIG.
- *
- * `executable` and `mainPack` are RELATIVE on purpose. Godot's loader normally
- * derives its base from `document.currentScript.src`, but that is null for a
- * dynamically injected async <script>, so it would resolve index.wasm against
- * the wrong root. Relative paths resolve against the document base URL, which
- * works at the local origin root and under itch's CDN subpath alike.
+ * &relative -> executable/mainPack are relative ON PURPOSE. Godot derives its
+ *              base from document.currentScript.src, which is null for a
+ *              dynamically injected async <script> -> wrong root for index.wasm.
+ *           -> relative resolves against the document base: works at the origin
+ *              root and under itch's CDN subpath alike
  */
 const ENGINE_CONFIG = {
   executable: 'godot/index',
@@ -43,27 +42,23 @@ const ENGINE_CONFIG = {
 
 export function GodotGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const startedRef = useRef(false); // guards StrictMode's double mount
-  const [progress, setProgress] = useState(0);
-  const [ready, setReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const startedRef = useRef(false); // &guards -> ducking StrictMode still throwin a double mount
 
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
+    boot.start();
 
-    // Must exist before the engine boots: the GDScript autoload looks it up in _ready().
+    // &order -> must exist before boot, autoload reads it in _ready(), nope time to loop back around and maybe go through the pointers.
     installGodotBridge();
 
-    // No `cancelled` flag on purpose: startedRef already guarantees a single
-    // boot across StrictMode's mount -> cleanup -> mount, and cancelling on the
-    // interim cleanup would abort the only boot before startGame runs.
+    // &nocancel -[0]> startedRef already guarantees one boot across StrictMode's [<T> & <t>] TNT!
+    //               mount -[1]> cleanup -[2]> mount; cancelling on the init cleanup would abort the only boot before startGame runs
     loadScript('godot/index.js')
       .then(async () => {
         const Engine = window.Engine;
         if (!Engine) throw new Error('Godot loader did not attach window.Engine');
 
-        // Turns the classic black-canvas failure into something readable.
         const missing = Engine.getMissingFeatures?.({ ...ENGINE_CONFIG }) ?? [];
         if (missing.length > 0) {
           throw new Error(`Browser is missing required features: ${missing.join(', ')}`);
@@ -73,24 +68,35 @@ export function GodotGame() {
         await engine.startGame({
           canvas: canvasRef.current!,
           onProgress: (current: number, total: number) => {
-            if (total > 0) setProgress(Math.round((current / total) * 100));
+            if (total > 0) boot.progress(Math.round((current / total) * 100));
           },
         });
-        setReady(true);
+        boot.running();
       })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+      .catch((e: unknown) => boot.fail(e instanceof Error ? e.message : String(e)));
   }, []);
 
   return (
     <div className="godot-layer">
       <canvas ref={canvasRef} id="godot-canvas" />
-      {!ready && !error && <div className="godot-status">Loading {progress}%</div>}
-      {error && (
-        <div className="godot-status godot-error">
-          <strong>Failed to start</strong>
-          <pre>{error}</pre>
-        </div>
-      )}
+      <BootStatus />
     </div>
   );
+}
+
+function BootStatus() {
+  const phase = useBoot();
+  const progress = useProgress();
+  const error = useBootError();
+
+  if (phase === 'failed') {
+    return (
+      <div className="godot-status godot-error">
+        <strong>Failed to start</strong>
+        <pre>{error}</pre>
+      </div>
+    );
+  }
+  if (phase === 'running') return null;
+  return <div className="godot-status">Loading {progress}%</div>;
 }

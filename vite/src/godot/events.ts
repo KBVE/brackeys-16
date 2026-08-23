@@ -47,5 +47,14 @@ export interface JsToGodot {
   'ui:main_menu': Record<string, never>;
 }
 
+/** Wire name -> ordered payload fields, matching the positional args Godot sends. */
+export const WIRE_FIELDS: Record<string, readonly string[]> = {
+  'godot:ready': [],
+  'scene:changed': ['scene'],
+  'player:state': ['health', 'max_health'],
+  'game:state': ['run', 'flags'],
+  'game:score': ['score'],
+};
+
 export type GodotEvent = keyof GodotToJs;
 export type GodotCommand = keyof JsToGodot;

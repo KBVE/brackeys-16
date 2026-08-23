@@ -1,7 +1,7 @@
 import { GodotGame } from './godot/GodotGame';
 import { runStateName, describePlayerFlags } from './godot/state';
 import {
-  useReady,
+  useBridgeReady,
   usePlaying,
   usePaused,
   usePlayer,
@@ -42,7 +42,7 @@ function DebugState() {
 }
 
 export default function App() {
-  const ready = useReady();
+  const ready = useBridgeReady();
   const playing = usePlaying();
 
   return (
