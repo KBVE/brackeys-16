@@ -2,8 +2,8 @@ class_name StateBits
 
 ## GENERATED FILE - DO NOT EDIT.
 ##
-## Source: shared/state.json
-## Regenerate: npm run gen:state (from vite/)
+## Source: shared/state.json + shared/events.json
+## Regenerate: npm run gen (from vite/). Runs automatically on dev and build.
 
 ## Where the game as a whole is; replaces sniffing scene paths on the React side.
 enum RunState {

@@ -1,8 +1,8 @@
 /**
  * GENERATED FILE - DO NOT EDIT.
  *
- * Source: shared/state.json
- * Regenerate: npm run gen:state (from vite/)
+ * Source: shared/state.json + shared/events.json
+ * Regenerate: npm run gen (from vite/). Runs automatically on dev and build.
  */
 
 /**
