@@ -10,6 +10,25 @@
         "PAUSED": 3,
         "ENDED": 4
       }
+    },
+    "WorldMode": {
+      "description": "Which kind of world the player is in right now. A murder mystery moves between flat interior scenes and spatial sections, and both React and the ECS need to know which without guessing from the scene path.",
+      "values": {
+        "NONE": 0,
+        "MODE_2D": 1,
+        "MODE_3D": 2
+      }
+    },
+    "JournalKind": {
+      "description": "What kind of fact a journal entry records. The journal is the run's memory: who spoke to whom, what was used on what, where the player has been. Each entry carries a ULID, so entries sort by when they happened without a clock field being trusted or compared.",
+      "values": {
+        "ENTERED": 0,
+        "TALKED": 1,
+        "SHOWED": 2,
+        "USED": 3,
+        "FOUND": 4,
+        "ACCUSED": 5
+      }
     }
   },
   "flags": {
