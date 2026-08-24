@@ -172,7 +172,7 @@ function typescript() {
 
 /* targets are just two for this scope */
 
-const MAX_WIRE_ARGS = 4;
+const MAX_WIRE_ARGS = 6;
 
 const TS_TYPES = { string: 'string', number: 'number', boolean: 'boolean' };
 
