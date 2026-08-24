@@ -4,16 +4,17 @@
 // &trick -> UV density is uniform across the whole model, so UV * k lands at a
 //           constant PHYSICAL frequency. no triplanar, no UV2, stays tangent space.
 
-uniform sampler2D tex_albedo : source_color, filter_linear_mipmap_anisotropic;
-uniform sampler2D tex_normal : filter_linear_mipmap_anisotropic;
-uniform sampler2D tex_mr : filter_linear_mipmap_anisotropic;
-uniform sampler2D tex_detail : filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D tex_albedo : source_color, filter_linear_mipmap;
+uniform sampler2D tex_normal : filter_linear_mipmap;
+uniform sampler2D tex_mr : filter_linear_mipmap;
+uniform sampler2D tex_detail : filter_linear_mipmap, repeat_enable;
 
 uniform float detail_tiling = 45.0;
 uniform float detail_strength : hint_range(0.0, 3.0) = 0.55;
 uniform float detail_albedo : hint_range(0.0, 0.5) = 0.05;
 uniform float detail_rough : hint_range(0.0, 0.3) = 0.07;
 uniform float normal_depth : hint_range(0.0, 3.0) = 1.0;
+uniform float roughness_floor : hint_range(0.0, 1.0) = 0.22;
 
 // &cutaway -> SIDE used to slice the near wall with a 10.6m camera near plane,
 //             which also clipped the ground under the camera and left a grey
@@ -41,7 +42,10 @@ void fragment() {
 
 	float grain = (n_det.x + n_det.y) * 0.5;
 	ALBEDO = alb.rgb * (1.0 + grain * detail_albedo);
-	ROUGHNESS = clamp(mr.g + grain * detail_rough, 0.04, 1.0);
+	// a glossy surface sparkles when the normal map is minified, and at a low
+	// render resolution every carriage slat lands under one pixel. The floor is
+	// what stops that sparkle crawling as the train sways.
+	ROUGHNESS = clamp(mr.g + grain * detail_rough, roughness_floor, 1.0);
 	METALLIC = mr.b;
 	NORMAL_MAP = n * 0.5 + 0.5;
 	NORMAL_MAP_DEPTH = 1.0;

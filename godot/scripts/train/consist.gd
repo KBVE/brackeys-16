@@ -2,14 +2,14 @@ extends Node3D
 class_name Consist
 
 ## Consist : Node3D
-## &why  -> cars share meshes, materials and textures, so length costs transforms
-##          and draw calls only. VRAM does not move with carriage_count.
-## &cull -> looking down the aisle points the camera along the train, so every
-##          carriage ahead sits in the frustum and frustum culling saves nothing.
-##          web has no occlusion culling either -> cull by carriage index, explicitly.
-## &cost -> measured (tools/bench_consist.gd, native, 1080p, vsync off):
-##          21 cars drawn 1.14ms | windowed 0.64ms. windowed is O(1) in length.
-##          lights dominate: 0.85 -> 0.46ms by hiding lamps at equal geometry.
+## Cars share meshes, materials and textures, so length costs transforms and draw
+## calls only. VRAM does not move with [member carriage_count].
+## Looking down the aisle points the camera along the train, so every carriage
+## ahead sits in the frustum and frustum culling saves nothing. Web has no
+## occlusion culling either, so cull by carriage index, explicitly.
+## Measured (tools/bench_consist.gd, native, 1080p, vsync off): 21 cars drawn
+## 1.14ms, windowed 0.64ms, O(1) in length. Lights dominate: 0.85 -> 0.46ms by
+## hiding lamps at equal geometry.
 
 @export var carriage_scene: PackedScene
 @export var detail_normal: Texture2D
@@ -95,7 +95,7 @@ func _reskin(carriage: Node3D) -> void:
 		for i in range(m.get_surface_count()):
 			var src := m.surface_get_material(i) as StandardMaterial3D
 			if src == null or src.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
-				continue # &glass -> window panes keep their own material
+				continue # window panes keep their own material
 			mi.set_surface_override_material(i, _material_for(src))
 	var em := carriage.get_node_or_null("emissive") as MeshInstance3D
 	if em != null and em.mesh.surface_get_material(0) != null:

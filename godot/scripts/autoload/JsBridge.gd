@@ -40,7 +40,7 @@ func is_connected_to_js() -> bool:
 	return _js_bridge != null
 
 
-## &fast -> JavaScriptBridge marshals int/float/String/bool natively, so a flat primitive payload via the wire.
+## JavaScriptBridge marshals int/float/String/bool natively, so a flat primitive payload goes raw.
 func emit_event(event: String, payload: Dictionary = {}) -> void:
 	if _js_bridge == null:
 		return

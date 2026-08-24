@@ -137,8 +137,8 @@ const OUTBOUND_WIRE: Dictionary[StringName, String] = {
 	JOURNAL_ENTRY: "journal:entry",
 }
 
-## &wire -> event -> ordered payload fields, passed to JS as positional
-## primitives. Absent = payload is not a flat primitive record, send it as JSON.
+## Ordered payload fields, passed to JS as positional primitives.
+## An absent event has no flat primitive record and goes as JSON.
 const WIRE_FIELDS: Dictionary[String, Array] = {
 	"godot:ready": [],
 	"scene:changed": ["scene"],

@@ -99,6 +99,39 @@ export function Sidebar() {
   );
 }
 
+export function PlateRail() {
+  const player = usePlayer();
+  const flags = useFlags();
+  const runningOrder = useRunningOrder();
+
+  return (
+    <aside className={styles.rail} data-testid="plate-rail">
+      <h3 className={styles.railHead}>Condition</h3>
+      <p className={styles.railStat}>
+        {player ? `${player.health}/${player.max_health}` : '—'}
+      </p>
+      <p className={styles.railNote}>{describePlayerFlags(flags).toLowerCase()}</p>
+
+      <h3 className={styles.railHead}>Order</h3>
+      <ol className={styles.railOrder}>
+        {standing.runningOrder.map((levelName, levelIndex) => (
+          <li key={levelName} data-mark={runningOrderMark(runningOrder, levelIndex)}>
+            {levelName}
+          </li>
+        ))}
+      </ol>
+
+      <button
+        className={styles.railBoard}
+        onClick={() => openResearch()}
+        data-testid="rail-dossier"
+      >
+        Case board
+      </button>
+    </aside>
+  );
+}
+
 export function Telegrams() {
   const dispatches = useDispatches();
 

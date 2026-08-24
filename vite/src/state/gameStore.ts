@@ -30,7 +30,7 @@ interface GameStore {
   trace: TracedEvent[];
   engineLog: EngineLine[];
   boot: BootPhase;
-  progress: number;
+  progress: number | null;
   bootError: string | null;
   bridgeReady: boolean;
   run: number;
@@ -50,7 +50,7 @@ export const useGameStore = create<GameStore>()(() => ({
   trace: [],
   engineLog: [],
   boot: 'idle',
-  progress: 0,
+  progress: null,
   bootError: null,
   bridgeReady: bridge.ready,
   run: RunState.BOOTING,
@@ -123,8 +123,8 @@ export const logEngine = (text: string) => {
 };
 
 export const boot = {
-  start: () => set({ boot: 'loading', progress: 0, bootError: null }),
-  progress: (progress: number) => set({ progress }),
+  start: () => set({ boot: 'loading', progress: null, bootError: null }),
+  progress: (progress: number | null) => set({ progress }),
   running: () => set({ boot: 'running' }),
   fail: (bootError: string) => set({ boot: 'failed', bootError }),
 };

@@ -7,6 +7,10 @@ extends SceneTree
 
 const OUT := "res://scenes/train/train.scn"
 
+## Divides the world's render resolution. 1 is native, 2 is a quarter of the
+## fragments. The HUD is outside the SubViewport and stays sharp either way.
+const RENDER_SHRINK := 3
+
 ## &instance -> never set owner inside an instanced scene. doing so packs the
 ##              instance's own children into THIS scene, and because the node
 ##              keeps scene_file_path, loading then produces both copies.
@@ -109,6 +113,29 @@ func _initialize() -> void:
 	root.name = "Train"
 	root.set_script(load("res://scripts/train/train.gd"))
 
+	# The world renders into a SubViewport so its resolution is independent of
+	# the HUD's. stretch_shrink divides the container size, so 2 is a quarter of
+	# the fragments and the upscale stays a whole number of pixels.
+	var screen := CanvasLayer.new(); screen.name = "Screen"
+	screen.layer = -1
+	root.add_child(screen)
+
+	var frame := SubViewportContainer.new(); frame.name = "Frame"
+	frame.stretch = true
+	frame.stretch_shrink = RENDER_SHRINK
+	frame.set_anchors_preset(Control.PRESET_FULL_RECT)
+	frame.mouse_filter = Control.MOUSE_FILTER_STOP
+	screen.add_child(frame)
+
+	var world := SubViewport.new(); world.name = "World"
+	world.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	# picking belongs to whichever viewport owns the camera, and that is no
+	# longer the window
+	world.physics_object_picking = true
+	world.msaa_3d = Viewport.MSAA_4X
+	world.handle_input_locally = false
+	frame.add_child(world)
+
 	# &consist -> ONE node. carriages are spawned at runtime by Consist, so none
 	#             geometry is baked into this scene: the .scn stays small and the
 	#             duplicated-instance bug cannot recur by construction.
@@ -121,10 +148,10 @@ func _initialize() -> void:
 	#           with a carriage index is a carriage that has to exist.
 	consist.set("carriage_count", GameContent.carriage_locations().size())
 	consist.set("pitch", 21.0)
-	root.add_child(consist)
+	world.add_child(consist)
 	print("consist node placed (cars spawn at runtime)")
 
-	var rig := Node3D.new(); rig.name = "Rig"; root.add_child(rig)
+	var rig := Node3D.new(); rig.name = "Rig"; world.add_child(rig)
 	var cam := Camera3D.new(); cam.name = "Camera3D"
 	cam.fov = 62.0
 	cam.far = 1500.0
@@ -159,15 +186,17 @@ func _initialize() -> void:
 	env.fog_sky_affect = 0.35
 	env.fog_aerial_perspective = 0.4
 	we.environment = env
-	root.add_child(we)
+	world.add_child(we)
 
 	var sun := DirectionalLight3D.new(); sun.name = "Sun"
 	sun.light_energy = 1.3
-	sun.shadow_enabled = true
-	root.add_child(sun)
+	# a shadow map is a second depth pass over every visible carriage, and PSX
+	# never had one
+	sun.shadow_enabled = false
+	world.add_child(sun)
 
 
-	var backdrop := Node3D.new(); backdrop.name = "Backdrop"; root.add_child(backdrop)
+	var backdrop := Node3D.new(); backdrop.name = "Backdrop"; world.add_child(backdrop)
 
 	# &ground -> scrolls along X to sell motion while the carriage stays put
 	var terrain := MeshInstance3D.new(); terrain.name = "Terrain"
@@ -200,7 +229,7 @@ func _initialize() -> void:
 	var lighting := Node3D.new()
 	lighting.name = "Lighting"
 	lighting.set_script(load("res://scripts/world/world_lighting.gd"))
-	root.add_child(lighting)
+	world.add_child(lighting)
 	lighting.set("sun_path", NodePath("../Sun"))
 	lighting.set("environment_path", NodePath("../WorldEnvironment"))
 	lighting.set("terrain_path", NodePath("../Backdrop/Terrain"))

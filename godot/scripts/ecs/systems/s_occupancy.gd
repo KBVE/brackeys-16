@@ -5,7 +5,7 @@ class_name SOccupancy
 ## carriage stands in for. Pure arithmetic, so it could run on the scheduler; one
 ## division is not worth dispatching to the worker pool.
 ##
-## &pins -> mirrors Consist::carriage_index_at, so the spacing is handed over.
+## Mirrors Consist::carriage_index_at, so the spacing is handed over.
 
 var carriage_pitch: float = 21.0
 var carriage_count: int = 1

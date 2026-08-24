@@ -11,8 +11,8 @@ func _on_update(delta: float) -> void:
 	if clocks.is_empty():
 		return
 	var daylight: float = clocks[0].daylight
-	# &canopy -> behind an opaque canopy the terrain is pure overdraw, and so is
-	#            the material write that scrolls it
+	# behind an opaque canopy the terrain is pure overdraw, and so is the
+	# material write that scrolls it
 	var canopies: Array = view(&"CParallax")
 	var canopy_opacity: float = canopies[0].canopy_opacity if not canopies.is_empty() else 0.0
 

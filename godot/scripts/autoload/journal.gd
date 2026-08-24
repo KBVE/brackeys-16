@@ -2,15 +2,14 @@ extends Node
 
 ## Journal : what the run remembers
 ##
-## &why  -> a murder mystery is a record of who did what, in what order. Systems
-##          ask the journal, not each other: "has the player shown the telegram
-##          to Weiss yet" is a query, not a flag someone has to remember to set
-## &id   -> every entry carries a ULID, so entries sort by creation without
-##          trusting a clock field, and Godot and React can both hold the same
-##          entry and agree it is the same one
-## &clock -> `at` is in-world minutes, which is what the player reasons about.
-##           It is NOT the ordering key: the world clock scrubs and repeats, and
-##           two entries in one in-world minute would tie
+## A murder mystery is a record of who did what, in what order. Systems ask the
+## journal, not each other: "has the player shown the telegram to Weiss yet" is a
+## query, not a flag someone has to remember to set.
+## Every entry carries a ULID, so entries sort by creation without trusting a
+## clock field, and Godot and React agree on identity.
+## `at` is in-world minutes, which is what the player reasons about. It is not
+## the ordering key: the world clock scrubs and repeats, so two entries in one
+## in-world minute would tie.
 
 const LIMIT := 512
 
@@ -37,7 +36,7 @@ func record(kind: int, actor: String = "", target: String = "", place: String = 
 		"at": _clock,
 	}
 	_entries.append(entry)
-	# &cap -> a run cannot grow without bound in wasm; the oldest facts go first
+	# a run cannot grow without bound in wasm; the oldest facts go first
 	if _entries.size() > LIMIT:
 		_entries = _entries.slice(_entries.size() - LIMIT)
 	Ecs.notify(GameEvents.JOURNAL_ENTRY, entry)
@@ -47,7 +46,7 @@ func entries() -> Array[Dictionary]:
 	return _entries.duplicate()
 
 ## Every entry matching a kind, and optionally an actor and a target.
-## &open -> an empty string means "any", so callers filter on what they know
+## An empty string means "any", so callers filter on what they know.
 func find_entries(kind: int = -1, actor: String = "", target: String = "") -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for e: Dictionary in _entries:

@@ -2,16 +2,13 @@ extends Node
 
 ## GameBridge : Maaack <-> ECS <-> React, one wiring point
 ##
-## &bus -> everything crosses the ECS bus; scene + pause fold into one packed
-##         [constant GameEvents.STATE_CHANGED]
-## &why -> gameplay never imports [JsBridge], menus never import the ECS
+## Gameplay never imports [JsBridge], menus never import the ECS.
 
 
-## &map -> scene path substring -> RunState ; first hit wins
+## First match wins.
 const SCENE_STATES: Array[Array] = [
 	["/game/", StateBits.RunState.PLAYING],
-	# &train -> the three levels live in one carriage scene, so it is gameplay
-	#           even though it sits outside /game/
+	# the three levels live in one carriage scene, outside /game/
 	["/train/", StateBits.RunState.PLAYING],
 	["/end_credits/", StateBits.RunState.ENDED],
 	["/menus/", StateBits.RunState.MENU],
@@ -24,6 +21,10 @@ var _world_mode: int = StateBits.WorldMode.NONE
 var _stream_path: String = ""
 var _stream_clock: float = 0.0
 
+var _menu_scene: PackedScene = null
+var _menu_path: String = ""
+var _menu_pending: bool = false
+
 func _ready() -> void:
 	Ecs.add_observer(JsBridgeObserver.new())
 	JsBridge.command_received.connect(_on_js_command)
@@ -31,12 +32,14 @@ func _ready() -> void:
 	Ecs.world.add_callable(GameEvents.UI_MAIN_MENU, _on_ui_main_menu)
 	Ecs.world.add_callable(GameEvents.UI_LOAD_SCENE, _on_ui_load_scene)
 	process_priority = 100
-	# &always -> unpause is a React command; Ecs pauses with the tree, this cannot
+	# unpause is a React command; Ecs pauses with the tree, this cannot
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_begin_menu_preload()
 
-## &why -> scene_loaded fires BEFORE the swap, and for loads that never swap
-##      -> current_scene reports what happened, incl. changes without SceneLoader
+## Polls rather than listening: scene_loaded fires before the swap, and never at
+## all for a load that does not swap.
 func _process(delta: float) -> void:
+	_poll_menu_preload()
 	if not _stream_path.is_empty():
 		_poll_stream(delta)
 	var current := get_tree().current_scene
@@ -47,7 +50,6 @@ func _process(delta: float) -> void:
 		return
 	_last_scene_path = path
 	Ecs.notify(GameEvents.SCENE_CHANGED, {"scene": path})
-	# &sync -> leaving the game scene drops the pause
 	if get_tree().paused:
 		get_tree().paused = false
 	_set_run_state(_state_for_scene(path))
@@ -58,11 +60,10 @@ func _on_js_command(cmd: String, payload: Dictionary) -> void:
 		return
 	Ecs.notify(GameEvents.INBOUND_BUS[cmd], payload)
 
-## &why -> pause is engine state; a system may not run while paused
 func _on_ui_pause(event: GameEvent) -> void:
 	var payload: Variant = event.data
 	var paused: bool = payload.get("paused", true) if payload is Dictionary else true
-	# &guard -> a paused menu is a soft lock
+	# a paused menu is a soft lock
 	var scene_state := _state_for_scene(_last_scene_path)
 	if scene_state != StateBits.RunState.PLAYING:
 		return
@@ -80,11 +81,8 @@ func load_scene_async_streaming(path: String) -> void:
 	_quiet_outgoing_scene()
 	_notify_loading(path, 0.0, "start")
 
-## &starve -> a live scene keeps the frame and the loader gets whatever is left.
-##            The carriage is heavy enough that a menu asked for while it ran
-##            crawled to 33% in 150 seconds and never landed. Nothing is coming
-##            back to a scene being replaced, so it stops drawing and stops
-##            processing the moment the next one is requested.
+## A live scene starves the loader: a menu asked for while the carriage ran
+## crawled to 33% in 150 seconds and never landed.
 func _quiet_outgoing_scene(quiet: bool = true) -> void:
 	var current := get_tree().current_scene
 	if current == null:
@@ -98,7 +96,7 @@ func _on_ui_load_scene(event: GameEvent) -> void:
 	if payload is Dictionary:
 		load_scene_async_streaming(payload.get("scene", ""))
 
-## &rate -> progress crosses the JS boundary, so report it at 10Hz, not per frame
+## Progress crosses the JS boundary, so it goes out at 10Hz, not per frame.
 func _poll_stream(delta: float) -> void:
 	var parts: Array = []
 	var status := ResourceLoader.load_threaded_get_status(_stream_path, parts)
@@ -115,11 +113,10 @@ func _poll_stream(delta: float) -> void:
 			var packed := ResourceLoader.load_threaded_get(path) as PackedScene
 			_stream_path = ""
 			_notify_loading(path, 1.0, "ready")
-			# &deferred -> change_scene_to_packed swaps at the end of the frame
+			# change_scene_to_packed swaps at the end of the frame
 			get_tree().change_scene_to_packed(packed)
 		_:
 			_stream_path = ""
-			# &back -> the swap is not coming, so give the player their scene back
 			_quiet_outgoing_scene(false)
 			_notify_loading(path, progress, "failed")
 
@@ -130,8 +127,25 @@ func _notify_loading(path: String, progress: float, status: String) -> void:
 		"status": status,
 	})
 
-## &hatch -> the only way out of the train loop from React; the menu path comes
-##           from the template setting, so a menu move cannot strand the player
+func _begin_menu_preload() -> void:
+	_menu_path = ProjectSettings.get_setting(
+		"maaacks_game_template/main_menu_scene_path", "")
+	if _menu_path.is_empty():
+		return
+	_menu_pending = ResourceLoader.load_threaded_request(_menu_path, "", true) == OK
+
+func _poll_menu_preload() -> void:
+	if not _menu_pending:
+		return
+	var status := ResourceLoader.load_threaded_get_status(_menu_path)
+	if status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+		return
+	_menu_pending = false
+	if status == ResourceLoader.THREAD_LOAD_LOADED:
+		_menu_scene = ResourceLoader.load_threaded_get(_menu_path) as PackedScene
+	else:
+		push_warning("GameBridge: main menu preload failed; will stream on demand.")
+
 func _on_ui_main_menu(_event: GameEvent) -> void:
 	var path: String = ProjectSettings.get_setting(
 		"maaacks_game_template/main_menu_scene_path", "")
@@ -139,9 +153,12 @@ func _on_ui_main_menu(_event: GameEvent) -> void:
 		push_warning("GameBridge: no main_menu_scene_path set.")
 		return
 	get_tree().paused = false
+	if _menu_scene != null:
+		# already in memory, so no scene:loading pair is reported
+		get_tree().change_scene_to_packed(_menu_scene)
+		return
 	load_scene_async_streaming(path)
 
-## &flags -> gameplay owns these bits, the bridge only forwards
 func set_world_mode(mode: int) -> void:
 	if mode == _world_mode:
 		return

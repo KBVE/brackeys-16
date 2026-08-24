@@ -30,8 +30,8 @@ func _on_update(delta: float) -> void:
 			light.light_energy = lamp.energy
 
 
-## &noise -> a plain sine reads as a pulse, not a fault. Beating two frequencies
-##           that do not divide evenly keeps it irregular without a RNG.
+## A plain sine reads as a pulse, not a fault. Beating two frequencies that do
+## not divide evenly keeps it irregular without a RNG.
 func _flicker(lamp: CLamp, delta: float) -> float:
 	if lamp.flicker_hz <= 0.0 or lamp.flicker_depth <= 0.0:
 		return 1.0

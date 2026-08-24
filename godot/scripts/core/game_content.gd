@@ -2,11 +2,10 @@ class_name GameContent
 
 ## GameContent : the compiled content, engine side
 ##
-## &one -> res://data/content.gen.json is byte-identical to what React reads,
-##         both compiled from shared/data by tools/gen-content.mjs
-## &use -> passengers for who is aboard, items for what they carry, articles for
-##         anything in-world that quotes the paper
-## &edit -> never edit the generated file; edit shared/data/**/*.mdx
+## res://data/content.gen.json is byte-identical to what React reads, both
+## compiled from shared/data by tools/gen-content.mjs.
+##
+## Never edit the generated file. Edit shared/data/**/*.mdx.
 
 const PATH := "res://data/content.gen.json"
 
@@ -35,10 +34,9 @@ static func items() -> Array:
 static func locations() -> Array:
 	return data().get("locations", [])
 
-## &consist -> a location with a carriage index is a place in the train at that
-##             position, which is what [SOccupancy] resolves a world position
-##             into. gen-content proves the indices run 0..n with no gaps, so
-##             this can seed carriages by position without checking.
+## A location with a carriage index is a place in the train at that position,
+## which is what [SOccupancy] resolves a world position into. gen-content proves
+## the indices run 0..n with no gaps, so this seeds by position without checking.
 static func carriage_locations() -> Array:
 	var aboard := locations().filter(func(l: Dictionary) -> bool: return l.has("carriage"))
 	aboard.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["carriage"]) < int(b["carriage"]))
@@ -62,12 +60,12 @@ static func passengers_at(location: String) -> Array:
 static func section(entry: Dictionary, key: String) -> Dictionary:
 	return entry.get("sections", {}).get(key, {})
 
-## &truth -> where a passenger actually was at [param clock] (minutes past
-##           midnight), from their timeline. What they claim is in the `alibi`
-##           section, and the two disagreeing is the game.
-## &night -> the journey crosses midnight, so 00:20 comes AFTER 23:40 even
-##           though it is the smaller number. Entries are authored in order, so
-##           a step that moves backwards has rolled over to the next day.
+## Where a passenger actually was at [param clock], from their timeline. What
+## they claim is in the `alibi` section, and the two disagreeing is the game.
+##
+## The journey crosses midnight, so 00:20 comes after 23:40 even though it is the
+## smaller number. Steps are authored in order, so one that moves backwards has
+## rolled over to the next day.
 static func where_was(passenger: Dictionary, clock: int) -> String:
 	var steps: Array = passenger.get("timeline", [])
 	if steps.is_empty():

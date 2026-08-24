@@ -16,12 +16,11 @@ static var _rand_low: int = 0
 
 ## [param ms] overrides the clock, for tests only.
 static func generate(ms: int = -1) -> String:
-	# &parens -> `x * 1000.0 as int` casts the 1000.0, not the product
+	# `x * 1000.0 as int` casts the 1000.0, not the product
 	var timestamp_ms: int = ms if ms >= 0 else int(Time.get_unix_time_from_system() * 1000.0)
 
 	if timestamp_ms == _last_ms:
-		# &sort -> increment rather than redraw, or ids minted in one millisecond
-		#          come back out of order
+		# increment, not redraw, or ids minted in one ms come back out of order
 		_rand_low += 1
 		if _rand_low > RAND_HALF_MAX:
 			_rand_low = 0
@@ -63,7 +62,7 @@ static func _seed_random() -> void:
 	_rand_low = _random_half()
 
 
-# &range -> randi_range is 32-bit; asked for a 40-bit span it returned the bounds
+## randi_range is 32-bit; asked for a 40-bit span it returned the bounds.
 static func _random_half() -> int:
 	return ((randi() << 8) ^ randi()) & RAND_HALF_MAX
 

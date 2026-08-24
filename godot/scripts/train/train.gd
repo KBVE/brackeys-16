@@ -2,22 +2,23 @@ extends Node3D
 class_name Train
 
 ## Train : Node3D
-## &real -> actual carriage geometry, 32k tris, one 2048 atlas. no baked light,
-##          so time of day is runtime state and the camera goes anywhere.
-## &cut  -> SIDE mode clips the near wall with the camera near plane, same trick
-##          the blender bake used. no geometry is hidden or duplicated.
-## &loop -> three levels (Aisle, Orbit, Side) run inside this one carriage. A
-##          level swap is a camera + framing swap, never a scene swap, so the
-##          wasm instance and the loaded carriage are paid for exactly once.
+##
+## Actual carriage geometry, 32k tris, one 2048 atlas. No baked light, so time of
+## day is runtime state and the camera goes anywhere.
+##
+## SIDE clips the near wall with the camera near plane, the same trick the blender
+## bake used. No geometry is hidden or duplicated.
+##
+## Three levels run inside this one carriage. A level swap is a camera and framing
+## swap, never a scene swap, so the wasm instance is paid for once.
 
 enum Shot { SIDE, AISLE, ORBIT }
 
-## &order -> Aisle, Orbit, Side; the run wraps back to Aisle after Side so the
-##           loop never dead-ends while there is no post-run content
+## Wraps back to Aisle after Side, so the loop never dead-ends.
 const LEVELS: Array[Shot] = [Shot.AISLE, Shot.ORBIT, Shot.SIDE]
 const LEVEL_NAMES: Array[String] = ["Aisle", "Orbit", "Side"]
 
-# &reset -> a level always starts from its own framing, win or lose
+## A level always starts from its own framing, win or lose.
 const SIDE_HOME := Vector2(0.0, 12.0)
 const AISLE_HOME := Vector2(-7.0, 0.0)
 const ORBIT_HOME := Vector2(0.6, 16.0)
@@ -28,21 +29,26 @@ const SWAY_HZ := 0.7
 
 const CAR_HALF_LEN := 10.44
 const NEAR_WALL_Z := 1.70
-## &eye -> measured. At 3.02 the camera sat ABOVE the side windows, so every
-##         sightline out of them hit ground and the forest was never visible.
+## Measured. At 3.02 the camera sat above the side windows, so every sightline
+## out of them hit ground and the forest was never visible.
 const AISLE_EYE := 2.60
 const CUT_Z := 1.4
 const NO_CLIP := 1000000.0
 
-@onready var _rig: Node3D = $Rig
-@onready var _cam: Camera3D = $Rig/Camera3D
-@onready var _consist: Consist = $Consist
-@onready var _forest: ParallaxBackdrop = $Backdrop/Forest
+## Screen heights a finger travels for one unit of movement, so a swipe covers
+## the same arc on any display.
+const DRAG_SCREENS_PER_UNIT := 2.6
+
+@onready var _world: SubViewport = $Screen/Frame/World
+@onready var _rig: Node3D = $Screen/Frame/World/Rig
+@onready var _cam: Camera3D = $Screen/Frame/World/Rig/Camera3D
+@onready var _consist: Consist = $Screen/Frame/World/Consist
+@onready var _forest: ParallaxBackdrop = $Screen/Frame/World/Backdrop/Forest
 @onready var _hud: Label = $Debug/Label
-@onready var _buttons: Node3D = $Rig/Camera3D/Buttons
+@onready var _buttons: Node3D = $Screen/Frame/World/Rig/Camera3D/Buttons
 
 var _t := 0.0
-## &seed -> re-seeding on every _ready() would restart the evening on re-entry.
+## INF, or re-seeding on every _ready() restarts the evening on re-entry.
 var _seed_phase := INF
 var _seed_running := true
 var _shot: Shot = Shot.AISLE
@@ -53,7 +59,10 @@ var _occupant: COccupant
 var _here: CLocation
 var _time_of_day: CTimeOfDay
 var _run: CRun
-## &scope -> torn down with the scene. The clock is not here; it lives on [Session].
+## Drag distance accumulated since the last frame, in movement units.
+var _drag := Vector2.ZERO
+
+## Torn down with the scene. The clock is not here; it lives on [Session].
 var _scope := ECSScope.new()
 
 # per-shot free parameters, kept so switching back restores the framing
@@ -63,7 +72,7 @@ var _orbit := ORBIT_HOME  # angle, radius
 
 func _ready() -> void:
 	var start := 0
-	# &shot -> `-- --shot=aisle` starts the run on that level, for captures
+	# `-- --shot=aisle` starts the run on that level, for captures
 	for a: String in OS.get_cmdline_user_args():
 		if a.begins_with("--shot="):
 			var idx := LEVELS.find(Shot.keys().find(a.split("=")[1].to_upper()))
@@ -71,13 +80,12 @@ func _ready() -> void:
 				start = idx
 	for a: String in OS.get_cmdline_user_args():
 		if a.begins_with("--yaw="):
-			# &capture -> aim the aisle camera at a window without driving input.
-			#             applied AFTER _start_level, which resets _aisle to home
+			# applied after _start_level, which resets _aisle to home
 			_yaw_override = clampf(float(a.split("=")[1]), -1.4, 1.4)
 		if a.begins_with("--eye="):
 			_eye_override = float(a.split("=")[1])
 		if a.begins_with("--phase="):
-			# &capture -> 0.0 noon, 0.5 midnight
+			# 0.0 noon, 0.5 midnight
 			_seed_phase = fposmod(float(a.split("=")[1]), 1.0)
 			_seed_running = false
 		if a.begins_with("--detail="):
@@ -86,8 +94,8 @@ func _ready() -> void:
 	_time_of_day = Session.time_of_day
 	_run = Session.run
 
-	# &rooms -> one mesh repeated, so the rooms are authored, not modelled. The
-	#          order is shared/data/locations, which React reads as the same list.
+	# one mesh repeated, so rooms are authored not modelled; order is
+	# shared/data/locations, which React reads as the same list
 	var rooms := GameContent.carriage_locations()
 	if rooms.size() != _consist.carriage_count:
 		push_error("Consist has %d carriages but shared/data/locations authors %d. Rebuild the scene."
@@ -103,8 +111,8 @@ func _ready() -> void:
 	_viewer = CViewer.new()
 	_occupant = COccupant.new()
 	_here = CLocation.new()
-	# &rig -> NOT the camera: in ORBIT it swings out to 40m and would report the
-	#         player walking the train while they have not moved.
+	# the rig, not the camera: in ORBIT the camera swings out to 40m and would
+	# report the player walking the train
 	_scope.spawn().add(_viewer).add(_occupant).add(_here).add(ECSViewComponent.new(_rig))
 	_scope.add_system(&"viewer", SViewer.new())
 	var occupancy := SOccupancy.new()
@@ -113,18 +121,19 @@ func _ready() -> void:
 	_scope.add_system(&"occupancy", occupancy)
 	_scope.spawn().add(CParallax.new()).add(ECSViewComponent.new(_forest))
 	_scope.add_system(&"parallax", SParallax.new())
-	_scope.spawn().add(CWorldLighting.new()).add(ECSViewComponent.new($Lighting))
+	_scope.spawn().add(CWorldLighting.new()).add(ECSViewComponent.new($Screen/Frame/World/Lighting))
 	_scope.add_system(&"world_lighting", SWorldLighting.new())
 	var lamps := SCarriageLamps.new()
 	lamps.lamp_glass = _consist.glow_material()
 	_scope.add_system(&"carriage_lamps", lamps)
 
-	# &pick -> off by default in 3D; without it the buttons never see a click
-	get_viewport().physics_object_picking = true
+	# the world owns the camera now, so picking is its viewport's job, not the
+	# window's
+	_world.physics_object_picking = true
 	for b: LevelButton in _buttons.get_children():
 		b.pressed.connect(_on_button)
 
-	# &restart -> React's ui:restart and an in-world loss take the same path
+	# React's ui:restart and an in-world loss take the same path
 	Ecs.world.add_callable(GameEvents.UI_RESTART, _on_ui_restart)
 
 	_time_of_day.running = _seed_running
@@ -135,7 +144,7 @@ func _ready() -> void:
 		_aisle.y = _yaw_override
 		_apply_shot()
 
-## &tune -> `-- --detail=tiling,strength,albedo` to sweep without rebuilding
+## Driven by `-- --detail=tiling,strength,albedo`, to sweep without rebuilding.
 func _tune_detail(tiling: float, strength: float, albedo: float) -> void:
 	_consist.tune_detail(tiling, strength, albedo)
 
@@ -144,7 +153,7 @@ func _process(delta: float) -> void:
 	_rig.position.y = sin(_t * TAU * SWAY_HZ) * 0.012
 	_rig.rotation.z = sin(_t * TAU * SWAY_HZ * 0.37) * 0.0016
 
-	# &stream -> only the cars near the viewer draw; cost is O(1) in train length
+	# only the cars near the viewer draw; cost is O(1) in train length
 	_consist.cull_around(_viewer.world_x)
 
 	_read_input(delta)
@@ -156,7 +165,7 @@ func _exit_tree() -> void:
 func _apply_shot() -> void:
 	match _shot:
 		Shot.SIDE:
-			# &clip -> push the near plane past the camera-side wall to cut away
+			# push the near plane past the camera-side wall to cut it away
 			_rig.position = Vector3(_side.x, 2.4, 0.0)
 			_cam.position = Vector3(0.0, 0.0, _side.y)
 			_cam.rotation = Vector3.ZERO
@@ -179,13 +188,11 @@ func _apply_shot() -> void:
 			GameBridge.set_world_mode(StateBits.WorldMode.MODE_3D)
 	_place_buttons()
 
-## &clip -> SIDE pushes the near plane past 10m to cut the near wall away, so a
-##          fixed offset would leave the buttons inside it. They ride the plane
-##          and scale with the distance -> same size on screen in every level.
+## SIDE pushes the near plane past 10m, so a fixed offset would leave the buttons
+## inside the wall. They ride the plane and scale with distance instead.
 func _place_buttons() -> void:
-	# &gap -> a far near plane means SIDE already cut the wall away; sit just past
-	#         the cut, otherwise the plates land inside the carriage and the seats
-	#         chew their top edge
+	# sit just past the cut, or the plates land inside the carriage and the
+	# seats chew their top edge
 	var dist := _cam.near + (0.45 if _cam.near > 1.0 else 1.2)
 	var k := dist / 3.4
 	_buttons.position = Vector3(0.0, -0.62 * k, -dist)
@@ -204,7 +211,6 @@ func _start_level(index: int) -> void:
 	_orbit = ORBIT_HOME
 	_apply_shot()
 	GameBridge.set_player_flags(StateBits.PLAYER_ALIVE)
-	# &record -> the journal is the run's memory; a level entered is a fact
 	Journal.record(StateBits.JournalKind.ENTERED, "player", "", LEVEL_NAMES[_run.level_index].to_lower())
 	_notify_level("start")
 
@@ -218,8 +224,8 @@ func _win() -> void:
 	_run.score += 1
 	Ecs.notify(GameEvents.SCORE_CHANGED, {"score": _run.score})
 	_notify_level("won")
-	# &loop -> the run reports itself over, then rolls back to Aisle. Nothing to
-	#          cut to yet, and a dead screen would strand the player in wasm
+	# reports itself over then rolls back to Aisle; a dead screen would strand
+	# the player in wasm
 	if _run.level_index == LEVELS.size() - 1:
 		Ecs.notify(GameEvents.RUN_OVER, {"score": _run.score, "levels": LEVELS.size()})
 	_start_level(_run.level_index + 1)
@@ -229,7 +235,6 @@ func _lose() -> void:
 	_start_level(_run.level_index)
 
 func _on_ui_restart(_event: GameEvent) -> void:
-	# &fresh -> a restart is a new run, and a new run remembers nothing
 	Session.begin()
 	Journal.clear()
 	_start_level(0)
@@ -243,22 +248,39 @@ func _notify_level(outcome: String) -> void:
 		"outcome": outcome,
 	})
 
+## Drag pans the camera. A tap produces no drag event, so the WIN and LOSE plates
+## keep their picking and no on-screen stick is needed.
+##
+## _input, not _unhandled_input: the SubViewportContainer consumes pointer events
+## to forward them inward, so nothing reaches the unhandled pass. Sizes come from
+## the window rather than the world, so lowering RENDER_SHRINK cannot change how
+## far a swipe travels.
+func _input(event: InputEvent) -> void:
+	if event is InputEventScreenDrag:
+		var height := float(get_window().size.y)
+		if height > 0.0:
+			_drag += (event as InputEventScreenDrag).relative / height * DRAG_SCREENS_PER_UNIT
+
+
 func _read_input(delta: float) -> void:
-	var h := Input.get_axis(&"move_left", &"move_right")
-	var v := Input.get_axis(&"move_down", &"move_up")
+	# a held key is a rate, so it scales with frame time; a drag is already a
+	# distance, so it must not. Swap either sign to invert that axis.
+	var h := Input.get_axis(&"move_left", &"move_right") * delta - _drag.x
+	var v := Input.get_axis(&"move_down", &"move_up") * delta + _drag.y
+	_drag = Vector2.ZERO
 	match _shot:
 		Shot.SIDE:
-			_side.x = clampf(_side.x + h * delta * 7.0, -CAR_HALF_LEN, CAR_HALF_LEN)
-			_side.y = clampf(_side.y - v * delta * 7.0, 3.0, 26.0)
+			_side.x = clampf(_side.x + h * 7.0, -CAR_HALF_LEN, CAR_HALF_LEN)
+			_side.y = clampf(_side.y - v * 7.0, 3.0, 26.0)
 		Shot.AISLE:
-			_aisle.x = clampf(_aisle.x + v * delta * 4.0, -CAR_HALF_LEN + 1.5, CAR_HALF_LEN - 1.5)
-			_aisle.y = clampf(_aisle.y - h * delta * 1.2, -1.4, 1.4)
+			_aisle.x = clampf(_aisle.x + v * 4.0, -CAR_HALF_LEN + 1.5, CAR_HALF_LEN - 1.5)
+			_aisle.y = clampf(_aisle.y - h * 1.2, -1.4, 1.4)
 		Shot.ORBIT:
-			_orbit.x += h * delta * 0.8
-			_orbit.y = clampf(_orbit.y - v * delta * 8.0, 5.0, 40.0)
+			_orbit.x += h * 0.8
+			_orbit.y = clampf(_orbit.y - v * 8.0, 5.0, 40.0)
 	_apply_shot()
 
-	# &dev -> keyboard mirror of the WIN plate, so a capture needs no mouse
+	# keyboard mirror of the WIN plate, so a capture needs no mouse
 	if Input.is_action_just_pressed(&"interact"):
 		_win()
 	if Input.is_action_just_pressed(&"ui_accept"):

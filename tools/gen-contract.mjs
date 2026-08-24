@@ -234,8 +234,8 @@ function gameEvents() {
       + `match arm in JsBridge.emit_event(), or give the event an "unknown" payload.`,
     );
   }
-  L.push('## &wire -> event -> ordered payload fields, passed to JS as positional');
-  L.push('## primitives. Absent = payload is not a flat primitive record, send it as JSON.');
+  L.push('## Ordered payload fields, passed to JS as positional primitives.');
+  L.push('## An absent event has no flat primitive record and goes as JSON.');
   L.push('const WIRE_FIELDS: Dictionary[String, Array] = {');
   for (const [, def] of primitive) {
     const keys = Object.keys(def.payload ?? {});

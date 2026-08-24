@@ -3,7 +3,10 @@ extends GdUnitTestSuite
 
 const SCENE := "res://scenes/train/train.scn"
 const TRIS_PER_CARRIAGE := 32274
-const EXPECTED_CHILDREN := ["Consist", "Rig", "WorldEnvironment", "Sun", "Backdrop", "Lighting", "Debug"]
+## Everything 3D now lives under the SubViewport, so the world renders at its own
+## resolution while the HUD stays sharp.
+const WORLD := "Screen/Frame/World"
+const EXPECTED_CHILDREN := ["Consist", "Rig", "WorldEnvironment", "Sun", "Backdrop", "Lighting"]
 
 
 func test_the_generated_scene_still_has_its_script() -> void:
@@ -17,18 +20,43 @@ func test_the_generated_scene_still_has_its_script() -> void:
 func test_the_generated_scene_keeps_every_node_the_code_reaches_for() -> void:
 	var root: Node = auto_free(load(SCENE).instantiate())
 	for name: String in EXPECTED_CHILDREN:
-		assert_object(root.get_node_or_null(name)).override_failure_message(
+		assert_object(root.get_node_or_null("%s/%s" % [WORLD, name])).override_failure_message(
 			"train.scn is missing %s, which Train reaches for by path" % name
 		).is_not_null()
+	assert_object(root.get_node_or_null("Debug/Label")).is_not_null()
 	## Might need a better way to handle this.
-	assert_object(root.get_node_or_null("Backdrop/Terrain")).is_not_null()
-	assert_object(root.get_node_or_null("Backdrop/Forest")).is_not_null()
-	assert_object(root.get_node_or_null("Rig/Camera3D")).is_not_null()
+	assert_object(root.get_node_or_null(WORLD + "/Backdrop/Terrain")).is_not_null()
+	assert_object(root.get_node_or_null(WORLD + "/Backdrop/Forest")).is_not_null()
+	assert_object(root.get_node_or_null(WORLD + "/Rig/Camera3D")).is_not_null()
+
+
+## Picking follows the camera, and the camera is inside the SubViewport now. If
+## this is ever false the WIN and LOSE plates stop responding to clicks and taps,
+## which no other test would catch.
+func test_the_world_viewport_owns_picking() -> void:
+	var root: Node = auto_free(load(SCENE).instantiate())
+	var world := root.get_node_or_null(WORLD) as SubViewport
+	assert_object(world).override_failure_message(
+		"train.scn has no SubViewport at %s" % WORLD).is_not_null()
+	assert_bool(world.physics_object_picking).override_failure_message(
+		"the world SubViewport does not pick, so the level plates are dead"
+	).is_true()
+	assert_object(root.get_node_or_null(WORLD + "/Rig/Camera3D") as Camera3D).is_not_null()
+
+
+## stretch forwards input inward and rescales it; without it the plates would be
+## picked at the wrong coordinates.
+func test_the_frame_stretches_into_the_world() -> void:
+	var root: Node = auto_free(load(SCENE).instantiate())
+	var frame := root.get_node_or_null("Screen/Frame") as SubViewportContainer
+	assert_object(frame).is_not_null()
+	assert_bool(frame.stretch).is_true()
+	assert_int(frame.stretch_shrink).is_greater_equal(1)
 
 
 func test_the_carriage_is_packed_once_not_twice() -> void:
 	var root: Node = auto_free(load(SCENE).instantiate())
-	var carriage_scene: PackedScene = root.get_node("Consist").carriage_scene
+	var carriage_scene: PackedScene = root.get_node(WORLD + "/Consist").carriage_scene
 	assert_object(carriage_scene).override_failure_message(
 		"Consist.carriage_scene is unset, so the train would spawn nothing, important for the start of the story."
 	).is_not_null()
@@ -52,7 +80,7 @@ func _triangles(node: Node) -> int:
 
 func test_the_consist_is_as_long_as_the_content_says() -> void:
 	var root: Node = auto_free(load(SCENE).instantiate())
-	assert_int(root.get_node("Consist").carriage_count).override_failure_message(
+	assert_int(root.get_node(WORLD + "/Consist").carriage_count).override_failure_message(
 		"the scene spawns a different number of carriages than shared/data/locations "
 		+ "authors a carriage index for, so a room would have no carriage or the "
 		+ "reverse. Rebuild with build_train_scene.gd."

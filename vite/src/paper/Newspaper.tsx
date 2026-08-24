@@ -1,8 +1,7 @@
-import { Dossier } from './Dossier';
 import { LeadStory } from './LeadStory';
 import { Masthead } from './Masthead';
 import { Plate } from './Plate';
-import { Sidebar, Telegrams } from './Sidebar';
+import { PlateRail, Sidebar, Telegrams } from './Sidebar';
 import { useView } from '../state/paperStore';
 import styles from './paper.module.css';
 
@@ -21,12 +20,12 @@ export function Newspaper() {
       <div className={styles.body}>
         <div className={styles.main}>
           <Plate />
+          <PlateRail />
           <LeadStory />
         </div>
         <Sidebar />
       </div>
       <Telegrams />
-      <Dossier />
     </div>
   );
 }
