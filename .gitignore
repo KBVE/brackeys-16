@@ -12,3 +12,6 @@ vite/playwright-report/
 
 # Archived scenes kept out of git; see backup/README.txt
 /backup/
+
+# CMake configure output; targets only orchestrate, nothing is built here
+/build/

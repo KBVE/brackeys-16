@@ -77,7 +77,21 @@ func load_scene_async_streaming(path: String) -> void:
 		return
 	_stream_path = path
 	_stream_clock = 0.0
+	_quiet_outgoing_scene()
 	_notify_loading(path, 0.0, "start")
+
+## &starve -> a live scene keeps the frame and the loader gets whatever is left.
+##            The carriage is heavy enough that a menu asked for while it ran
+##            crawled to 33% in 150 seconds and never landed. Nothing is coming
+##            back to a scene being replaced, so it stops drawing and stops
+##            processing the moment the next one is requested.
+func _quiet_outgoing_scene(quiet: bool = true) -> void:
+	var current := get_tree().current_scene
+	if current == null:
+		return
+	current.process_mode = Node.PROCESS_MODE_DISABLED if quiet else Node.PROCESS_MODE_INHERIT
+	if current.has_method("set_visible"):
+		current.call("set_visible", not quiet)
 
 func _on_ui_load_scene(event: GameEvent) -> void:
 	var payload: Variant = event.data
@@ -105,6 +119,8 @@ func _poll_stream(delta: float) -> void:
 			get_tree().change_scene_to_packed(packed)
 		_:
 			_stream_path = ""
+			# &back -> the swap is not coming, so give the player their scene back
+			_quiet_outgoing_scene(false)
 			_notify_loading(path, progress, "failed")
 
 func _notify_loading(path: String, progress: float, status: String) -> void:

@@ -4,8 +4,11 @@ const PORT = 8100;
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 90_000,
-  expect: { timeout: 45_000 },
+  // &slow -> a scene swap streams a whole Maaack menu tree in wasm, and a CI
+  //          runner does it on software GL. Locally that load lands at ~60s;
+  //          the runner is slower still, so the budgets are set well past it.
+  timeout: 300_000,
+  expect: { timeout: 120_000 },
   fullyParallel: false,
   workers: 1,
   reporter: process.env.CI ? 'list' : [['list']],
@@ -26,6 +29,6 @@ export default defineConfig({
     command: `node e2e/server.mjs dist ${PORT}`,
     url: `http://127.0.0.1:${PORT}/index.html`,
     reuseExistingServer: !process.env.CI,
-    timeout: 30_000,
+    timeout: 90_000,
   },
 });
