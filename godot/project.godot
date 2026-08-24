@@ -27,6 +27,7 @@ JsBridge="*res://scripts/autoload/JsBridge.gd"
 Ecs="*res://scripts/ecs/ecs.gd"
 GameBridge="*res://scripts/autoload/game_bridge.gd"
 Journal="*res://scripts/autoload/journal.gd"
+Session="*res://scripts/autoload/session.gd"
 
 [display]
 
