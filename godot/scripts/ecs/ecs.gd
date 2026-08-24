@@ -62,6 +62,14 @@ func add_system(name: StringName, system: ECSSystem) -> ECSSystem:
 	runner.add_system(name, system)
 	return system
 
+func remove_system(name: StringName) -> void:
+	var system := runner.get_system(name)
+	if system == null:
+		return
+	runner.remove_system(name)
+	system.queue_free()
+
+
 ## &cost -> rebuilds the DAG; cheap at startup, expensive mid-frame
 func add_parallel_systems(systems: Array) -> void:
 	if scheduler == null:

@@ -1,6 +1,6 @@
 extends Node
 
-@export_file("*.scn", "*.tscn") var first_scene: String = "res://scenes/train/train_car.scn"
+@export_file("*.scn", "*.tscn") var first_scene: String = "res://scenes/train/train.scn"
 
 func _ready() -> void:
 	if first_scene.is_empty():

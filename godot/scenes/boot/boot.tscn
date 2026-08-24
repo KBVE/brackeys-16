@@ -4,4 +4,4 @@
 
 [node name="Boot" type="Node"]
 script = ExtResource("1_boot")
-first_scene = "res://scenes/train/train_car.scn"
+first_scene = "res://scenes/train/train.scn"

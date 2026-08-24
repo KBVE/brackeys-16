@@ -1,26 +1,44 @@
 extends Node
 
-## Session ecs state that holds time.
+## Session : ECS state that outlives a scene swap.
 
+## Departure, in minutes past midnight. Earliest authored timeline is Dupont boarding at Paris.
 const DEPARTURE_MINUTES := 16 * 60 + 5
 
 var time_of_day: CTimeOfDay
+var run: CRun
 
 var _scope := ECSScope.new()
+var _clock: SClock
 
 func _ready() -> void:
+	time_of_day = CTimeOfDay.new()
+	run = CRun.new()
+	_scope.spawn().add(time_of_day).add(run)
+
+	_clock = SClock.new()
+	_clock.world_minutes_per_second = 1.0
+	_scope.add_system(&"clock", _clock)
+	var places := SPassengerPlace.new()
+	places.departure_minutes = DEPARTURE_MINUTES
+	_scope.add_system(&"passenger_place", places)
+
+	for passenger: Dictionary in GameContent.passengers():
+		var identity := CIdentity.new()
+		identity.content_id = passenger.get("id", "")
+		_scope.spawn().add(CPassenger.new()).add(identity).add(CLocation.new())
+
 	begin()
 
 
-## Drops the previous run's state and starts a fresh one.
+## Resets the run in place. The component instances survive, so anything holding
+## a reference to them keeps working across a restart.
 func begin() -> void:
-	_scope.dispose()
-	time_of_day = CTimeOfDay.new()
-	_scope.spawn().add(time_of_day)
-	var clock := SClock.new()
-	clock.world_minutes_per_second = 1.0
-	_scope.add_system(&"clock", clock)
-	clock.set_minutes(time_of_day, DEPARTURE_MINUTES)
+	run.level_index = 0
+	run.score = 0
+	run.outcome = &"start"
+	time_of_day.running = true
+	_clock.set_minutes(time_of_day, DEPARTURE_MINUTES)
 
 
 func _exit_tree() -> void:

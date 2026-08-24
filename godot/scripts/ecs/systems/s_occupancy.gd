@@ -1,0 +1,27 @@
+extends ECSSystem
+class_name SOccupancy
+
+## SOccupancy resolves a viewer's world position to a carriage and the room that
+## carriage stands in for. Pure arithmetic, so it could run on the scheduler; one
+## division is not worth dispatching to the worker pool.
+##
+## &pins -> mirrors Consist::carriage_index_at, so the spacing is handed over.
+
+var carriage_pitch: float = 21.0
+var carriage_count: int = 1
+
+func _on_update(_delta: float) -> void:
+	var last_index := carriage_count - 1
+	var rooms := _rooms_by_car()
+	for entry: Dictionary in multi_view([CViewer, COccupant, CLocation]):
+		var world_x: float = entry[&"CViewer"].world_x
+		var index := clampi(int(round(world_x / carriage_pitch + last_index / 2.0)), 0, last_index)
+		entry[&"COccupant"].carriage_index = index
+		entry[&"CLocation"].location_id = rooms.get(index, &"")
+
+
+func _rooms_by_car() -> Dictionary:
+	var by_car := {}
+	for entry: Dictionary in multi_view([CCarriage, CLocation]):
+		by_car[entry[&"CCarriage"].index] = entry[&"CLocation"].location_id
+	return by_car

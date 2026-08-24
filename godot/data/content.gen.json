@@ -80,7 +80,7 @@
     {
       "id": "cabin",
       "name": "The Sleeping Cabins",
-      "car": 3,
+      "carriage": 3,
       "lede": "Berths one to eight, each with a door that locks from inside and a key that opens it from without.",
       "body": [],
       "sections": {
@@ -104,8 +104,8 @@
     {
       "id": "corridor",
       "name": "The Corridor",
-      "car": 2,
-      "lede": "A yard wide, the length of the train, and the only way from any berth to any other.",
+      "carriage": 2,
+      "lede": "Feels about a yard wide, just enough room to avoid a leg cramp but it is a full length of the train. And the only way from any berth to any other.",
       "body": [],
       "sections": {
         "appearance": {
@@ -128,7 +128,7 @@
     {
       "id": "dining",
       "name": "The Dining Car",
-      "car": 1,
+      "carriage": 1,
       "lede": "Eight tables, six of them laid, and a steward who remembers what everyone drinks without being told.",
       "body": [],
       "sections": {
@@ -152,7 +152,7 @@
     {
       "id": "guard_van",
       "name": "The Guard's Van",
-      "car": 0,
+      "carriage": 0,
       "lede": "Last car of the consist, and the only one with a door that opens onto nothing but weather.",
       "body": [],
       "sections": {
@@ -199,7 +199,7 @@
     {
       "id": "vestibule",
       "name": "The Vestibule",
-      "car": 4,
+      "carriage": 4,
       "lede": "The joint between cars, where the floor moves under you and conversation is impossible.",
       "body": [],
       "sections": {
@@ -233,9 +233,12 @@
       "kicker": "Stop Press",
       "title": "Lamps Found Extinguished End to End",
       "caption": "The aisle after midnight, lamps cold.",
-      "lede": "The conductor insists the lamps were trimmed at eight. No passenger admits to passing that way since, and the corridor is dark from vestibule to vestibule.",
+      "lede": "The conductor, with a face of confusion, insisted the lamps were trimmed at eight.",
       "body": [
-        "Our correspondent walked its length twice and met no one, which he notes is itself remarkable on a train carrying forty-one souls."
+        "Yet no passenger admits to having passed that way since, and the corridor now lies dark from vestibule to vestibule.",
+        "Our correspondent walked its length twice and met no one, which he notes is itself remarkable on a train carrying forty-one souls.",
+        "As the wind continued to howl, the conductor became increasingly agitated and emotional distraught.",
+        "Questions concerning the lamps are now met not with answers, but accusations, curses, and theories implicating nearly every demon aboard."
       ],
       "sections": {},
       "source": "shared/data/articles/aisle_midnight.mdx"
@@ -320,7 +323,7 @@
         "at": "18:15",
         "where": "Calais"
       },
-      "station": "cabin",
+      "location": "cabin",
       "suspect": true,
       "traits": [
         "imperious",
@@ -402,7 +405,7 @@
         "at": "18:48",
         "where": "Calais"
       },
-      "station": "cabin",
+      "location": "cabin",
       "suspect": false,
       "traits": [
         "a light sleeper by trade",
@@ -480,7 +483,7 @@
         "at": "16:05",
         "where": "Paris"
       },
-      "station": "dining",
+      "location": "dining",
       "suspect": false,
       "traits": [
         "known to the guard by name",
@@ -558,7 +561,7 @@
         "at": "18:40",
         "where": "Calais"
       },
-      "station": "dining",
+      "location": "dining",
       "suspect": false,
       "traits": [
         "describes his business twice and differently",
@@ -636,7 +639,7 @@
         "at": "18:52",
         "where": "Calais"
       },
-      "station": "corridor",
+      "location": "corridor",
       "suspect": true,
       "traits": [
         "offers help before it is asked for",
