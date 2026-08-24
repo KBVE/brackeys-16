@@ -19,6 +19,9 @@ mono_crash.*.json
 exports/
 Exports/
 
+# gdUnit4 test reports
+reports/
+
 # IDE and OS specific
 .vscode/
 .idea/

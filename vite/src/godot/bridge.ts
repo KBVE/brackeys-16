@@ -1,16 +1,11 @@
+import { WIRE_FIELDS } from './events';
 import type { GodotToJs, JsToGodot, GodotEvent, GodotCommand } from './events';
 
 /**
- * JS half of the Godot bridge.
- *
- * React installs `window.__godotBridge` BEFORE the engine boots, because the
- * GDScript autoload looks it up in `_ready()`. Godot then:
- *   - calls `emit(event, payloadJson)` to push events out
- *   - calls `setHandler(cb)` to register its GDScript callback
- *
- * Godot's `create_callback` hands the GDScript side a single Array of the JS
- * arguments, so `handler` must be invoked with cmd and json as TWO positional
- * arguments - not one packed object.
+ * &order -> installed BEFORE the engine boots; the GDScript autoload looks
+ *           window.__godotBridge up in _ready()
+ * &args  -> create_callback() hands GDScript ONE Array of the JS arguments, so
+ *           handler(cmd, json) must be two positional args, not one object
  */
 
 type Handler = (cmd: string, payloadJson: string) => void;
@@ -36,11 +31,9 @@ declare global {
 
 export interface GodotBridge {
   ready: boolean;
-  /** Called by Godot. */
-  emit(event: string, payloadJson: string): void;
-  /** Called by Godot. */
+  emit(event: string, ...values: unknown[]): void;
+  emitJson(event: string, payloadJson: string): void;
   setHandler(cb: Handler): void;
-  /** Called by React. Queues until the GDScript handler registers. */
   send<C extends GodotCommand>(cmd: C, payload?: JsToGodot[C]): void;
   on<E extends GodotEvent>(event: E, fn: Listener<E>): () => void;
   once<E extends GodotEvent>(event: E, fn: Listener<E>): () => void;
@@ -53,6 +46,11 @@ export function installGodotBridge(): GodotBridge {
   const queued: Array<[string, unknown]> = [];
   let handler: Handler | null = null;
 
+  const dispatch = (event: string, payload: unknown) => {
+    if (event === 'godot:ready') bridge.ready = true;
+    listeners.get(event)?.forEach((fn) => fn(payload));
+  };
+
   const drain = () => {
     if (!handler) return;
     while (queued.length) {
@@ -64,15 +62,17 @@ export function installGodotBridge(): GodotBridge {
   const bridge: GodotBridge = {
     ready: false,
 
-    emit(event, payloadJson) {
-      let payload: unknown = null;
-      try {
-        payload = payloadJson ? JSON.parse(payloadJson) : null;
-      } catch {
-        payload = payloadJson; // not JSON - hand it over raw rather than drop it
-      }
-      if (event === 'godot:ready') bridge.ready = true;
-      listeners.get(event)?.forEach((fn) => fn(payload));
+    emit(event, ...values) {
+      const fields = WIRE_FIELDS[event];
+      const payload: Record<string, unknown> = {};
+      fields?.forEach((name, i) => {
+        payload[name] = values[i];
+      });
+      dispatch(event, payload);
+    },
+
+    emitJson(event, payloadJson) {
+      dispatch(event, payloadJson ? JSON.parse(payloadJson) : {});
     },
 
     setHandler(cb) {
