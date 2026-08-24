@@ -5,7 +5,9 @@
 html, body, #root {
   margin: 0;
   height: 100%;
-  background: #0b0b0f;
+  /* &ground -> the shell paints the page before wasm exists; newsprint, not a
+     black flash, and it matches Godot's own clear colour */
+  background: #e8e0cc;
   color: #e8e8ef;
   font-family: system-ui, sans-serif;
   overflow: hidden;
@@ -13,7 +15,37 @@ html, body, #root {
 
 .app { position: relative; height: 100%; }
 
-.godot-layer { position: absolute; inset: 0; }
+
+.godot-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  transform-origin: 0 0;
+  will-change: transform;
+  transition:
+    transform 700ms cubic-bezier(0.4, 0, 0.2, 1),
+    filter 700ms ease;
+}
+
+/* the canvas becomes a printed photograph, so it stops being interactive */
+.godot-layer.is-plate {
+  filter: grayscale(0.72) contrast(1.08) sepia(0.14);
+  pointer-events: none;
+}
+
+/* &halftone -> printed dot mesh, drawn not downloaded */
+.halftone {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: multiply;
+  background-image: radial-gradient(#171512 32%, transparent 33%);
+  background-size: 3px 3px;
+  transition: opacity 500ms ease;
+}
+
+.godot-layer.is-plate .halftone { opacity: 0.28; }
 
 #godot-canvas {
   display: block;
@@ -23,13 +55,10 @@ html, body, #root {
   outline: none;
 }
 
-/*
- * The UI layer sits above the canvas but must not eat pointer events, or the
- * canvas loses focus and keyboard input dies. Re-enable per interactive child.
- */
 .ui-layer {
   position: absolute;
   inset: 0;
+  z-index: 3;
   pointer-events: none;
 }
 
@@ -67,9 +96,13 @@ html, body, #root {
   place-content: center;
   gap: 0.5rem;
   text-align: center;
+  color: #171512;
+  font-family: Georgia, 'Times New Roman', Times, serif;
+  font-variant: small-caps;
+  letter-spacing: 0.12em;
 }
 
-.godot-error { color: #ff8080; }
+.godot-error { color: #8c1f14; }
 .godot-error pre { white-space: pre-wrap; max-width: 40rem; }
 
 .hud-invuln { color: #7fd7ff; }

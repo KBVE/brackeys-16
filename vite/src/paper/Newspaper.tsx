@@ -4,7 +4,7 @@ import { Masthead } from './Masthead';
 import { Plate } from './Plate';
 import { Sidebar, Telegrams } from './Sidebar';
 import { useView } from '../state/paperStore';
-import s from './paper.module.css';
+import styles from './paper.module.css';
 
 
 export function Newspaper() {
@@ -12,14 +12,14 @@ export function Newspaper() {
 
   return (
     <div
-      className={`${s.sheet}${view === 'paper' ? ` ${s.open}` : ''}`}
+      className={`${styles.sheet}${view === 'paper' ? ` ${styles.open}` : ''}`}
       aria-hidden={view !== 'paper'}
       data-testid="newspaper"
       data-view={view}
     >
       <Masthead />
-      <div className={s.body}>
-        <div className={s.main}>
+      <div className={styles.body}>
+        <div className={styles.main}>
           <Plate />
           <LeadStory />
         </div>

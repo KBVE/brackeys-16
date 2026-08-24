@@ -1,19 +1,24 @@
 import { useEngineLog } from '../state/gameStore';
-import s from './debug.module.css';
+import styles from './debug.module.css';
 
 export function EngineErrors() {
   const engineLog = useEngineLog();
   if (engineLog.length === 0) return null;
 
+  const errorCount = engineLog.filter((line) => line.level === 'error').length;
+
   return (
     <>
-      <div className={s.sectionHead}>
-        engine errors <span>{engineLog.length}</span>
+      <div className={styles.sectionHead}>
+        engine log
+        <span>
+          {errorCount} err / {engineLog.length - errorCount} warn
+        </span>
       </div>
-      <ol className={`${s.list} ${s.errors}`} data-testid="engine-errors">
-        {engineLog.map((line, i) => (
-          <li key={`${i}-${line.slice(0, 24)}`}>
-            <span>{line}</span>
+      <ol className={`${styles.list} ${styles.errors}`} data-testid="engine-errors">
+        {engineLog.map((line) => (
+          <li key={line.id} data-level={line.level}>
+            <span className={line.level === 'warn' ? styles.warn : undefined}>{line.text}</span>
           </li>
         ))}
       </ol>

@@ -1,7 +1,7 @@
 import { runStateName } from '../godot/state';
 import { useBoot, useLoading, useProgress, useRun } from '../state/gameStore';
 import { masthead } from '../content/content';
-import s from './paper.module.css';
+import styles from './paper.module.css';
 
 export function Masthead() {
   const run = useRun();
@@ -11,10 +11,10 @@ export function Masthead() {
   const printing = loading && loading.status !== 'ready' && loading.status !== 'failed';
 
   return (
-    <header className={s.masthead}>
-      <div className={s.mastRule} />
-      <h1 className={s.mastTitle}>{masthead.title}</h1>
-      <div className={s.mastMeta}>
+    <header className={styles.masthead}>
+      <div className={styles.mastRule} />
+      <h1 className={styles.mastTitle}>{masthead.title}</h1>
+      <div className={styles.mastMeta}>
         <span>{masthead.issue}</span>
         <span>{masthead.dateline}</span>
         <span data-testid="presses">
@@ -26,7 +26,7 @@ export function Masthead() {
         </span>
         <span>{masthead.price}</span>
       </div>
-      <div className={s.mastRule} />
+      <div className={styles.mastRule} />
     </header>
   );
 }

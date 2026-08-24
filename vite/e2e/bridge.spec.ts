@@ -64,7 +64,7 @@ test('primitive payloads cross without JSON', async ({ page }) => {
   await expect.poll(() => seen.some(([e]) => e === 'game:state')).toBe(true);
 
   const state = seen.find(([e]) => e === 'game:state')!;
-  expect(state.slice(1)).toEqual([1, 0]);
+  expect(state.slice(1)).toEqual([1, 0, 0]);
   expect(state.slice(1).every((v) => typeof v === 'number')).toBe(true);
 
   const scene = seen.find(([e]) => e === 'scene:changed')!;
