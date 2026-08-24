@@ -74,40 +74,6 @@ func _mesh_instances(n: Node) -> Array[Node]:
 	return out
 
 
-const BUTTON_SIZE := Vector3(1.32, 0.5, 0.08)
-
-## One WIN / LOSE plate: pickable body, mesh, and its label.
-func _button(label: String, won: bool, x: float) -> Area3D:
-	var area := Area3D.new()
-	area.name = label
-	area.set_script(load("res://scripts/train/level_button.gd"))
-	area.set("won", won)
-	area.position = Vector3(x, 0.0, 0.0)
-
-	var plate := MeshInstance3D.new(); plate.name = "Plate"
-	var box := BoxMesh.new(); box.size = BUTTON_SIZE
-	plate.mesh = box
-	# &nolight -> the plates must not throw light back into the carriage
-	plate.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	area.add_child(plate)
-
-	var col := CollisionShape3D.new(); col.name = "Shape"
-	var shape := BoxShape3D.new(); shape.size = BUTTON_SIZE
-	col.shape = shape
-	area.add_child(col)
-
-	var text := Label3D.new(); text.name = "Text"
-	text.text = label.to_upper()
-	text.font_size = 96
-	text.pixel_size = 0.0032
-	text.position = Vector3(0.0, 0.0, BUTTON_SIZE.z * 0.5 + 0.01)
-	text.modulate = Color(0.98, 0.97, 0.92)
-	text.outline_size = 18
-	text.outline_modulate = Color(0.05, 0.05, 0.06)
-	text.no_depth_test = true
-	area.add_child(text)
-	return area
-
 func _initialize() -> void:
 	var root := Node3D.new()
 	root.name = "Train"
@@ -156,13 +122,6 @@ func _initialize() -> void:
 	cam.fov = 62.0
 	cam.far = 1500.0
 	rig.add_child(cam)
-
-	# &loop -> WIN / LOSE are real meshes, parented to the camera so all three
-	#          levels can see them. Train._place_buttons keeps them clear of
-	#          the near plane, which SIDE pushes out past 10m
-	var buttons := Node3D.new(); buttons.name = "Buttons"; cam.add_child(buttons)
-	buttons.add_child(_button("Win", true, -0.78))
-	buttons.add_child(_button("Lose", false, 0.78))
 
 	var we := WorldEnvironment.new(); we.name = "WorldEnvironment"
 	var env := Environment.new()
@@ -233,14 +192,6 @@ func _initialize() -> void:
 	lighting.set("sun_path", NodePath("../Sun"))
 	lighting.set("environment_path", NodePath("../WorldEnvironment"))
 	lighting.set("terrain_path", NodePath("../Backdrop/Terrain"))
-
-	var dbg := CanvasLayer.new(); dbg.name = "Debug"; root.add_child(dbg)
-	var label := Label.new(); label.name = "Label"
-	label.position = Vector2(16, 16)
-	label.add_theme_color_override("font_color", Color(0.88, 0.96, 1.0))
-	label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
-	label.add_theme_constant_override("outline_size", 6)
-	dbg.add_child(label)
 
 	_own(root, root)
 	var packed := PackedScene.new()

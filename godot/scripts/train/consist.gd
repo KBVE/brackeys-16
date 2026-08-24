@@ -72,14 +72,6 @@ func lamps_for(index: int) -> Node3D:
 func glow_material() -> StandardMaterial3D:
 	return _shared.get("@glow")
 
-## Discards carriage fragments with world Z above [param z]; use a huge value
-## to disable. Replaces the camera near-plane trick, which also clipped terrain.
-func set_clip_z(z: float) -> void:
-	for key: String in _shared:
-		var sm := _shared[key] as ShaderMaterial
-		if sm != null:
-			sm.set_shader_parameter("clip_z_above", z)
-
 func tune_detail(tiling: float, strength: float, albedo: float) -> void:
 	for key: String in _shared:
 		var sm := _shared[key] as ShaderMaterial

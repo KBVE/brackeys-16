@@ -80,6 +80,15 @@ const RUN_OVER := &"run_over"
 ## Payload: {"hour": number, "minute": number}. Reaches JS as "world:clock".
 const WORLD_CLOCK := &"world_clock"
 
+## Where the player is standing: the carriage they are in and the room that carriage
+## stands in for.
+##
+## Emitted only when one of them changes, never per frame. This replaces the in-engine
+## debug label, so the information lives in the React panel with everything else.
+##
+## Payload: {"carriage": number, "location": string}. Reaches JS as "viewer:state".
+const VIEWER_STATE := &"viewer_state"
+
 ## One fact the run has produced: a conversation, an item used, a room entered.
 ##
 ## `id` is a ULID, so entries sort by creation without comparing any other field. `kind`
@@ -134,6 +143,7 @@ const OUTBOUND_WIRE: Dictionary[StringName, String] = {
 	LEVEL_CHANGED: "level:changed",
 	RUN_OVER: "game:run_over",
 	WORLD_CLOCK: "world:clock",
+	VIEWER_STATE: "viewer:state",
 	JOURNAL_ENTRY: "journal:entry",
 }
 
@@ -148,6 +158,7 @@ const WIRE_FIELDS: Dictionary[String, Array] = {
 	"game:score": ["score"],
 	"level:changed": ["level", "index", "total", "outcome"],
 	"world:clock": ["hour", "minute"],
+	"viewer:state": ["carriage", "location"],
 	"journal:entry": ["id", "kind", "actor", "target", "place", "at"],
 }
 

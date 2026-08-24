@@ -23,7 +23,6 @@ func test_the_generated_scene_keeps_every_node_the_code_reaches_for() -> void:
 		assert_object(root.get_node_or_null("%s/%s" % [WORLD, name])).override_failure_message(
 			"train.scn is missing %s, which Train reaches for by path" % name
 		).is_not_null()
-	assert_object(root.get_node_or_null("Debug/Label")).is_not_null()
 	## Might need a better way to handle this.
 	assert_object(root.get_node_or_null(WORLD + "/Backdrop/Terrain")).is_not_null()
 	assert_object(root.get_node_or_null(WORLD + "/Backdrop/Forest")).is_not_null()

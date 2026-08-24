@@ -207,6 +207,13 @@ html, body, #root {
   word-break: break-word;
 }
 
+.curtain-diagnostic p { margin: 0 0 0.2rem; }
+
+.curtain-faults {
+  color: #8c1f14;
+  font-weight: 600;
+}
+
 .godot-curtain.is-error { color: #8c1f14; }
 
 .curtain-detail {

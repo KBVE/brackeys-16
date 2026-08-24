@@ -16,22 +16,7 @@ uniform float detail_rough : hint_range(0.0, 0.3) = 0.07;
 uniform float normal_depth : hint_range(0.0, 3.0) = 1.0;
 uniform float roughness_floor : hint_range(0.0, 1.0) = 0.22;
 
-// &cutaway -> SIDE used to slice the near wall with a 10.6m camera near plane,
-//             which also clipped the ground under the camera and left a grey
-//             band. clipping here instead lets the camera keep a normal near.
-uniform float clip_z_above = 1000000.0;
-
-varying vec3 v_world;
-
-void vertex() {
-	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-}
-
 void fragment() {
-	if (v_world.z > clip_z_above) {
-		discard;
-	}
-
 	vec4 alb = texture(tex_albedo, UV);
 	vec4 mr = texture(tex_mr, UV);
 

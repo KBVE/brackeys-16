@@ -53,12 +53,45 @@ const FALLBACK_CONFIG = {
 } as const;
 
 const CORES = navigator.hardwareConcurrency || 4;
+const tuning = new URLSearchParams(window.location.search);
+const readOverride = (key: string, fallback: number) => {
+  const raw = tuning.get(key);
+  const parsed = raw === null ? Number.NaN : Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
 
 const ENGINE_CONFIG = {
   ...(injectedGlobals.__godotConfig ?? FALLBACK_CONFIG),
-  emscriptenPoolSize: Math.max(2, Math.min(8, CORES)),
-  godotPoolSize: Math.max(1, Math.min(4, CORES - 1)),
+  emscriptenPoolSize: readOverride('pool', Math.max(2, Math.min(8, CORES))),
+  godotPoolSize: readOverride('gpool', Math.max(1, Math.min(4, CORES - 1))),
 };
+
+const PAGES_PER_MB = 16;
+const SHARED_MEMORY_MB = readOverride('maxmb', 512);
+
+function reserveSharedMemory() {
+  (globalThis as unknown as { __godotMaxPages: number }).__godotMaxPages =
+    SHARED_MEMORY_MB * PAGES_PER_MB;
+}
+
+const bootBytes = { loaded: 0, total: 0, lastAdvanceSeconds: 0 };
+const bootFaults: string[] = [];
+const bootStartedAt = performance.now();
+const sinceBoot = () => Math.round((performance.now() - bootStartedAt) / 1000);
+
+function noteFault(text: string) {
+  const line = `${sinceBoot()}s ${text}`.slice(0, 220);
+  if (bootFaults[bootFaults.length - 1] !== line) bootFaults.push(line);
+}
+
+function watchForFaults() {
+  window.addEventListener('error', (event) =>
+    noteFault(`err ${event.message} @ ${event.filename?.split('/').pop() ?? '?'}:${event.lineno}`),
+  );
+  window.addEventListener('unhandledrejection', (event) =>
+    noteFault(`reject ${String((event.reason as Error)?.message ?? event.reason)}`),
+  );
+}
 
 export function GodotGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -68,6 +101,8 @@ export function GodotGame() {
     if (hasStartedRef.current) return;
     hasStartedRef.current = true;
     boot.start();
+    watchForFaults();
+    reserveSharedMemory();
 
     installGodotBridge();
 
@@ -89,12 +124,16 @@ export function GodotGame() {
         await engine.startGame({
           canvas: canvasRef.current!,
           onProgress: (loadedBytes: number, totalBytes: number) => {
+            bootBytes.loaded = loadedBytes;
+            bootBytes.total = totalBytes;
+            bootBytes.lastAdvanceSeconds = sinceBoot();
             boot.progress(
               totalBytes > 0 ? Math.round((loadedBytes / totalBytes) * 100) : null,
             );
           },
           onPrintError: (...messageParts: unknown[]) => {
             const engineLine = messageParts.join(' ');
+            noteFault(`engine ${engineLine}`);
             logEngine(engineLine);
             if (engineLine.includes('Blocking on the main thread')) console.trace(engineLine);
             else console.error(...messageParts);
@@ -182,20 +221,33 @@ function BootCurtain() {
 }
 
 function BootDiagnostic({ bootPhase, engineReady }: { bootPhase: string; engineReady: boolean }) {
-  const [tick, setTick] = useState(0);
+  const [, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((n) => n + 1), 500);
     return () => clearInterval(id);
   }, []);
 
   const w = window as unknown as { Engine?: unknown; crossOriginIsolated?: boolean };
+  const mb = (bytes: number) => (bytes / 1048576).toFixed(1);
+  const downloaded = bootBytes.total > 0
+    ? `${mb(bootBytes.loaded)}/${mb(bootBytes.total)}MB @${bootBytes.lastAdvanceSeconds}s`
+    : 'no progress events';
+
   const lines = [
     `phase ${bootPhase}${engineReady ? ' / engine up' : ''}`,
-    `isolated ${String(w.crossOriginIsolated)}`,
-    `SAB ${typeof SharedArrayBuffer}`,
+    `isolated ${String(w.crossOriginIsolated)} · SAB ${typeof SharedArrayBuffer}`,
     `Engine ${w.Engine ? 'attached' : 'missing'}`,
-    `hw ${navigator.hardwareConcurrency ?? '?'} / dpr ${window.devicePixelRatio}`,
-    `t+${Math.round(tick / 2)}s`,
+    `pool ${ENGINE_CONFIG.emscriptenPoolSize}/${ENGINE_CONFIG.godotPoolSize} · mem ${SHARED_MEMORY_MB}MB · hw ${navigator.hardwareConcurrency ?? '?'} · dpr ${window.devicePixelRatio}`,
+    `bytes ${downloaded}`,
+    `t+${sinceBoot()}s`,
   ];
-  return <p className="curtain-diagnostic">{lines.join(' · ')}</p>;
+
+  return (
+    <div className="curtain-diagnostic">
+      <p>{lines.join(' · ')}</p>
+      {bootFaults.length > 0 && (
+        <p className="curtain-faults">{bootFaults.slice(-4).join(' | ')}</p>
+      )}
+    </div>
+  );
 }

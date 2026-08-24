@@ -6,34 +6,25 @@ class_name Train
 ## Actual carriage geometry, 32k tris, one 2048 atlas. No baked light, so time of
 ## day is runtime state and the camera goes anywhere.
 ##
-## SIDE clips the near wall with the camera near plane, the same trick the blender
-## bake used. No geometry is hidden or duplicated.
-##
-## Three levels run inside this one carriage. A level swap is a camera and framing
-## swap, never a scene swap, so the wasm instance is paid for once.
+## One scene, one camera, walked from inside the aisle. Everything else the run
+## needs is a component on the ECS, not another scene to swap to.
 
-enum Shot { SIDE, AISLE, ORBIT }
+const LEVEL_NAME := "Aisle"
 
-## Wraps back to Aisle after Side, so the loop never dead-ends.
-const LEVELS: Array[Shot] = [Shot.AISLE, Shot.ORBIT, Shot.SIDE]
-const LEVEL_NAMES: Array[String] = ["Aisle", "Orbit", "Side"]
-
-## A level always starts from its own framing, win or lose.
-const SIDE_HOME := Vector2(0.0, 12.0)
+## The framing a run starts from: x along the carriage, yaw offset.
 const AISLE_HOME := Vector2(-7.0, 0.0)
-const ORBIT_HOME := Vector2(0.6, 16.0)
+
+## Radians turned per unit of input, so one full swipe is most of a turn.
+const TURN_RADIANS_PER_UNIT := 2.4
 
 const SWAY_HZ := 0.7
 
 
 
 const CAR_HALF_LEN := 10.44
-const NEAR_WALL_Z := 1.70
 ## Measured. At 3.02 the camera sat above the side windows, so every sightline
 ## out of them hit ground and the forest was never visible.
 const AISLE_EYE := 2.60
-const CUT_Z := 1.4
-const NO_CLIP := 1000000.0
 
 ## Screen heights a finger travels for one unit of movement, so a swipe covers
 ## the same arc on any display.
@@ -44,14 +35,11 @@ const DRAG_SCREENS_PER_UNIT := 2.6
 @onready var _cam: Camera3D = $Screen/Frame/World/Rig/Camera3D
 @onready var _consist: Consist = $Screen/Frame/World/Consist
 @onready var _forest: ParallaxBackdrop = $Screen/Frame/World/Backdrop/Forest
-@onready var _hud: Label = $Debug/Label
-@onready var _buttons: Node3D = $Screen/Frame/World/Rig/Camera3D/Buttons
 
 var _t := 0.0
 ## INF, or re-seeding on every _ready() restarts the evening on re-entry.
 var _seed_phase := INF
 var _seed_running := true
-var _shot: Shot = Shot.AISLE
 var _yaw_override := INF
 var _eye_override := INF
 var _viewer: CViewer
@@ -65,19 +53,9 @@ var _drag := Vector2.ZERO
 ## Torn down with the scene. The clock is not here; it lives on [Session].
 var _scope := ECSScope.new()
 
-# per-shot free parameters, kept so switching back restores the framing
-var _side := SIDE_HOME   # x pan, z distance
-var _aisle := AISLE_HOME  # x along the carriage, yaw offset
-var _orbit := ORBIT_HOME  # angle, radius
+var _aisle := AISLE_HOME
 
 func _ready() -> void:
-	var start := 0
-	# `-- --shot=aisle` starts the run on that level, for captures
-	for a: String in OS.get_cmdline_user_args():
-		if a.begins_with("--shot="):
-			var idx := LEVELS.find(Shot.keys().find(a.split("=")[1].to_upper()))
-			if idx >= 0:
-				start = idx
 	for a: String in OS.get_cmdline_user_args():
 		if a.begins_with("--yaw="):
 			# applied after _start_level, which resets _aisle to home
@@ -130,16 +108,13 @@ func _ready() -> void:
 	# the world owns the camera now, so picking is its viewport's job, not the
 	# window's
 	_world.physics_object_picking = true
-	for b: LevelButton in _buttons.get_children():
-		b.pressed.connect(_on_button)
-
 	# React's ui:restart and an in-world loss take the same path
 	Ecs.world.add_callable(GameEvents.UI_RESTART, _on_ui_restart)
 
 	_time_of_day.running = _seed_running
 	if is_finite(_seed_phase):
 		_time_of_day.phase = fposmod(_seed_phase, 1.0)
-	_start_level(start)
+	_begin()
 	if is_finite(_yaw_override):
 		_aisle.y = _yaw_override
 		_apply_shot()
@@ -150,103 +125,57 @@ func _tune_detail(tiling: float, strength: float, albedo: float) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	_rig.position.y = sin(_t * TAU * SWAY_HZ) * 0.012
+	_read_input(delta)
+	# after _apply_shot, which writes the rig's resting height and would
+	# otherwise wipe the sway back out every frame
+	_rig.position.y += sin(_t * TAU * SWAY_HZ) * 0.012
 	_rig.rotation.z = sin(_t * TAU * SWAY_HZ * 0.37) * 0.0016
 
 	# only the cars near the viewer draw; cost is O(1) in train length
 	_consist.cull_around(_viewer.world_x)
 
-	_read_input(delta)
-	_hud.text = _describe()
-
 func _exit_tree() -> void:
 	_scope.dispose()
 
+## Yaw rides the rig, not the camera, so the rig transform is the whole answer to
+## "which way is the player facing" and [SViewer] can just read it.
 func _apply_shot() -> void:
-	match _shot:
-		Shot.SIDE:
-			# push the near plane past the camera-side wall to cut it away
-			_rig.position = Vector3(_side.x, 2.4, 0.0)
-			_cam.position = Vector3(0.0, 0.0, _side.y)
-			_cam.rotation = Vector3.ZERO
-			_cam.near = 0.05
-			_consist.set_clip_z(CUT_Z)
-			GameBridge.set_world_mode(StateBits.WorldMode.MODE_2D)
-		Shot.AISLE:
-			_rig.position = Vector3(_aisle.x, _eye_override if is_finite(_eye_override) else AISLE_EYE, 0.0)
-			_cam.position = Vector3.ZERO
-			_cam.rotation = Vector3(0.0, deg_to_rad(-90.0) + _aisle.y, 0.0)
-			_cam.near = 0.05
-			_consist.set_clip_z(NO_CLIP)
-			GameBridge.set_world_mode(StateBits.WorldMode.MODE_3D)
-		Shot.ORBIT:
-			_rig.position = Vector3.ZERO
-			_cam.position = Vector3(sin(_orbit.x) * _orbit.y, 4.0, cos(_orbit.x) * _orbit.y)
-			_cam.look_at_from_position(_cam.position, Vector3(0.0, 2.4, 0.0), Vector3.UP)
-			_cam.near = 0.05
-			_consist.set_clip_z(NO_CLIP)
-			GameBridge.set_world_mode(StateBits.WorldMode.MODE_3D)
-	_place_buttons()
+	_rig.position.x = _aisle.x
+	_rig.position.y = _eye_override if is_finite(_eye_override) else AISLE_EYE
+	_rig.position.z = 0.0
+	_rig.rotation.y = _aisle.y
+	_cam.position = Vector3.ZERO
+	_cam.rotation = Vector3(0.0, deg_to_rad(-90.0), 0.0)
+	_cam.near = 0.05
+	GameBridge.set_world_mode(StateBits.WorldMode.MODE_3D)
 
-## SIDE pushes the near plane past 10m, so a fixed offset would leave the buttons
-## inside the wall. They ride the plane and scale with distance instead.
-func _place_buttons() -> void:
-	# sit just past the cut, or the plates land inside the carriage and the
-	# seats chew their top edge
-	var dist := _cam.near + (0.45 if _cam.near > 1.0 else 1.2)
-	var k := dist / 3.4
-	_buttons.position = Vector3(0.0, -0.62 * k, -dist)
-	_buttons.scale = Vector3.ONE * k
 
-# ==============================================================================
-# Levels
-# ==============================================================================
-
-## Levels never swap the scene; they swap the camera, the framing and the rules.
-func _start_level(index: int) -> void:
-	_run.level_index = posmod(index, LEVELS.size())
-	_shot = LEVELS[_run.level_index]
-	_side = SIDE_HOME
+## Starts the run. There is one scene and one camera, so this sets the framing
+## and announces it; it never swaps anything.
+func _begin() -> void:
+	_run.level_index = 0
 	_aisle = AISLE_HOME
-	_orbit = ORBIT_HOME
 	_apply_shot()
 	GameBridge.set_player_flags(StateBits.PLAYER_ALIVE)
-	Journal.record(StateBits.JournalKind.ENTERED, "player", "", LEVEL_NAMES[_run.level_index].to_lower())
+	Journal.record(StateBits.JournalKind.ENTERED, "player", "", LEVEL_NAME.to_lower())
 	_notify_level("start")
 
-func _on_button(won: bool) -> void:
-	if won:
-		_win()
-	else:
-		_lose()
-
-func _win() -> void:
-	_run.score += 1
-	Ecs.notify(GameEvents.SCORE_CHANGED, {"score": _run.score})
-	_notify_level("won")
-	# reports itself over then rolls back to Aisle; a dead screen would strand
-	# the player in wasm
-	if _run.level_index == LEVELS.size() - 1:
-		Ecs.notify(GameEvents.RUN_OVER, {"score": _run.score, "levels": LEVELS.size()})
-	_start_level(_run.level_index + 1)
-
-func _lose() -> void:
-	_notify_level("lost")
-	_start_level(_run.level_index)
 
 func _on_ui_restart(_event: GameEvent) -> void:
 	Session.begin()
 	Journal.clear()
-	_start_level(0)
+	_begin()
+
 
 func _notify_level(outcome: String) -> void:
 	_run.outcome = outcome
 	Ecs.notify(GameEvents.LEVEL_CHANGED, {
-		"level": LEVEL_NAMES[_run.level_index],
-		"index": _run.level_index,
-		"total": LEVELS.size(),
+		"level": LEVEL_NAME,
+		"index": 0,
+		"total": 1,
 		"outcome": outcome,
 	})
+
 
 ## Drag pans the camera. A tap produces no drag event, so the WIN and LOSE plates
 ## keep their picking and no on-screen stick is needed.
@@ -268,43 +197,15 @@ func _read_input(delta: float) -> void:
 	var h := Input.get_axis(&"move_left", &"move_right") * delta - _drag.x
 	var v := Input.get_axis(&"move_down", &"move_up") * delta + _drag.y
 	_drag = Vector2.ZERO
-	match _shot:
-		Shot.SIDE:
-			_side.x = clampf(_side.x + h * 7.0, -CAR_HALF_LEN, CAR_HALF_LEN)
-			_side.y = clampf(_side.y - v * 7.0, 3.0, 26.0)
-		Shot.AISLE:
-			_aisle.x = clampf(_aisle.x + v * 4.0, -CAR_HALF_LEN + 1.5, CAR_HALF_LEN - 1.5)
-			_aisle.y = clampf(_aisle.y - h * 1.2, -1.4, 1.4)
-		Shot.ORBIT:
-			_orbit.x += h * 0.8
-			_orbit.y = clampf(_orbit.y - v * 8.0, 5.0, 40.0)
+	_aisle.x = clampf(_aisle.x + v * 4.0, -CAR_HALF_LEN + 1.5, CAR_HALF_LEN - 1.5)
+	# wraps rather than clamps: the player can turn all the way round and look
+	# back down the train
+	_aisle.y = wrapf(_aisle.y - h * TURN_RADIANS_PER_UNIT, -PI, PI)
 	_apply_shot()
 
-	# keyboard mirror of the WIN plate, so a capture needs no mouse
-	if Input.is_action_just_pressed(&"interact"):
-		_win()
 	if Input.is_action_just_pressed(&"ui_accept"):
 		_time_of_day.running = not _time_of_day.running
 	if Input.is_action_just_pressed(&"ui_page_up"):
 		_time_of_day.phase = fposmod(_time_of_day.phase + 0.08, 1.0)
 	if Input.is_action_just_pressed(&"ui_page_down"):
 		_time_of_day.phase = fposmod(_time_of_day.phase - 0.08, 1.0)
-
-func _describe() -> String:
-	var clock := _time_of_day.minutes_past_midnight / 60
-	return "\n".join([
-		"level   %d/%d %s   score %d   last %s" % [
-			_run.level_index + 1, LEVELS.size(), LEVEL_NAMES[_run.level_index], _run.score, _run.outcome],
-		"shot    %s        world %s" % [Shot.keys()[_shot], StateBits.world_mode_name(
-			StateBits.WorldMode.MODE_2D if _shot == Shot.SIDE else StateBits.WorldMode.MODE_3D)],
-		"time    %02d:%02d   phase %.2f   %s   carriage %d %s" % [
-			clock, _time_of_day.minutes_past_midnight % 60, _time_of_day.phase,
-			"running" if _time_of_day.running else "held",
-			_occupant.carriage_index, _here.location_id],
-		"cam     %.2f, %.2f, %.2f   near %.2f" % [
-			_rig.position.x + _cam.position.x, _rig.position.y + _cam.position.y,
-			_rig.position.z + _cam.position.z, _cam.near],
-		"fps     %d" % Engine.get_frames_per_second(),
-		"",
-		"click WIN / LOSE   E wins   WASD move   SPACE hold day/night   PGUP/PGDN scrub",
-	])
