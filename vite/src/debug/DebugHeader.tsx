@@ -1,10 +1,10 @@
 import { Aperture, X, Trash2 } from 'lucide-react';
 import { clearTrace, toggleDebug } from '../state/gameStore';
-import s from './debug.module.css';
+import styles from './debug.module.css';
 
 export function DebugHeader() {
   return (
-    <header className={s.head}>
+    <header className={styles.head}>
       <Aperture size={14} strokeWidth={2} aria-hidden />
       <strong>game state</strong>
       <button onClick={clearTrace} aria-label="Clear event trace" data-testid="debug-clear">

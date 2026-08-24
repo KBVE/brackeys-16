@@ -8,6 +8,7 @@
 
 [node name="MainMenu" unique_id=869232425 instance=ExtResource("1_ub2bi")]
 script = ExtResource("2_x31ro")
+game_scene_path = "res://scenes/train/train.scn"
 level_select_packed_scene = null
 confirm_new_game = true
 options_packed_scene = ExtResource("3_0jpat")

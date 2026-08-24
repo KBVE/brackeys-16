@@ -8,6 +8,8 @@ extends Node
 ## Every call is a no-op off the web platform, so the project still runs in the
 ## editor and in desktop exports without the JS layer present.
 
+## We can probably go even faster, once we get the shell updated.
+
 ## Emitted when the JS side sends a command. Connect from anywhere.
 signal command_received(cmd: String, payload: Dictionary)
 
@@ -38,9 +40,7 @@ func is_connected_to_js() -> bool:
 	return _js_bridge != null
 
 
-## &fast -> JavaScriptBridge marshals int/float/String/bool natively, so a flat
-##          primitive payload goes over as positional args with no JSON at all
-## &slow -> anything else falls back to emitJson()
+## &fast -> JavaScriptBridge marshals int/float/String/bool natively, so a flat primitive payload via the wire.
 func emit_event(event: String, payload: Dictionary = {}) -> void:
 	if _js_bridge == null:
 		return
@@ -54,6 +54,10 @@ func emit_event(event: String, payload: Dictionary = {}) -> void:
 		2: _js_bridge.emit(event, payload.get(f[0]), payload.get(f[1]))
 		3: _js_bridge.emit(event, payload.get(f[0]), payload.get(f[1]), payload.get(f[2]))
 		4: _js_bridge.emit(event, payload.get(f[0]), payload.get(f[1]), payload.get(f[2]), payload.get(f[3]))
+		5: _js_bridge.emit(event, payload.get(f[0]), payload.get(f[1]), payload.get(f[2]), payload.get(f[3]),
+			payload.get(f[4]))
+		6: _js_bridge.emit(event, payload.get(f[0]), payload.get(f[1]), payload.get(f[2]), payload.get(f[3]),
+			payload.get(f[4]), payload.get(f[5]))
 		_: _js_bridge.emitJson(event, JSON.stringify(payload))
 
 

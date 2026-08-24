@@ -1,5 +1,9 @@
+import { useEffect } from 'react';
 import { GodotGame } from './godot/GodotGame';
 import { DebugPanel } from './debug/DebugPanel';
+import { Newspaper } from './paper/Newspaper';
+import { setView, toggleView, useView } from './state/paperStore';
+import { closeResearch, useResearchStore } from './state/researchStore';
 import {
   useBridgeReady,
   usePlaying,
@@ -9,7 +13,7 @@ import {
   useInvulnerable,
 } from './state/gameStore';
 
-function Hud() {
+function PlayerHud() {
   const player = usePlayer();
   const paused = usePaused();
   const invulnerable = useInvulnerable();
@@ -25,19 +29,48 @@ function Hud() {
       <button onClick={() => send('ui:pause', { paused: !paused })}>
         {paused ? 'Resume' : 'Pause'}
       </button>
+      <button onClick={() => setView('paper')} data-testid="open-paper">
+        Read the Gazette
+      </button>
+      <button onClick={() => send('ui:restart', {})} data-testid="restart">
+        Restart
+      </button>
+      <button onClick={() => send('ui:main_menu', {})} data-testid="main-menu">
+        Leave Train
+      </button>
     </div>
   );
 }
 
+function useEscapeKeyLayering() {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      if (useResearchStore.getState().open) {
+        closeResearch();
+        return;
+      }
+      toggleView();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+}
+
 export default function App() {
-  const ready = useBridgeReady();
+  const bridgeReady = useBridgeReady();
   const playing = usePlaying();
+  const view = useView();
+
+  useEscapeKeyLayering();
 
   return (
-    <div className="app">
+    <div className="app" data-view={view}>
+      <Newspaper />
       <GodotGame />
       <div className="ui-layer">
-        {ready && playing && <Hud />}
+        {bridgeReady && playing && view === 'world' && <PlayerHud />}
         <DebugPanel />
       </div>
     </div>

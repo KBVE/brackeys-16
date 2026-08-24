@@ -24,6 +24,16 @@ class_name GameEvents
 ## Payload: {"scene": string}. Reaches JS as "scene:changed".
 const SCENE_CHANGED := &"scene_changed"
 
+## A scene is streaming in on the loader pool. `progress` is 0..1 and `status` is one of
+## `start`, `progress`, `ready`, `failed`.
+##
+## The swap itself still reports through scene:changed; this reports the wait before it,
+## which is the window React fills with the newspaper instead of a black canvas.
+##
+## Payload: {"scene": string, "progress": number, "status": string}. Reaches JS as
+## "scene:loading".
+const SCENE_LOADING := &"scene_loading"
+
 ## Coarse HUD snapshot that emit at 5 / 10 / 15 / 20Hz, not per frame!!! Every emit
 ## crosses the JS boundary and serialises to JSON or packed ints.
 ##
@@ -34,7 +44,8 @@ const PLAYER_STATE := &"player_state"
 ## is a RunState, `flags` is a PlayerFlags bitfield; decode with the generated helpers,
 ## never with constants.
 ##
-## Payload: {"run": number, "flags": number}. Reaches JS as "game:state".
+## Payload: {"run": number, "flags": number, "world": number}. Reaches JS as
+## "game:state".
 const STATE_CHANGED := &"state_changed"
 
 ## Score changed, probably hook this into a clue based system later on.
@@ -42,11 +53,43 @@ const STATE_CHANGED := &"state_changed"
 ## Payload: {"score": number}. Reaches JS as "game:score".
 const SCORE_CHANGED := &"score_changed"
 
+## A train level started, was won, or was lost. `level` is the level name (Aisle, Orbit,
+## Side), `index` its 0-based place in the running order and `total` how many levels the
+## run holds.
+##
+## `outcome` is one of `start`, `won`, `lost` -> the loop never leaves the train scene,
+## so scene:changed cannot report this; a level swap is a camera and rule swap inside
+## one carriage.
+##
+## Payload: {"level": string, "index": number, "total": number, "outcome": string}.
+## Reaches JS as "level:changed".
+const LEVEL_CHANGED := &"level_changed"
+
 ## The run or murder train ended. Shape is currently game defined, so give it real
 ## fields once the game has them.
 ##
 ## Payload: game-defined. Reaches JS as "game:run_over".
 const RUN_OVER := &"run_over"
+
+## In-world time of day, emitted when the minute changes rather than per frame.
+##
+## The train runs a day/night cycle, and the Gazette prints by the clock: an article
+## whose frontmatter carries `after`/`before` only reaches the front page inside that
+## window. Wall-clock time is irrelevant; this is the world's.
+##
+## Payload: {"hour": number, "minute": number}. Reaches JS as "world:clock".
+const WORLD_CLOCK := &"world_clock"
+
+## One fact the run has produced: a conversation, an item used, a room entered.
+##
+## `id` is a ULID, so entries sort by creation without comparing any other field. `kind`
+## is a JournalKind. `actor` and `target` are content ids (`beaumont`, `telegram`) or
+## empty. `at` is in-world minutes past midnight, which is what the player reasons
+## about; the ULID carries the real ordering.
+##
+## Payload: {"id": string, "kind": number, "actor": string, "target": string, "place":
+## string, "at": number}. Reaches JS as "journal:entry".
+const JOURNAL_ENTRY := &"journal_entry"
 
 # ==============================================================================
 # Inbound - React to Godot
@@ -70,6 +113,12 @@ const UI_RESTART := &"ui_restart"
 ## Payload: none. Reaches JS as "ui:main_menu".
 const UI_MAIN_MENU := &"ui_main_menu"
 
+## React asked for a scene to be streamed in. Loading happens on the loader pool and the
+## swap only runs once the resource is ready, so the main thread never waits on it.
+##
+## Payload: {"scene": string}. Reaches JS as "ui:load_scene".
+const UI_LOAD_SCENE := &"ui_load_scene"
+
 # ==============================================================================
 # Wire mapping
 # ==============================================================================
@@ -78,10 +127,14 @@ const UI_MAIN_MENU := &"ui_main_menu"
 ## an outbound event is a shared/events.json edit and nothing more.
 const OUTBOUND_WIRE: Dictionary[StringName, String] = {
 	SCENE_CHANGED: "scene:changed",
+	SCENE_LOADING: "scene:loading",
 	PLAYER_STATE: "player:state",
 	STATE_CHANGED: "game:state",
 	SCORE_CHANGED: "game:score",
+	LEVEL_CHANGED: "level:changed",
 	RUN_OVER: "game:run_over",
+	WORLD_CLOCK: "world:clock",
+	JOURNAL_ENTRY: "journal:entry",
 }
 
 ## &wire -> event -> ordered payload fields, passed to JS as positional
@@ -89,9 +142,13 @@ const OUTBOUND_WIRE: Dictionary[StringName, String] = {
 const WIRE_FIELDS: Dictionary[String, Array] = {
 	"godot:ready": [],
 	"scene:changed": ["scene"],
+	"scene:loading": ["scene", "progress", "status"],
 	"player:state": ["health", "max_health"],
-	"game:state": ["run", "flags"],
+	"game:state": ["run", "flags", "world"],
 	"game:score": ["score"],
+	"level:changed": ["level", "index", "total", "outcome"],
+	"world:clock": ["hour", "minute"],
+	"journal:entry": ["id", "kind", "actor", "target", "place", "at"],
 }
 
 ## JS wire name to bus name. [GameBridge] republishes every entry, so a command
@@ -100,4 +157,5 @@ const INBOUND_BUS: Dictionary[String, StringName] = {
 	"ui:pause": UI_PAUSE,
 	"ui:restart": UI_RESTART,
 	"ui:main_menu": UI_MAIN_MENU,
+	"ui:load_scene": UI_LOAD_SCENE,
 }
