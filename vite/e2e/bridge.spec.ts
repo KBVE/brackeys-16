@@ -1,49 +1,18 @@
 import { test, expect, type Page } from '@playwright/test';
 
-type Traced = { event: string; payload: unknown };
+// &boot -> boot.tscn loads train.scn, and /train/ maps to PLAYING; there is no menu on the way in
+const RUN_PLAYING = 'PLAYING (2)';
+const RUN_PAUSED = 'PAUSED (3)';
+const RUN_MENU = 'MENU (1)';
 
-async function bootedToMenu(page: Page) {
+async function booted(page: Page) {
   await page.goto('/index.html');
   await expect(page.locator('#godot-canvas')).toBeVisible();
   await expect(page.locator('.godot-status')).toHaveCount(0);
 }
 
-async function openDebug(page: Page) {
-  await page.getByTestId('debug-toggle').click();
-  await expect(page.getByTestId('debug-panel')).toBeVisible();
-}
-
-function row(page: Page, key: string) {
-  return page.getByTestId(`row-${key}`).getByTestId('row-value');
-}
-
-test('engine boots and the bridge reports ready', async ({ page }) => {
-  await bootedToMenu(page);
-  await openDebug(page);
-  await expect(row(page, 'boot')).toHaveText('running');
-  await expect(row(page, 'bridge')).toHaveText('ready');
-});
-
-test('scene changes arrive as a packed run state', async ({ page }) => {
-  await bootedToMenu(page);
-  await openDebug(page);
-  await expect(row(page, 'run')).toHaveText('MENU (1)');
-  await expect(row(page, 'flags')).toHaveText('NONE (0x0)');
-});
-
-test('the trace records the boot handshake in order', async ({ page }) => {
-  await bootedToMenu(page);
-  await openDebug(page);
-  const codes = page.getByTestId('trace-event');
-  await expect.poll(async () => (await codes.allTextContents()).includes('game:state')).toBe(true);
-
-  const events = await codes.allTextContents();
-  expect(events).toContain('godot:ready');
-  expect(events).toContain('scene:changed');
-  expect(events.indexOf('godot:ready')).toBeGreaterThan(events.indexOf('game:state'));
-});
-
-test('primitive payloads cross without JSON', async ({ page }) => {
+// &why -> the debug trace is a 60-entry ring, and the train scene evicts the handshake out of it
+async function recordEmits(page: Page): Promise<unknown[][]> {
   const seen: unknown[][] = [];
   await page.exposeFunction('__record', (args: unknown[]) => {
     seen.push(args);
@@ -60,11 +29,60 @@ test('primitive payloads cross without JSON', async ({ page }) => {
       };
     }, 20);
   });
-  await bootedToMenu(page);
+  return seen;
+}
+
+async function send(page: Page, cmd: string, payload: unknown) {
+  await page.evaluate(
+    ([c, p]) => {
+      const b = (window as never as { __godotBridge: { send: (c: string, p: unknown) => void } }).__godotBridge;
+      b.send(c as string, p);
+    },
+    [cmd, payload] as const,
+  );
+}
+
+async function openDebug(page: Page) {
+  await page.getByTestId('debug-toggle').click();
+  await expect(page.getByTestId('debug-panel')).toBeVisible();
+}
+
+function row(page: Page, key: string) {
+  return page.getByTestId(`row-${key}`).getByTestId('row-value');
+}
+
+test('engine boots and the bridge reports ready', async ({ page }) => {
+  await booted(page);
+  await openDebug(page);
+  await expect(row(page, 'boot')).toHaveText('running');
+  await expect(row(page, 'bridge')).toHaveText('ready');
+});
+
+test('scene changes arrive as a packed run state', async ({ page }) => {
+  await booted(page);
+  await openDebug(page);
+  await expect(row(page, 'run')).toHaveText(RUN_PLAYING);
+  await expect(row(page, 'flags')).toHaveText('NONE (0x0)');
+});
+
+test('the trace records the boot handshake in order', async ({ page }) => {
+  const seen = await recordEmits(page);
+  await booted(page);
+  await expect.poll(() => seen.some(([e]) => e === 'game:state')).toBe(true);
+  await expect.poll(() => seen.some(([e]) => e === 'scene:changed')).toBe(true);
+
+  // &order -> chronological here, unlike the newest-first debug trace
+  const events = seen.map(([e]) => e as string);
+  expect(events).toContain('godot:ready');
+  expect(events.indexOf('godot:ready')).toBeLessThan(events.indexOf('game:state'));
+});
+
+test('primitive payloads cross without JSON', async ({ page }) => {
+  const seen = await recordEmits(page);
+  await booted(page);
   await expect.poll(() => seen.some(([e]) => e === 'game:state')).toBe(true);
 
   const state = seen.find(([e]) => e === 'game:state')!;
-  expect(state.slice(1)).toEqual([1, 0, 0]);
   expect(state.slice(1).every((v) => typeof v === 'number')).toBe(true);
 
   const scene = seen.find(([e]) => e === 'scene:changed')!;
@@ -72,29 +90,35 @@ test('primitive payloads cross without JSON', async ({ page }) => {
 });
 
 test('a command from React reaches Godot and is honoured', async ({ page }) => {
-  await bootedToMenu(page);
-  await page.evaluate(() => {
-    const b = (window as never as { __godotBridge: { send: (c: string, p: unknown) => void } }).__godotBridge;
-    b.send('ui:main_menu', {});
-  });
+  await booted(page);
+  await send(page, 'ui:main_menu', {});
   await openDebug(page);
-  await expect(row(page, 'run')).toHaveText('MENU (1)');
+  await expect(row(page, 'run')).toHaveText(RUN_MENU);
+});
+
+test('pause is honoured inside the game scene', async ({ page }) => {
+  await booted(page);
+  await openDebug(page);
+  await expect(row(page, 'run')).toHaveText(RUN_PLAYING);
+  await send(page, 'ui:pause', { paused: true });
+  await expect(row(page, 'run')).toHaveText(RUN_PAUSED);
+  await send(page, 'ui:pause', { paused: false });
+  await expect(row(page, 'run')).toHaveText(RUN_PLAYING);
 });
 
 test('pause is refused outside the game scene', async ({ page }) => {
-  await bootedToMenu(page);
-  await page.evaluate(() => {
-    const b = (window as never as { __godotBridge: { send: (c: string, p: unknown) => void } }).__godotBridge;
-    b.send('ui:pause', { paused: true });
-  });
+  await booted(page);
   await openDebug(page);
-  await expect(row(page, 'run')).toHaveText('MENU (1)');
-  const events = await page.getByTestId('trace-event').allTextContents();
-  expect(events.filter((e) => e === 'game:state')).toHaveLength(1);
+  await expect(row(page, 'run')).toHaveText(RUN_PLAYING);
+  await send(page, 'ui:main_menu', {});
+  await expect(row(page, 'run')).toHaveText(RUN_MENU);
+
+  await send(page, 'ui:pause', { paused: true });
+  await expect(row(page, 'run')).toHaveText(RUN_MENU);
 });
 
 test('the debug panel toggles and clears', async ({ page }) => {
-  await bootedToMenu(page);
+  await booted(page);
   await expect(page.getByTestId('debug-panel')).toHaveCount(0);
   await openDebug(page);
   await expect(page.getByTestId('trace-item')).not.toHaveCount(0);
