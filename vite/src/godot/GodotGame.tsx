@@ -95,10 +95,15 @@ export function GodotGame() {
 
 function GodotLayer({ canvasRef }: { canvasRef: React.RefObject<HTMLCanvasElement | null> }) {
   const view = useView();
-  const style = useFrameStyle();
+  const layerRef = useRef<HTMLDivElement>(null);
+  const style = useFrameStyle(layerRef);
 
   return (
-    <div className={`godot-layer${view === 'paper' ? ' is-plate' : ''}`} style={style}>
+    <div
+      ref={layerRef}
+      className={`godot-layer${view === 'paper' ? ' is-plate' : ''}`}
+      style={style}
+    >
       <canvas ref={canvasRef} id="godot-canvas" />
       <div className="halftone" aria-hidden />
       <BootStatus />

@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { contractPlugin } from './src/plugins/contract';
+import { contractPlugin } from './src/plugins/contract.ts';
 
 const crossOriginIsolation = {
   'Cross-Origin-Opener-Policy': 'same-origin',
