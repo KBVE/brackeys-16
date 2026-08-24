@@ -12,8 +12,10 @@ config_version=5
 
 config/name="Brackeys 16"
 config/version="0.1.3"
-run/main_scene="res://scenes/opening/opening.tscn"
+run/main_scene="res://scenes/boot/boot.tscn"
 config/features=PackedStringArray("4.7")
+boot_splash/bg_color=Color(0.909804, 0.878431, 0.8, 1)
+boot_splash/show_image=false
 config/icon="res://icon.png"
 
 [autoload]
@@ -24,6 +26,7 @@ ProjectUISoundController="*res://addons/maaacks_game_template/base/nodes/autoloa
 JsBridge="*res://scripts/JsBridge.gd"
 Ecs="*res://scripts/ecs/ecs.gd"
 GameBridge="*res://scripts/game_bridge.gd"
+Journal="*res://scripts/journal.gd"
 
 [display]
 
@@ -126,4 +129,5 @@ plugins={}
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.909804, 0.878431, 0.8, 1)
 environment/defaults/default_environment="res://default_env.tres"
