@@ -12,21 +12,34 @@ export interface TracedEvent {
   payload: unknown;
 }
 
+const WARN_PATTERNS = [/^WARNING/i, /Blocking on the main thread/i, /is deprecated/i];
+
+export interface EngineLine {
+  id: number;
+  level: 'warn' | 'error';
+  text: string;
+}
+
 const TRACE_LIMIT = 60;
 const TRACE_FLUSH_MS = 250;
 const LOG_LIMIT = 40;
+const JOURNAL_LIMIT = 60;
 
 interface GameStore {
   debugOpen: boolean;
   trace: TracedEvent[];
-  engineLog: string[];
+  engineLog: EngineLine[];
   boot: BootPhase;
   progress: number;
   bootError: string | null;
   bridgeReady: boolean;
   run: number;
   flags: number;
+  world: number;
   player: GodotToJs['player:state'] | null;
+  level: GodotToJs['level:changed'] | null;
+  loading: GodotToJs['scene:loading'] | null;
+  journal: GodotToJs['journal:entry'][];
   send<C extends keyof JsToGodot>(cmd: C, payload: JsToGodot[C]): void;
 }
 
@@ -42,7 +55,11 @@ export const useGameStore = create<GameStore>()(() => ({
   bridgeReady: bridge.ready,
   run: RunState.BOOTING,
   flags: 0,
+  world: 0,
   player: null,
+  level: null,
+  loading: null,
+  journal: [],
   send: (cmd, payload) => bridge.send(cmd, payload),
 }));
 
@@ -74,8 +91,14 @@ function tracked<E extends GodotEvent>(event: E, fn?: (payload: GodotToJs[E]) =>
 
 tracked('godot:ready', () => set({ bridgeReady: true }));
 tracked('scene:changed');
-tracked('game:state', ({ run, flags }) => set({ run, flags }));
+tracked('game:state', ({ run, flags, world }) => set({ run, flags, world }));
 tracked('player:state', (player) => set({ player }));
+tracked('scene:loading', (loading) => set({ loading }));
+
+tracked('journal:entry', (entry) =>
+  set({ journal: [entry, ...useGameStore.getState().journal].slice(0, JOURNAL_LIMIT) }),
+);
+tracked('level:changed', (level) => set({ level }));
 tracked('game:score');
 tracked('game:run_over');
 
@@ -87,11 +110,17 @@ export const toggleDebug = () => {
 
 export const clearTrace = () => {
   pending = [];
-  set({ trace: [], engineLog: [] });
+  set({ trace: [], engineLog: [], journal: [] });
 };
 
-export const logEngine = (line: string) =>
-  set({ engineLog: [line, ...useGameStore.getState().engineLog].slice(0, LOG_LIMIT) });
+let engineSeq = 0;
+
+export const logEngine = (text: string) => {
+  engineSeq += 1;
+  const level = WARN_PATTERNS.some((re) => re.test(text)) ? 'warn' : 'error';
+  const entry: EngineLine = { id: engineSeq, level, text };
+  set({ engineLog: [entry, ...useGameStore.getState().engineLog].slice(0, LOG_LIMIT) });
+};
 
 export const boot = {
   start: () => set({ boot: 'loading', progress: 0, bootError: null }),
@@ -105,11 +134,15 @@ export const useTrace = () => useGameStore((s) => s.trace);
 export const useEngineLog = () => useGameStore((s) => s.engineLog);
 export const useRun = () => useGameStore((s) => s.run);
 export const useFlags = () => useGameStore((s) => s.flags);
+export const useWorld = () => useGameStore((s) => s.world);
 export const useBoot = () => useGameStore((s) => s.boot);
 export const useProgress = () => useGameStore((s) => s.progress);
 export const useBootError = () => useGameStore((s) => s.bootError);
 export const useBridgeReady = () => useGameStore((s) => s.bridgeReady);
 export const usePlayer = () => useGameStore((s) => s.player);
+export const useLevel = () => useGameStore((s) => s.level);
+export const useLoading = () => useGameStore((s) => s.loading);
+export const useJournal = () => useGameStore((s) => s.journal);
 export const useSend = () => useGameStore((s) => s.send);
 
 export const usePaused = () => useGameStore((s) => s.run === RunState.PAUSED);
