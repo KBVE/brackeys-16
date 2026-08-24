@@ -13,7 +13,7 @@ extends MainMenu
 
 func load_game_scene() -> void:
 	GameState.start_game()
-	super.load_game_scene()
+	GameBridge.load_scene_async(get_game_scene_path())
 
 func new_game() -> void:
 	if confirm_new_game and continue_game_button.visible:

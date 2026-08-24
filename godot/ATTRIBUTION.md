@@ -18,6 +18,11 @@ Author: [Jason Long](https://bsky.app/profile/jasonlong.me)
 Source: [git-scm.com : logos](https://git-scm.com/downloads/logos)  
 License: [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) 
 
+#### Parallax Forest Background (Seamless)
+Author: Digital Moon Studio  
+Source: [digitalmoons.itch.io : parallax-forest-background](https://digitalmoons.itch.io/parallax-forest-background)  
+License: Free for personal and commercial use. Donations appreciated.
+
 #### Queensland Railways 1900s BL Heritage Carriage
 Model: queensland-railways-1900s-bl-heritage-carriage-807b44e77da345f2aac51c750d4b673c  
 Created by Jotrain – www.jotrain.com.au  

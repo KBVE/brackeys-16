@@ -23,6 +23,11 @@ Model: queensland-railways-1900s-bl-heritage-carriage-807b44e77da345f2aac51c750d
 Created by Jotrain – www.jotrain.com.au
 ```
 
+#### Parallax Forest
+
+Parallax Forest Background by [DigitalMoonStudio](https://digitalmoons.itch.io/parallax-forest-background)
+
+
 #### Books
 
 Public Domain [Book Covers](https://publicdomainreview.org/collection/the-art-of-book-covers-1820-1914/)
