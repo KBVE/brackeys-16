@@ -2,6 +2,9 @@ import { test, expect, type Page } from '@playwright/test';
 
 // &boot -> boot.tscn loads train.scn, and /train/ maps to PLAYING; there is no menu on the way in
 const RUN_PLAYING = 'PLAYING (2)';
+// &alive -> Train._start_level() sets PLAYER_ALIVE as the carriage comes up, and
+//           boot goes straight there, so the player is alive from the first frame
+const FLAGS_ALIVE = 'ALIVE (0x1)';
 const RUN_PAUSED = 'PAUSED (3)';
 const RUN_MENU = 'MENU (1)';
 
@@ -62,7 +65,7 @@ test('scene changes arrive as a packed run state', async ({ page }) => {
   await booted(page);
   await openDebug(page);
   await expect(row(page, 'run')).toHaveText(RUN_PLAYING);
-  await expect(row(page, 'flags')).toHaveText('NONE (0x0)');
+  await expect(row(page, 'flags')).toHaveText(FLAGS_ALIVE);
 });
 
 test('the trace records the boot handshake in order', async ({ page }) => {
