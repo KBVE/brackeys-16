@@ -39,11 +39,26 @@ html, body, #root {
   position: absolute;
   top: 1rem;
   left: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   padding: 0.5rem 0.75rem;
   border-radius: 0.5rem;
   background: rgba(0, 0, 0, 0.55);
   font-variant-numeric: tabular-nums;
 }
+
+.hud button {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid #43435a;
+  border-radius: 0.35rem;
+  background: #1a1a24;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.hud button:hover { background: #24243180; }
 
 .godot-status {
   position: absolute;
@@ -56,3 +71,7 @@ html, body, #root {
 
 .godot-error { color: #ff8080; }
 .godot-error pre { white-space: pre-wrap; max-width: 40rem; }
+
+.hud-invuln { color: #7fd7ff; }
+
+

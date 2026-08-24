@@ -59,9 +59,42 @@ jobs:
               core.setOutput('publish', 'true')
             }
 
+  test:
+    name: Run gdUnit4 suite
+    needs: check
+    if: needs.check.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          lfs: true
+
+      - name: Set up Godot ${{ env.GODOT_VERSION }}
+        uses: chickensoft-games/setup-godot@f166999204a4f2722c6fe042fbaa3b3ea0d9c789
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+          include-templates: false
+
+      - name: Import assets
+        run: godot --headless --path "${PROJECT_PATH}" --import
+
+      - name: Run tests
+        run: |
+          godot --headless --path "${PROJECT_PATH}" \
+            -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
+            --ignoreHeadlessMode -a res://tests
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: gdunit4-report
+          path: ${{ env.PROJECT_PATH }}/reports
+          retention-days: 7
+
   publish:
     name: Build web + publish v${{ needs.check.outputs.version }}
-    needs: check
+    needs: [check, test]
     if: needs.check.outputs.publish == 'true'
     runs-on: ubuntu-latest
     env:

@@ -1,0 +1,62 @@
+{
+  "$comment": "Single source of truth for all (Godot, ECS, React, ect...) event contract. Please do not edit the generated files (game_events.gd, events.ts), edit events.json. @actions -> on dev/build -> CI fails if the output drifts.",
+  "outbound": {
+    "SCENE_CHANGED": {
+      "bus": "scene_changed",
+      "wire": "scene:changed",
+      "payload": { "scene": "string" },
+      "description": "The scene tree finished swapping scenes; `scene` is the res:// path of the new scene.\n\nDeliberately not driven by SceneLoader.scene_loaded, because it fires before the swap and also for background loads that never swap at all. Currently, our gameBridge watches the tree's current scene instead, so this reports what actually happened and catches changes made without SceneLoader."
+    },
+    "PLAYER_STATE": {
+      "bus": "player_state",
+      "wire": "player:state",
+      "payload": { "health": "number", "max_health": "number" },
+      "description": "Coarse HUD snapshot that emit at 5 / 10 / 15 / 20Hz, not per frame!!! Every emit crosses the JS boundary and serialises to JSON or packed ints."
+    },
+    "STATE_CHANGED": {
+      "bus": "state_changed",
+      "wire": "game:state",
+      "payload": { "run": "number", "flags": "number" },
+      "description": "Coarse run state; both fields are packed ints from shared/state.json : Json -> `run` is a RunState, `flags` is a PlayerFlags bitfield; decode with the generated helpers, never with constants."
+    },
+    "SCORE_CHANGED": {
+      "bus": "score_changed",
+      "wire": "game:score",
+      "payload": { "score": "number" },
+      "description": "Score changed, probably hook this into a clue based system later on."
+    },
+    "RUN_OVER": {
+      "bus": "run_over",
+      "wire": "game:run_over",
+      "payload": "unknown",
+      "description": "The run or murder train ended. Shape is currently game defined, so give it real fields once the game has them."
+    }
+  },
+  "inbound": {
+    "UI_PAUSE": {
+      "bus": "ui_pause",
+      "wire": "ui:pause",
+      "payload": { "paused": "boolean" },
+      "description": "React or devtools asked to pause or resume. It is ignored outside RunState.PLAYING, with the paused menu acting like a soft lock."
+    },
+    "UI_RESTART": {
+      "bus": "ui_restart",
+      "wire": "ui:restart",
+      "payload": {},
+      "description": "React , jest or playwright requested to restart the current run or murder or clue scene."
+    },
+    "UI_MAIN_MENU": {
+      "bus": "ui_main_menu",
+      "wire": "ui:main_menu",
+      "payload": {},
+      "description": "React asked to leave the game scene for the main menu, think of it as a quick escape hatch."
+    }
+  },
+  "engine": {
+    "GODOT_READY": {
+      "wire": "godot:ready",
+      "payload": {},
+      "description": "The bridge is live and draining anything React queued before wasm boot. Emitted directly by JsBridge itself rather than the ECS bus, so it has no bus name, (this is like a race condition type situation resolver)."
+    }
+  }
+}

@@ -6,3 +6,6 @@ vite/dist/
 # Godot web export output (regenerate with `npm run build:godot`)
 vite/public/godot/*
 !vite/public/godot/.gitkeep
+
+vite/test-results/
+vite/playwright-report/
