@@ -18,6 +18,12 @@ Author: [Jason Long](https://bsky.app/profile/jasonlong.me)
 Source: [git-scm.com : logos](https://git-scm.com/downloads/logos)  
 License: [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) 
 
+#### Queensland Railways 1900s BL Heritage Carriage
+Model: queensland-railways-1900s-bl-heritage-carriage-807b44e77da345f2aac51c750d4b673c  
+Created by Jotrain – www.jotrain.com.au  
+Source: [sketchfab: queensland-railways-1900s-bl-heritage-carriage](https://sketchfab.com/3d-models/queensland-railways-1900s-bl-heritage-carriage-807b44e77da345f2aac51c750d4b673c)  
+License: [Sketchfab Standard (Free)](https://sketchfab.com/licenses)
+
 ## Tools
 #### Godot
 ![Godot Engine Logo](/assets/godot_engine_logo/logo_vertical_color_dark.png)  
