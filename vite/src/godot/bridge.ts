@@ -1,13 +1,6 @@
 import { WIRE_FIELDS } from './events';
 import type { GodotToJs, JsToGodot, GodotEvent, GodotCommand } from './events';
 
-/**
- * &order -> installed BEFORE the engine boots; the GDScript autoload looks
- *           window.__godotBridge up in _ready()
- * &args  -> create_callback() hands GDScript ONE Array of the JS arguments, so
- *           handler(cmd, json) must be two positional args, not one object
- */
-
 type Handler = (cmd: string, payloadJson: string) => void;
 type Listener<E extends GodotEvent> = (payload: GodotToJs[E]) => void;
 

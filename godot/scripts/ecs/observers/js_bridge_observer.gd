@@ -1,11 +1,7 @@
 class_name JsBridgeObserver
 extends ECSObserver
 
-## JsBridgeObserver : the single Godot -> JS forwarding point
-##
-## &src  -> [constant GameEvents.OUTBOUND_WIRE], gen! <- shared/events.json
-##       -> adding an event never touches this file, and a wire name cannot drift
-## &bind -> Callable.bind() appends the JS name after (event, entity, payload)
+## JsBridgeObserver is now our router
 
 func sub_observers() -> Array[Array]:
 	var subs: Array[Array] = []

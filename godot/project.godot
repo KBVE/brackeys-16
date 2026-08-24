@@ -11,9 +11,11 @@ config_version=5
 [application]
 
 config/name="Brackeys 16"
-config/version="0.1.3"
-run/main_scene="res://scenes/opening/opening.tscn"
+config/version="0.1.4"
+run/main_scene="res://scenes/boot/boot.tscn"
 config/features=PackedStringArray("4.7")
+boot_splash/bg_color=Color(0.909804, 0.878431, 0.8, 1)
+boot_splash/show_image=false
 config/icon="res://icon.png"
 
 [autoload]
@@ -21,9 +23,11 @@ config/icon="res://icon.png"
 SceneLoader="*res://addons/maaacks_game_template/base/nodes/autoloads/scene_loader/scene_loader.tscn"
 ProjectMusicController="*res://addons/maaacks_game_template/base/nodes/autoloads/music_controller/project_music_controller.tscn"
 ProjectUISoundController="*res://addons/maaacks_game_template/base/nodes/autoloads/ui_sound_controller/project_ui_sound_controller.tscn"
-JsBridge="*res://scripts/JsBridge.gd"
+JsBridge="*res://scripts/autoload/JsBridge.gd"
 Ecs="*res://scripts/ecs/ecs.gd"
-GameBridge="*res://scripts/game_bridge.gd"
+GameBridge="*res://scripts/autoload/game_bridge.gd"
+Journal="*res://scripts/autoload/journal.gd"
+Session="*res://scripts/autoload/session.gd"
 
 [display]
 
@@ -126,4 +130,5 @@ plugins={}
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.909804, 0.878431, 0.8, 1)
 environment/defaults/default_environment="res://default_env.tres"

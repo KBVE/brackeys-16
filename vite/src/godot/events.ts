@@ -20,18 +20,29 @@ export interface GodotToJs {
   // The scene tree finished swapping scenes; `scene` is the res:// path of the new
   // scene.
   'scene:changed': { scene: string };
+  // A scene is streaming in on the loader pool. `progress` is 0..1 and `status` is one
+  // of `start`, `progress`, `ready`, `failed`.
+  'scene:loading': { scene: string; progress: number; status: string };
   // Coarse HUD snapshot that emit at 5 / 10 / 15 / 20Hz, not per frame!!! Every emit
   // crosses the JS boundary and serialises to JSON or packed ints.
   'player:state': { health: number; max_health: number };
   // Coarse run state; both fields are packed ints from shared/state.json : Json ->
   // `run` is a RunState, `flags` is a PlayerFlags bitfield; decode with the generated
   // helpers, never with constants.
-  'game:state': { run: number; flags: number };
+  'game:state': { run: number; flags: number; world: number };
   // Score changed, probably hook this into a clue based system later on.
   'game:score': { score: number };
+  // A train level started, was won, or was lost. `level` is the level name (Aisle,
+  // Orbit, Side), `index` its 0-based place in the running order and `total` how many
+  // levels the run holds.
+  'level:changed': { level: string; index: number; total: number; outcome: string };
   // The run or murder train ended. Shape is currently game defined, so give it real
   // fields once the game has them.
   'game:run_over': Record<string, unknown>;
+  // In-world time of day, emitted when the minute changes rather than per frame.
+  'world:clock': { hour: number; minute: number };
+  // One fact the run has produced: a conversation, an item used, a room entered.
+  'journal:entry': { id: string; kind: number; actor: string; target: string; place: string; at: number };
 }
 
 /** React -> Godot. */
@@ -45,15 +56,23 @@ export interface JsToGodot {
   // React asked to leave the game scene for the main menu, think of it as a quick
   // escape hatch.
   'ui:main_menu': Record<string, never>;
+  // React asked for a scene to be streamed in. Loading happens on the loader pool and
+  // the swap only runs once the resource is ready, so the main thread never waits on
+  // it.
+  'ui:load_scene': { scene: string };
 }
 
 /** Wire name -> ordered payload fields, matching the positional args Godot sends. */
 export const WIRE_FIELDS: Record<string, readonly string[]> = {
   'godot:ready': [],
   'scene:changed': ['scene'],
+  'scene:loading': ['scene', 'progress', 'status'],
   'player:state': ['health', 'max_health'],
-  'game:state': ['run', 'flags'],
+  'game:state': ['run', 'flags', 'world'],
   'game:score': ['score'],
+  'level:changed': ['level', 'index', 'total', 'outcome'],
+  'world:clock': ['hour', 'minute'],
+  'journal:entry': ['id', 'kind', 'actor', 'target', 'place', 'at'],
 };
 
 export type GodotEvent = keyof GodotToJs;

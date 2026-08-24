@@ -6,12 +6,18 @@ var results: Array = []
 # 缓存特定组件组合的查询结果
 var _signature: Array[StringName] # 排序后的组件名列表
 var _entity_indices: Dictionary = {} # EntityID -> index in results (用于快速查找移除)
-var _world: ECSWorld
+# LOCAL PATCH: was `var _world: ECSWorld`. AGENTS.md: "Never store World or
+# Entity references directly; use WeakRef". A strong ref here is a
+# world <-> cache cycle, so a world that ever served a multi_view() never frees.
+var _world: WeakRef
 
 func _init(w: ECSWorld, sig: Array):
-	_world = w
+	_world = weakref(w)
 	_signature.append_array(sig)
 	_rebuild_all() # 初始化时构建一次
+
+func world() -> ECSWorld:
+	return _world.get_ref() if _world else null
 
 # 全量构建 (仅初始化使用)
 func _rebuild_all() -> void:
@@ -21,13 +27,13 @@ func _rebuild_all() -> void:
 	var min_count = 2147483647
 	var best_comp = _signature[0]
 	for name in _signature:
-		var count = _world._get_type_list(name).size()
+		var count = world()._get_type_list(name).size()
 		if count < min_count:
 			min_count = count
 			best_comp = name
 	
 	# 遍历该组件的所有实体
-	var type_list = _world._get_type_list(best_comp)
+	var type_list = world()._get_type_list(best_comp)
 	for entity_id in type_list:
 		if _match(entity_id):
 			_add(entity_id)
@@ -35,7 +41,7 @@ func _rebuild_all() -> void:
 # 检查实体是否满足当前 Query
 func _match(entity_id: int) -> bool:
 	for name in _signature:
-		if not _world.has_component(entity_id, name):
+		if not world().has_component(entity_id, name):
 			return false
 	return true
 
@@ -43,10 +49,10 @@ func _match(entity_id: int) -> bool:
 func _add(entity_id: int) -> void:
 	if _entity_indices.has(entity_id): return # 已经在缓存里了
 	
-	var entity = _world.get_entity(entity_id)
+	var entity = world().get_entity(entity_id)
 	var view_data = { "entity": entity }
 	for name in _signature:
-		view_data[name] = _world.get_component(entity_id, name)
+		view_data[name] = world().get_component(entity_id, name)
 	
 	results.append(view_data)
 	_entity_indices[entity_id] = results.size() - 1

@@ -1,4 +1,6 @@
 extends MainMenu
+
+## 08/24/2026 - h0lybyte - some of this is maark stuff, I will clean it up later on.
 ## Main menu extension that adds options.
 ## The scene adds a 'Continue' button if a game is in progress.
 
@@ -13,7 +15,7 @@ extends MainMenu
 
 func load_game_scene() -> void:
 	GameState.start_game()
-	super.load_game_scene()
+	GameBridge.load_scene_async_streaming(get_game_scene_path())
 
 func new_game() -> void:
 	if confirm_new_game and continue_game_button.visible:

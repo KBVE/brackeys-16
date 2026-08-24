@@ -9,3 +9,6 @@ vite/public/godot/*
 
 vite/test-results/
 vite/playwright-report/
+
+# Archived scenes kept out of git; see backup/README.txt
+/backup/

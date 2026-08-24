@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { useTrace, type TracedEvent } from '../state/gameStore';
-import s from './debug.module.css';
+import styles from './debug.module.css';
 
 const TraceRow = memo(function TraceRow({ entry }: { entry: TracedEvent }) {
   return (
@@ -16,15 +16,15 @@ export function EventTrace() {
 
   return (
     <>
-      <div className={s.sectionHead}>
+      <div className={styles.sectionHead}>
         events <span data-testid="trace-count">{trace.length}</span>
       </div>
-      <ol className={s.list}>
+      <ol className={styles.list}>
         {trace.map((entry) => (
           <TraceRow key={entry.seq} entry={entry} />
         ))}
         {trace.length === 0 && (
-          <li className={s.empty} data-testid="trace-empty">
+          <li className={styles.empty} data-testid="trace-empty">
             nothing yet
           </li>
         )}
