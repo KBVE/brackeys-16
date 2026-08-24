@@ -1,0 +1,89 @@
+.toggle {
+  position: absolute;
+  left: 1rem;
+  bottom: 3.25rem;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  border: 1px solid #3a3a4d;
+  border-radius: 50%;
+  background: rgba(12, 12, 18, 0.8);
+  color: #b9b9cc;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: color 120ms, border-color 120ms, transform 120ms;
+}
+
+.toggle:hover { color: #e8e8ef; border-color: #5a5a75; }
+.toggle.open { color: #7fd7ff; border-color: #7fd7ff; transform: rotate(45deg); }
+
+.panel {
+  position: absolute;
+  left: 1rem;
+  bottom: 6rem;
+  display: flex;
+  flex-direction: column;
+  width: min(24rem, calc(100vw - 2rem));
+  max-height: min(26rem, calc(100vh - 8rem));
+  border: 1px solid #33334a;
+  border-radius: 0.6rem;
+  background: rgba(10, 10, 16, 0.94);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  backdrop-filter: blur(6px);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid #26263a;
+  color: #7fd7ff;
+}
+
+.head strong { flex: 1; font-weight: 600; letter-spacing: 0.04em; }
+
+.head button {
+  display: grid;
+  place-items: center;
+  padding: 0.15rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: none;
+  color: #8a8aa3;
+  cursor: pointer;
+}
+
+.head button:hover { color: #e8e8ef; background: #22222f; }
+
+.grid { padding: 0.4rem 0.6rem; }
+
+.row { display: flex; gap: 0.6rem; padding: 0.1rem 0; }
+.key { width: 4rem; color: #74748c; }
+.val { flex: 1; color: #e8e8ef; word-break: break-word; }
+
+.sectionHead {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0.6rem;
+  border-top: 1px solid #26263a;
+  color: #74748c;
+  letter-spacing: 0.04em;
+}
+
+.list {
+  margin: 0;
+  padding: 0 0.6rem 0.5rem;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.list li { display: flex; gap: 0.5rem; padding: 0.12rem 0; }
+.list code { color: #9ee6a0; white-space: nowrap; }
+.list span { color: #8a8aa3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.errors span { color: #ff9b9b; white-space: normal; }
+.empty { color: #56566b; }

@@ -1,5 +1,5 @@
 import { GodotGame } from './godot/GodotGame';
-import { runStateName, describePlayerFlags } from './godot/state';
+import { DebugPanel } from './debug/DebugPanel';
 import {
   useBridgeReady,
   usePlaying,
@@ -7,10 +7,7 @@ import {
   usePlayer,
   useSend,
   useInvulnerable,
-  useDebugState,
 } from './state/gameStore';
-
-const DEBUG = import.meta.env.DEV;
 
 function Hud() {
   const player = usePlayer();
@@ -32,15 +29,6 @@ function Hud() {
   );
 }
 
-function DebugState() {
-  const { run, flags } = useDebugState();
-  return (
-    <div className="hud hud-debug">
-      {runStateName(run)} · {describePlayerFlags(flags)}
-    </div>
-  );
-}
-
 export default function App() {
   const ready = useBridgeReady();
   const playing = usePlaying();
@@ -50,7 +38,7 @@ export default function App() {
       <GodotGame />
       <div className="ui-layer">
         {ready && playing && <Hud />}
-        {DEBUG && ready && <DebugState />}
+        <DebugPanel />
       </div>
     </div>
   );

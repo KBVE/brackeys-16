@@ -71,3 +71,53 @@ jobs:
       - name: Typecheck
         working-directory: ${{ env.WEB_PATH }}
         run: npm run typecheck
+
+      - name: Check the committed Godot shell is not stale
+        working-directory: ${{ env.WEB_PATH }}
+        run: npm run shell:check
+
+  e2e:
+    name: Playwright
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          lfs: true
+
+      - name: Set up Godot ${{ env.GODOT_VERSION }}
+        uses: chickensoft-games/setup-godot@f166999204a4f2722c6fe042fbaa3b3ea0d9c789
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+          include-templates: true
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ${{ env.WEB_PATH }}/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: ${{ env.WEB_PATH }}
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: ${{ env.WEB_PATH }}
+        run: npx playwright install --with-deps chromium
+
+      - name: Build
+        working-directory: ${{ env.WEB_PATH }}
+        run: |
+          npm run build:godot
+          npm run build
+
+      - name: Run e2e
+        working-directory: ${{ env.WEB_PATH }}
+        run: npm run e2e
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: failure()
+        with:
+          name: playwright-traces
+          path: ${{ env.WEB_PATH }}/test-results
+          retention-days: 7

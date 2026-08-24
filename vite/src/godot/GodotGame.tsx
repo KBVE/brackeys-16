@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { installGodotBridge } from './bridge';
-import { boot, useBoot, useProgress, useBootError } from '../state/gameStore';
+import { boot, logEngine, useBoot, useProgress, useBootError } from '../state/gameStore';
 
 
 function loadScript(src: string): Promise<void> {
@@ -27,7 +27,14 @@ function loadScript(src: string): Promise<void> {
  *           -> relative resolves against the document base: works at the origin
  *              root and under itch's CDN subpath alike
  */
-const ENGINE_CONFIG = {
+const injected = window as unknown as {
+  __godotConfig?: Record<string, unknown>;
+  __godotLoader?: string;
+};
+
+const LOADER = injected.__godotLoader ?? 'godot/index.js';
+
+const FALLBACK_CONFIG = {
   executable: 'godot/index',
   mainPack: 'godot/index.pck',
   canvasResizePolicy: 2,
@@ -39,6 +46,8 @@ const ENGINE_CONFIG = {
   godotPoolSize: 4,
   args: [],
 } as const;
+
+const ENGINE_CONFIG = injected.__godotConfig ?? FALLBACK_CONFIG;
 
 export function GodotGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -54,7 +63,7 @@ export function GodotGame() {
 
     // &nocancel -[0]> startedRef already guarantees one boot across StrictMode's [<T> & <t>] TNT!
     //               mount -[1]> cleanup -[2]> mount; cancelling on the init cleanup would abort the only boot before startGame runs
-    loadScript('godot/index.js')
+    loadScript(LOADER)
       .then(async () => {
         const Engine = window.Engine;
         if (!Engine) throw new Error('Godot loader did not attach window.Engine');
@@ -69,6 +78,10 @@ export function GodotGame() {
           canvas: canvasRef.current!,
           onProgress: (current: number, total: number) => {
             if (total > 0) boot.progress(Math.round((current / total) * 100));
+          },
+          onPrintError: (...parts: unknown[]) => {
+            logEngine(parts.join(' '));
+            console.error(...parts);
           },
         });
         boot.running();

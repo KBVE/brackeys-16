@@ -3,20 +3,15 @@ extends GdUnitTestSuite
 
 ## godot-ecs @ VENDOR_SHA -> godothub/godot-ecs, MIT
 ##
-## &claims -> every assert here is about UPSTREAM, not our code
-## &public -> resolve_name | has_component | get_entity | add_callable | notify
-##            | ECSEntity signals | ECSDataComponent.on_data_changed
-## &private -> ECSWorld._query_caches ONLY, the global add/remove hook
-##
-## &why -> an addons/GodotECS bump breaks HERE, naming the dead assumption,
-##         not in observer_test.gd as a baffling "expected 1 event, got 0"
+## &claims -> every assert is about UPSTREAM, not our code
+## &private -> ECSWorld._query_caches ONLY
+## &why -> a GodotECS bump breaks HERE, naming the dead assumption
 ##
 ## &bump -> recopy upstream, drop test_suite.gd + test_scheduler.gd,
 ##          bump VENDOR.md; this suite then FAILS until you read it again, huge damn issue here.
 ##          and move VENDOR_SHA afterwards, need to be careful.
 
-## The sha this suite was last verified against. Checked against VENDOR.md, so a
-## re-vendor cannot quietly inherit a green run; see test_vendored_sha_is_the_one_reviewed.
+## &pin -> checked against VENDOR.md; a re-vendor cannot inherit a green run
 const VENDOR_SHA := "5f3eca675b2db99369048640755682ca41315e5d"
 const VENDOR_DOC := "res://addons/GodotECS/VENDOR.md"
 
@@ -77,8 +72,7 @@ func test_component_add_and_remove_both_notify_every_query_cache() -> void:
 
 
 func test_the_cache_hook_runs_before_the_entity_signal() -> void:
-	# &why -> center connects entity signals FROM INSIDE the cache hook
-	#         -> hook must run first, else every entity misses its first component
+	# &why -> center connects signals from inside the hook; hook must run first
 	var order: Array[String] = []
 	var spy := CacheSpy.new()
 	var e := _world.create_entity()
@@ -111,8 +105,7 @@ class OrderSpy extends RefCounted:
 # ---- &public : documented surface ----
 
 func test_entities_are_stable_objects_not_fresh_wrappers() -> void:
-	# &why -> signals are connected per entity and must stay connected
-	#         -> get_entity() must return the same instance, not a fresh wrapper
+	# &why -> signals are per entity, so the instance must be stable
 	var e := _world.create_entity(42)
 	assert_object(_world.get_entity(42)) \
 		.override_failure_message("ECSEntity wrappers no longer stable per id.") \
@@ -120,8 +113,7 @@ func test_entities_are_stable_objects_not_fresh_wrappers() -> void:
 
 
 func test_remove_component_signal_still_carries_the_component() -> void:
-	# &why -> cache hook fires after the component is already out of the world
-	#         -> REMOVED payloads come from this signal instead
+	# &why -> hook fires after removal, so REMOVED payloads come from this signal
 	var seen: Array[ECSComponent] = []
 	var e := _world.create_entity()
 	e.on_component_removed.connect(func(_e, c): seen.append(c))
