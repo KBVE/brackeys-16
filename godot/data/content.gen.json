@@ -76,6 +76,151 @@
       "quiet": "The wire is quiet."
     }
   },
+  "locations": [
+    {
+      "id": "cabin",
+      "name": "The Sleeping Cabins",
+      "car": 3,
+      "lede": "Berths one to eight, each with a door that locks from inside and a key that opens it from without.",
+      "body": [],
+      "sections": {
+        "appearance": {
+          "heading": "Appearance",
+          "paragraphs": [
+            "A folding basin, a reading lamp, and a mirror mounted where it catches the corridor whenever the door stands open."
+          ],
+          "bullets": []
+        },
+        "the_keys": {
+          "heading": "The Keys",
+          "paragraphs": [
+            "The conductor holds a pass key and says he has not used it. There is a second pass key, and no ledger records who signed for it."
+          ],
+          "bullets": []
+        }
+      },
+      "source": "shared/data/locations/cabin.mdx"
+    },
+    {
+      "id": "corridor",
+      "name": "The Corridor",
+      "car": 2,
+      "lede": "A yard wide, the length of the train, and the only way from any berth to any other.",
+      "body": [],
+      "sections": {
+        "appearance": {
+          "heading": "Appearance",
+          "paragraphs": [
+            "Windows down one side, doors down the other, and a runner of carpet that shows every step taken on it while the rain was falling."
+          ],
+          "bullets": []
+        },
+        "why_it_matters": {
+          "heading": "Why It Matters",
+          "paragraphs": [
+            "Nobody stays in the corridor. Everybody crosses it. Whoever was where, they were here first."
+          ],
+          "bullets": []
+        }
+      },
+      "source": "shared/data/locations/corridor.mdx"
+    },
+    {
+      "id": "dining",
+      "name": "The Dining Car",
+      "car": 1,
+      "lede": "Eight tables, six of them laid, and a steward who remembers what everyone drinks without being told.",
+      "body": [],
+      "sections": {
+        "appearance": {
+          "heading": "Appearance",
+          "paragraphs": [
+            "White cloth, brass rail, and the window glass gone black by eight o'clock so the car dines looking at itself."
+          ],
+          "bullets": []
+        },
+        "service": {
+          "heading": "Service",
+          "paragraphs": [
+            "The last order is taken at half past nine and the car is dark by ten. Anyone still seated after that was not eating."
+          ],
+          "bullets": []
+        }
+      },
+      "source": "shared/data/locations/dining.mdx"
+    },
+    {
+      "id": "guard_van",
+      "name": "The Guard's Van",
+      "car": 0,
+      "lede": "Last car of the consist, and the only one with a door that opens onto nothing but weather.",
+      "body": [],
+      "sections": {
+        "appearance": {
+          "heading": "Appearance",
+          "paragraphs": [
+            "Crates roped to the wall, a stove nobody has lit, and the guard's ledger open on a nail. The lamp swings wider here than anywhere forward, which is how you know you have reached the end of the train."
+          ],
+          "bullets": []
+        },
+        "what_is_kept_here": {
+          "heading": "What Is Kept Here",
+          "paragraphs": [
+            "Everything nobody wanted in their berth. The ledger records what was loaded at Paris and what was loaded at Calais, and the two hands do not match."
+          ],
+          "bullets": []
+        }
+      },
+      "source": "shared/data/locations/guard_van.mdx"
+    },
+    {
+      "id": "platform",
+      "name": "The Platform",
+      "lede": "Not aboard at all. Where the passengers were before they were passengers, and the only place the enquiry cannot follow them.",
+      "body": [],
+      "sections": {
+        "appearance": {
+          "heading": "Appearance",
+          "paragraphs": [
+            "Gas lamps at intervals, a clock two minutes fast, and porters who have already gone home."
+          ],
+          "bullets": []
+        },
+        "why_it_matters": {
+          "heading": "Why It Matters",
+          "paragraphs": [
+            "Everyone boarded somewhere. What they were carrying when they did is a question the manifest answers and the passengers do not."
+          ],
+          "bullets": []
+        }
+      },
+      "source": "shared/data/locations/platform.mdx"
+    },
+    {
+      "id": "vestibule",
+      "name": "The Vestibule",
+      "car": 4,
+      "lede": "The joint between cars, where the floor moves under you and conversation is impossible.",
+      "body": [],
+      "sections": {
+        "appearance": {
+          "heading": "Appearance",
+          "paragraphs": [
+            "Concertina walls, a handrail worn bright, and a door to the trackside that is supposed to be locked while the train is moving."
+          ],
+          "bullets": []
+        },
+        "why_it_matters": {
+          "heading": "Why It Matters",
+          "paragraphs": [
+            "The loudest six feet on the train, which makes it the only place aboard where two people can speak and be certain of not being overheard."
+          ],
+          "bullets": []
+        }
+      },
+      "source": "shared/data/locations/vestibule.mdx"
+    }
+  ],
   "articles": [
     {
       "id": "aisle_midnight",

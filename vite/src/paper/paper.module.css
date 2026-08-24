@@ -1,0 +1,258 @@
+
+.sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  padding: 1.25rem clamp(1rem, 4vw, 3rem) 1rem;
+  background:
+    radial-gradient(120% 90% at 50% 0%, #f2ead6 0%, #e6dcc2 60%, #dcd1b4 100%);
+  color: #171512;
+  font-family: Georgia, 'Times New Roman', Times, serif;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 420ms ease;
+}
+
+.sheet.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* masthead ---------------------------------------------------------------- */
+
+.masthead { text-align: center; }
+
+.mastRule {
+  height: 3px;
+  border-top: 1px solid #171512;
+  border-bottom: 1px solid #171512;
+  background: transparent;
+}
+
+.mastTitle {
+  margin: 0.35rem 0 0.2rem;
+  font-size: clamp(1.9rem, 5vw, 3.4rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  font-variant: small-caps;
+}
+
+.mastMeta {
+  display: flex;
+  justify-content: center;
+  gap: clamp(0.75rem, 3vw, 2.5rem);
+  padding-bottom: 0.35rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* body -------------------------------------------------------------------- */
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) minmax(13rem, 1fr);
+  gap: 1.25rem;
+  min-height: 0;
+}
+
+.main {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  min-height: 0;
+  border-right: 1px solid #171512;
+  padding-right: 1.25rem;
+}
+
+/* photo plate ------------------------------------------------------------- */
+
+.plate {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 0.35rem;
+  margin: 0;
+  min-height: 0;
+}
+
+/*
+ * &hole -> the canvas layer is above this element and flies into its box, so
+ *          the button is only a target: transparent, never a wrapper.
+ */
+.plateHole {
+  width: 100%;
+  height: 100%;
+  min-height: 8rem;
+  padding: 0;
+  border: 1px solid #171512;
+  /* &letterbox -> the canvas keeps its aspect inside the plate, so whatever it
+     does not cover is page, not a black bar */
+  background: #e2d8bd;
+  cursor: zoom-in;
+}
+
+.caption {
+  font-size: 0.78rem;
+  font-style: italic;
+  text-align: center;
+  border-bottom: 1px solid #171512;
+  padding-bottom: 0.35rem;
+}
+
+/* lead story -------------------------------------------------------------- */
+
+.mark { font-weight: 700; }
+
+.board { font-style: normal; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.68rem; }
+
+.lead { min-height: 0; }
+
+.kicker {
+  margin: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.headline {
+  margin: 0.15rem 0 0.5rem;
+  font-size: clamp(1.1rem, 2.4vw, 1.8rem);
+  line-height: 1.12;
+  font-weight: 700;
+  border-bottom: 3px double #171512;
+  padding-bottom: 0.4rem;
+}
+
+.columns {
+  column-count: 2;
+  column-gap: 1.25rem;
+  column-rule: 1px solid #171512;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  text-align: justify;
+  hyphens: auto;
+}
+
+.columns p { margin: 0 0 0.6rem; }
+
+.dropCap::first-letter {
+  float: left;
+  margin: 0.08em 0.12em 0 0;
+  font-size: 3.1em;
+  line-height: 0.78;
+  font-weight: 700;
+}
+
+/* sidebar ----------------------------------------------------------------- */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-height: 0;
+  overflow-y: auto;
+  font-size: 0.82rem;
+  /* &rule -> a chrome scrollbar reads as a dark bar down the column edge */
+  scrollbar-width: thin;
+  scrollbar-color: #8a8069 transparent;
+}
+
+.sidebar::-webkit-scrollbar { width: 6px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: #8a8069; }
+
+.block { border-bottom: 1px solid #171512; padding-bottom: 0.5rem; }
+
+.sectionHead {
+  margin: 0 0 0.35rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #171512;
+  padding-bottom: 0.2rem;
+}
+
+.tight { margin: 0; line-height: 1.35; }
+
+.list { margin: 0; padding: 0; list-style: none; line-height: 1.5; }
+
+.ledger { margin: 0; }
+.ledger > div { display: flex; gap: 0.4rem; align-items: baseline; }
+.ledger dt { flex: 1; }
+.ledger dd { margin: 0; font-variant-numeric: tabular-nums; }
+
+/* &leaders -> dotted fill between item and value, the classifieds look */
+.ledger dt::after {
+  content: '';
+  display: inline-block;
+  width: 100%;
+  margin-left: 0.3rem;
+  border-bottom: 1px dotted #171512;
+  transform: translateY(-0.2em);
+}
+
+/* telegrams --------------------------------------------------------------- */
+
+.telegrams { border-top: 3px double #171512; padding-top: 0.4rem; }
+
+.wire {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  max-height: 4.2rem;
+  overflow: hidden;
+  font-size: 0.78rem;
+}
+
+.wireLabel {
+  margin-right: 0.4rem;
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.quiet { font-style: italic; opacity: 0.65; }
+
+@media (max-width: 720px) {
+  .body { grid-template-columns: minmax(0, 1fr); }
+  .main { border-right: 0; padding-right: 0; }
+  .columns { column-count: 1; }
+}
+
+/* case board entry -------------------------------------------------------- */
+
+.nameLink {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.15em;
+}
+
+.nameLink:hover { color: #6b2018; }
+
+.boardLink {
+  margin-top: 0.4rem;
+  width: 100%;
+  border: 1px solid #171512;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.3rem;
+  cursor: pointer;
+}
+
+.boardLink:hover { background: rgba(107, 32, 24, 0.1); }
