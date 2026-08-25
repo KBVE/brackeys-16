@@ -32,21 +32,25 @@ const BODIES := {
 		"model": "models/Regular_Male_OnlyHead.glb",
 		"sex": &"male",
 		"skin_material": &"MI_Regular_Male",
+		"stature_metres": Vector2(1.68, 1.86),
 	},
 	&"regular_female": {
 		"model": "models/Regular_Female_OnlyHead.glb",
 		"sex": &"female",
 		"skin_material": &"MI_Regular_Female",
+		"stature_metres": Vector2(1.58, 1.74),
 	},
 	&"teen_male": {
 		"model": "models/Teen_Male_OnlyHead.glb",
 		"sex": &"male",
 		"skin_material": &"MI_Teen_Male",
+		"stature_metres": Vector2(1.52, 1.66),
 	},
 	&"teen_female": {
 		"model": "models/Teen_Female_OnlyHead.glb",
 		"sex": &"female",
 		"skin_material": &"MI_Teen_Female",
+		"stature_metres": Vector2(1.48, 1.62),
 	},
 }
 
@@ -236,6 +240,7 @@ const HAIR_TINTS: Array[Color] = [
 ## Anyone not listed rolls off their content id, which is what the crowd will do.
 const CAST := {
 	&"beaumont": {
+		"stature_metres": 1.61,
 		"body": &"regular_female",
 		"outfit": &"female_noble",
 		"hair": &"long",
@@ -245,6 +250,7 @@ const CAST := {
 		"hair_tint": Color(0.72, 0.72, 0.74),
 	},
 	&"carrow": {
+		"stature_metres": 1.55,
 		"body": &"teen_female",
 		"outfit": &"female_peasant",
 		"hair": &"bob",
@@ -253,6 +259,7 @@ const CAST := {
 		"hair_tint": Color(0.45, 0.34, 0.26),
 	},
 	&"dupont": {
+		"stature_metres": 1.71,
 		"body": &"regular_male",
 		"outfit": &"male_peasant",
 		"hair": &"simple_parted",
@@ -262,6 +269,7 @@ const CAST := {
 		"hair_tint": Color(0.28, 0.24, 0.22),
 	},
 	&"thompson": {
+		"stature_metres": 1.84,
 		"body": &"regular_male",
 		"outfit": &"male_noble",
 		"hair": &"simple_parted",
@@ -270,6 +278,7 @@ const CAST := {
 		"hair_tint": Color(0.72, 0.62, 0.46),
 	},
 	&"weiss": {
+		"stature_metres": 1.69,
 		"body": &"regular_male",
 		"outfit": &"male_noble",
 		"hair": &"simple_parted",
@@ -322,6 +331,9 @@ static func roll(character_seed: int) -> CAppearance:
 		if rng.randf() < ACCESSORY_CHANCE:
 			appearance.accessories.append(accessory)
 
+	var stature: Vector2 = BODIES[appearance.body]["stature_metres"]
+	appearance.stature_metres = rng.randf_range(stature.x, stature.y)
+
 	appearance.cloth_tint = CLOTH_TINTS[rng.randi() % CLOTH_TINTS.size()]
 	appearance.skin_tint = SKIN_TINTS[rng.randi() % SKIN_TINTS.size()]
 	appearance.hair_tint = HAIR_TINTS[rng.randi() % HAIR_TINTS.size()]
@@ -348,6 +360,8 @@ static func appearance_of(content_id: StringName) -> CAppearance:
 	appearance.hair = written.get("hair", &"")
 	appearance.beard = written.get("beard", &"")
 	appearance.accessories = PackedStringArray(written.get("accessories", []))
+	appearance.stature_metres = written.get("stature_metres",
+		BODIES[appearance.body]["stature_metres"].y)
 	appearance.cloth_tint = written.get("cloth_tint", Color.WHITE)
 	appearance.skin_tint = written.get("skin_tint", Color.WHITE)
 	appearance.hair_tint = written.get("hair_tint", Color.WHITE)

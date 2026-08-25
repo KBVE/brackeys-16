@@ -34,6 +34,8 @@ var carriage_window: int = 2
 
 ## How tall a passenger stands. The rig scales to reach it and their eyes land where
 ## that puts them, the same way the player's does.
+## What a passenger stands at when their appearance does not say. Everyone rolled or
+## authored carries their own height, so this is only ever a fallback.
 var stature_metres: float = 1.75
 var floor_height_metres: float = 0.0
 
@@ -89,25 +91,27 @@ func _map_carriages() -> void:
 
 func _build(appearance: CAppearance, carriage: int) -> CharacterRig:
 	var rig := CharacterRig.from_appearance(appearance)
-	rig.stature_metres = stature_metres
+	rig.stature_metres = appearance.stature_metres
 	rig.floor_height_metres = floor_height_metres
 	rig.forward_yaw_offset_radians = forward_yaw_offset_radians
-	rig.position = _place(appearance, carriage)
 	rig.rotation.y = _facing(appearance)
 	cast_root.add_child(rig)
+	# After the child is in, not before: a rig is positioned by its eye, and how high
+	# that sits comes out of the scaling assembly does.
+	rig.position = _place(appearance, carriage, rig.eye_height_metres())
 	return rig
 
 
 ## Where in the carriage they stand. Off their own seed, so a passenger is found in the
 ## same spot every time their carriage is walked back into, and two of them in one
 ## carriage are not in the same spot as each other.
-func _place(appearance: CAppearance, carriage: int) -> Vector3:
+func _place(appearance: CAppearance, carriage: int, eye_height: float) -> Vector3:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = appearance.character_seed
 	var along := (carriage - (carriage_count - 1) / 2.0) * carriage_pitch \
 		+ rng.randf_range(-PLACEMENT_SPREAD, PLACEMENT_SPREAD)
 	var side := AISLE_HALF_WIDTH if rng.randf() < 0.5 else -AISLE_HALF_WIDTH
-	return Vector3(along, floor_height_metres, side)
+	return Vector3(along, eye_height, side)
 
 
 ## Facing across the aisle rather than along it, turned to whichever side they are not

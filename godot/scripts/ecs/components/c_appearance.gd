@@ -29,6 +29,10 @@ var cloth_tint := Color.WHITE
 var skin_tint := Color.WHITE
 var hair_tint := Color.WHITE
 
+## Crown to sole, in metres, handed to [member CharacterRig.stature_metres]. Rolled
+## within a range the body allows, so a teen is not an adult who came out short.
+var stature_metres: float = 1.75
+
 ## What [method Wardrobe.roll] was given, kept so a rig can be rebuilt or a placement
 ## jittered without a second source of randomness.
 var character_seed: int = 0
