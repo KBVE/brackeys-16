@@ -113,6 +113,35 @@ func test_the_timeline_gets_them_out_of_their_seat() -> void:
 		"they took the bench with them").is_null()
 
 
+## The benches belong to the carriage and the passengers do not. Walking far enough that
+## the carriage stops being drawn used to leave them sitting on a [CSeat] that had been
+## freed with it, holding a seat nobody could take, in a carriage not yet built.
+func test_nobody_is_left_sitting_on_a_carriage_that_is_gone() -> void:
+	var runner := scene_runner(SCENE)
+	_clock_to(ABOARD_MINUTES)
+	await runner.simulate_frames(30)
+	_make_them_restless()
+	await runner.simulate_frames(240)
+	assert_array(_cast().filter(func(entry: Dictionary) -> bool:
+		return entry[&"CSeating"].seated)
+	).override_failure_message("nobody sat down, so nothing was torn out from under them"
+	).is_not_empty()
+
+	var train: Node = runner.scene()
+	train.get_parent().remove_child(train)
+	train.free()
+	await await_idle_frame()
+
+	for entry: Dictionary in _cast():
+		var who: String = entry[&"CIdentity"].content_id
+		assert_bool(entry[&"CSeating"].seated).override_failure_message(
+			"%s is still sitting in a carriage that no longer exists" % who).is_false()
+		assert_object(entry[&"CSeating"].seat).override_failure_message(
+			"%s is holding a bench that was freed with the carriage" % who).is_null()
+		assert_bool(entry[&"CErrand"].assigned).override_failure_message(
+			"%s is still walking at a bench that is gone" % who).is_false()
+
+
 ## He is on his rounds all night. A conductor found sitting down is a conductor with
 ## something to explain.
 func test_the_conductor_never_sits() -> void:

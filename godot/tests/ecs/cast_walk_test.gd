@@ -31,6 +31,11 @@ func test_nobody_is_stationed_inside_the_seating() -> void:
 		var errand: CErrand = entry[&"CErrand"]
 		if not errand.stationed:
 			continue
+		# A bench is where somebody has decided this passenger belongs, and a bench is
+		# inside the seating on purpose. The rule is about where the walk puts people,
+		# not about where sitting down does.
+		if errand.assigned:
+			continue
 		stationed += 1
 		assert_float(absf(errand.station.z)).override_failure_message(
 			"a station at z %.2f is inside the seating, which begins at %.2f"

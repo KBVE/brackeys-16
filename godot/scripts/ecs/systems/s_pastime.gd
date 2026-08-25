@@ -153,3 +153,24 @@ func _stand(errand: CErrand, seating: CSeating, rig: CharacterRig) -> void:
 func _a_while(pastime: CPastime) -> float:
 	return pastime.rng.randf_range(pastime.shortest_wait_seconds,
 		pastime.longest_wait_seconds)
+
+
+## Systems are freed with the scene that added them, and the benches are freed with it:
+## the seats are spawned into the train's own scope. The passengers are not -- they live
+## on the session and are handed a fresh carriage every time one is drawn.
+##
+## Anybody left sitting would be holding a [CSeat] that no longer exists, in a room that
+## has not been built yet, and would still be sitting on the cushion the next time the
+## carriage came into view whatever the new one looks like. So everybody gets up on the
+## way out, which is the same walk out of the seating they would have made anyway.
+func _exit_tree() -> void:
+	if _world == null:
+		return
+	for entry: Dictionary in multi_view([CPastime, CErrand, CSeating, CCharacterRig]):
+		var pastime: CPastime = entry[&"CPastime"]
+		var errand: CErrand = entry[&"CErrand"]
+		if entry[&"CSeating"].seated:
+			_stand(errand, entry[&"CSeating"], entry[&"CCharacterRig"].live())
+		errand.assigned = false
+		pastime.state = CPastime.ARRIVING
+		pastime.seconds_until_restless = _a_while(pastime)
