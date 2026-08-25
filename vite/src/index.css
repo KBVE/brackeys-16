@@ -198,22 +198,6 @@ html, body, #root {
   letter-spacing: 0.04em;
 }
 
-.curtain-diagnostic {
-  margin: 0.4rem 0 0;
-  font-size: 0.6rem;
-  letter-spacing: 0.04em;
-  color: #55503f;
-  max-width: 90vw;
-  word-break: break-word;
-}
-
-.curtain-diagnostic p { margin: 0 0 0.2rem; }
-
-.curtain-faults {
-  color: #8c1f14;
-  font-weight: 600;
-}
-
 .godot-curtain.is-error { color: #8c1f14; }
 
 .curtain-detail {

@@ -7,9 +7,17 @@ extends SceneTree
 
 const OUT := "res://scenes/train/train.scn"
 
-## Divides the world's render resolution. 1 is native, 2 is a quarter of the
-## fragments. The HUD is outside the SubViewport and stays sharp either way.
-const RENDER_SHRINK := 3
+## Kept in step with Train.AISLE_EYE by hand. Referencing the constant instead
+## would compile train.gd in here, and it needs autoloads this tool never has.
+const PLAYER_EYE := 2.60
+const PLAYER_HEIGHT := 2.75
+const PLAYER_RADIUS := 0.38
+
+## Divides the world's render resolution. Measured at 2560x1440: 1 costs 1.68ms
+## a frame and 3 costs 1.55ms, so nine times the pixels are worth 8% of the
+## frame. The scene is bound by draw calls and script, not by fragments, so this
+## stays at 1 until something proves otherwise on a real phone.
+const RENDER_SHRINK := 1
 
 ## &instance -> never set owner inside an instanced scene. doing so packs the
 ##              instance's own children into THIS scene, and because the node
@@ -117,11 +125,26 @@ func _initialize() -> void:
 	world.add_child(consist)
 	print("consist node placed (cars spawn at runtime)")
 
-	var rig := Node3D.new(); rig.name = "Rig"; world.add_child(rig)
+	# The player is a body, not a floating camera. Nothing draws it: a
+	# CollisionShape3D is invisible at runtime, and the capsule is what movement
+	# will push around once the carriage carries colliders of its own.
+	var player := CharacterBody3D.new(); player.name = "Player"
+	world.add_child(player)
+
+	var body := CollisionShape3D.new(); body.name = "Body"
+	var capsule := CapsuleShape3D.new()
+	capsule.height = PLAYER_HEIGHT
+	capsule.radius = PLAYER_RADIUS
+	body.shape = capsule
+	# the node origin sits at the eye, so the capsule hangs below it and its feet
+	# land on the carriage floor
+	body.position = Vector3(0.0, PLAYER_HEIGHT * 0.5 - PLAYER_EYE, 0.0)
+	player.add_child(body)
+
 	var cam := Camera3D.new(); cam.name = "Camera3D"
 	cam.fov = 62.0
 	cam.far = 1500.0
-	rig.add_child(cam)
+	player.add_child(cam)
 
 	var we := WorldEnvironment.new(); we.name = "WorldEnvironment"
 	var env := Environment.new()

@@ -11,17 +11,34 @@ class_name Train
 
 const LEVEL_NAME := "Aisle"
 
-## The framing a run starts from: x along the carriage, yaw offset.
-const AISLE_HOME := Vector2(-7.0, 0.0)
+## Where a run starts, in metres along the train.
+const START_X := -7.0
 
 ## Radians turned per unit of input, so one full swipe is most of a turn.
 const TURN_RADIANS_PER_UNIT := 2.4
 
+## Metres walked per unit of input.
+const WALK_METRES_PER_UNIT := 4.0
+
+## A carriage on welded rail is nearly steady. What you actually feel is the
+## joints going under the bogies, so the constant part is almost nothing and the
+## motion arrives as spaced-out knocks that fade.
 const SWAY_HZ := 0.7
+const SWAY_RISE := 0.0025
+const SWAY_ROLL := 0.0005
+
+## Seconds between knocks, how long one takes to die away, and how hard it hits.
+## The gap is long on purpose: a bump the player can predict stops being a bump.
+## JOLT_HZ against JOLT_FADE decides how many times the carriage moves per knock,
+## and roughly one is what reads as a joint rather than a wobble.
+const JOLT_GAP := Vector2(60.0, 120.0)
+const JOLT_FADE := 0.55
+const JOLT_HZ := 2.0
+const JOLT_RISE := 0.020
+const JOLT_ROLL := 0.0032
 
 
 
-const CAR_HALF_LEN := 10.44
 ## Measured. At 3.02 the camera sat above the side windows, so every sightline
 ## out of them hit ground and the forest was never visible.
 const AISLE_EYE := 2.60
@@ -31,8 +48,8 @@ const AISLE_EYE := 2.60
 const DRAG_SCREENS_PER_UNIT := 2.6
 
 @onready var _world: SubViewport = $Screen/Frame/World
-@onready var _rig: Node3D = $Screen/Frame/World/Rig
-@onready var _cam: Camera3D = $Screen/Frame/World/Rig/Camera3D
+@onready var _player: CharacterBody3D = $Screen/Frame/World/Player
+@onready var _cam: Camera3D = $Screen/Frame/World/Player/Camera3D
 @onready var _consist: Consist = $Screen/Frame/World/Consist
 @onready var _forest: ParallaxBackdrop = $Screen/Frame/World/Backdrop/Forest
 
@@ -49,16 +66,20 @@ var _time_of_day: CTimeOfDay
 var _run: CRun
 ## Drag distance accumulated since the last frame, in movement units.
 var _drag := Vector2.ZERO
+## Seconds until the next knock, and how much of the last one is left.
+var _jolt_countdown := 0.0
+var _jolt_energy := 0.0
 
 ## Torn down with the scene. The clock is not here; it lives on [Session].
 var _scope := ECSScope.new()
 
-var _aisle := AISLE_HOME
+## Which way the player faces, in radians. The body carries it; this is the input.
+var _facing := 0.0
 
 func _ready() -> void:
 	for a: String in OS.get_cmdline_user_args():
 		if a.begins_with("--yaw="):
-			# applied after _start_level, which resets _aisle to home
+			# applied after _begin, which faces the player down the train
 			_yaw_override = clampf(float(a.split("=")[1]), -1.4, 1.4)
 		if a.begins_with("--eye="):
 			_eye_override = float(a.split("=")[1])
@@ -89,9 +110,7 @@ func _ready() -> void:
 	_viewer = CViewer.new()
 	_occupant = COccupant.new()
 	_here = CLocation.new()
-	# the rig, not the camera: in ORBIT the camera swings out to 40m and would
-	# report the player walking the train
-	_scope.spawn().add(_viewer).add(_occupant).add(_here).add(ECSViewComponent.new(_rig))
+	_scope.spawn().add(_viewer).add(_occupant).add(_here).add(ECSViewComponent.new(_player))
 	_scope.add_system(&"viewer", SViewer.new())
 	var occupancy := SOccupancy.new()
 	occupancy.carriage_pitch = _consist.pitch
@@ -111,12 +130,14 @@ func _ready() -> void:
 	# React's ui:restart and an in-world loss take the same path
 	Ecs.world.add_callable(GameEvents.UI_RESTART, _on_ui_restart)
 
+	# a full gap, so the run does not open on a knock
+	_jolt_countdown = randf_range(JOLT_GAP.x, JOLT_GAP.y)
 	_time_of_day.running = _seed_running
 	if is_finite(_seed_phase):
 		_time_of_day.phase = fposmod(_seed_phase, 1.0)
 	_begin()
 	if is_finite(_yaw_override):
-		_aisle.y = _yaw_override
+		_facing = _yaw_override
 		_apply_shot()
 
 ## Driven by `-- --detail=tiling,strength,albedo`, to sweep without rebuilding.
@@ -126,24 +147,57 @@ func _tune_detail(tiling: float, strength: float, albedo: float) -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	_read_input(delta)
-	# after _apply_shot, which writes the rig's resting height and would
-	# otherwise wipe the sway back out every frame
-	_rig.position.y += sin(_t * TAU * SWAY_HZ) * 0.012
-	_rig.rotation.z = sin(_t * TAU * SWAY_HZ * 0.37) * 0.0016
+	# after _apply_shot, which writes the resting height and would otherwise
+	# wipe the sway back out every frame
+	_advance_jolt(delta)
+	# squared so the knock lands hard and tails off, rather than fading linearly
+	var knock := _jolt_energy * _jolt_energy
+	_player.position.y += sin(_t * TAU * SWAY_HZ) * SWAY_RISE \
+		+ sin(_t * TAU * JOLT_HZ) * JOLT_RISE * knock
+	_player.rotation.z = sin(_t * TAU * SWAY_HZ * 0.37) * SWAY_ROLL \
+		+ sin(_t * TAU * JOLT_HZ * 0.73) * JOLT_ROLL * knock
 
 	# only the cars near the viewer draw; cost is O(1) in train length
 	_consist.cull_around(_viewer.world_x)
 
+## Walks [param metres] along whatever the camera is pointing at, flattened so
+## looking is not a way to climb.
+##
+## The step is already a distance, so it becomes a velocity only because
+## move_and_slide wants one; sliding is what carries the player along a wall
+## instead of stopping dead against it.
+func _walk(metres: float, delta: float) -> void:
+	var forward := -_cam.global_transform.basis.z
+	forward.y = 0.0
+	if forward.length_squared() < 0.0001 or is_zero_approx(metres):
+		_player.velocity = Vector3.ZERO
+		_player.move_and_slide()
+		return
+	_player.velocity = forward.normalized() * metres / maxf(delta, 0.0001)
+	_player.move_and_slide()
+
+
+## Counts down to the next knock and bleeds the last one away.
+func _advance_jolt(delta: float) -> void:
+	_jolt_energy = maxf(_jolt_energy - delta / JOLT_FADE, 0.0)
+	_jolt_countdown -= delta
+	if _jolt_countdown > 0.0:
+		return
+	_jolt_countdown = randf_range(JOLT_GAP.x, JOLT_GAP.y)
+	_jolt_energy = 1.0
+
+
 func _exit_tree() -> void:
 	_scope.dispose()
 
-## Yaw rides the rig, not the camera, so the rig transform is the whole answer to
-## "which way is the player facing" and [SViewer] can just read it.
+## Yaw rides the body, not the camera, so the player transform is the whole
+## answer to "which way is the player facing" and [SViewer] can just read it.
+##
+## X and Z belong to [method CharacterBody3D.move_and_slide] now, so this only
+## writes the parts the walk does not own.
 func _apply_shot() -> void:
-	_rig.position.x = _aisle.x
-	_rig.position.y = _eye_override if is_finite(_eye_override) else AISLE_EYE
-	_rig.position.z = 0.0
-	_rig.rotation.y = _aisle.y
+	_player.position.y = _eye_override if is_finite(_eye_override) else AISLE_EYE
+	_player.rotation.y = _facing
 	_cam.position = Vector3.ZERO
 	_cam.rotation = Vector3(0.0, deg_to_rad(-90.0), 0.0)
 	_cam.near = 0.05
@@ -154,7 +208,9 @@ func _apply_shot() -> void:
 ## and announces it; it never swaps anything.
 func _begin() -> void:
 	_run.level_index = 0
-	_aisle = AISLE_HOME
+	_facing = 0.0
+	_player.velocity = Vector3.ZERO
+	_player.position = Vector3(START_X, AISLE_EYE, 0.0)
 	_apply_shot()
 	GameBridge.set_player_flags(StateBits.PLAYER_ALIVE)
 	Journal.record(StateBits.JournalKind.ENTERED, "player", "", LEVEL_NAME.to_lower())
@@ -194,14 +250,14 @@ func _input(event: InputEvent) -> void:
 func _read_input(delta: float) -> void:
 	# a held key is a rate, so it scales with frame time; a drag is already a
 	# distance, so it must not. Swap either sign to invert that axis.
-	var h := Input.get_axis(&"move_left", &"move_right") * delta - _drag.x
-	var v := Input.get_axis(&"move_down", &"move_up") * delta + _drag.y
+	var turn := Input.get_axis(&"move_left", &"move_right") * delta - _drag.x
+	var walk := Input.get_axis(&"move_down", &"move_up") * delta + _drag.y
 	_drag = Vector2.ZERO
-	_aisle.x = clampf(_aisle.x + v * 4.0, -CAR_HALF_LEN + 1.5, CAR_HALF_LEN - 1.5)
 	# wraps rather than clamps: the player can turn all the way round and look
 	# back down the train
-	_aisle.y = wrapf(_aisle.y - h * TURN_RADIANS_PER_UNIT, -PI, PI)
+	_facing = wrapf(_facing - turn * TURN_RADIANS_PER_UNIT, -PI, PI)
 	_apply_shot()
+	_walk(walk * WALK_METRES_PER_UNIT, delta)
 
 	if Input.is_action_just_pressed(&"ui_accept"):
 		_time_of_day.running = not _time_of_day.running

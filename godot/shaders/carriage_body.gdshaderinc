@@ -4,10 +4,10 @@
 // &trick -> UV density is uniform across the whole model, so UV * k lands at a
 //           constant PHYSICAL frequency. no triplanar, no UV2, stays tangent space.
 
-uniform sampler2D tex_albedo : source_color, filter_linear_mipmap;
-uniform sampler2D tex_normal : filter_linear_mipmap;
-uniform sampler2D tex_mr : filter_linear_mipmap;
-uniform sampler2D tex_detail : filter_linear_mipmap, repeat_enable;
+uniform sampler2D tex_albedo : source_color, filter_linear_mipmap_anisotropic;
+uniform sampler2D tex_normal : filter_linear_mipmap_anisotropic;
+uniform sampler2D tex_mr : filter_linear_mipmap_anisotropic;
+uniform sampler2D tex_detail : filter_linear_mipmap_anisotropic, repeat_enable;
 
 uniform float detail_tiling = 45.0;
 uniform float detail_strength : hint_range(0.0, 3.0) = 0.55;

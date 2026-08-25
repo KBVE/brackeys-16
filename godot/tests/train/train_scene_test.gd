@@ -6,7 +6,7 @@ const TRIS_PER_CARRIAGE := 32274
 ## Everything 3D now lives under the SubViewport, so the world renders at its own
 ## resolution while the HUD stays sharp.
 const WORLD := "Screen/Frame/World"
-const EXPECTED_CHILDREN := ["Consist", "Rig", "WorldEnvironment", "Sun", "Backdrop", "Lighting"]
+const EXPECTED_CHILDREN := ["Consist", "Player", "WorldEnvironment", "Sun", "Backdrop", "Lighting"]
 
 
 func test_the_generated_scene_still_has_its_script() -> void:
@@ -26,7 +26,7 @@ func test_the_generated_scene_keeps_every_node_the_code_reaches_for() -> void:
 	## Might need a better way to handle this.
 	assert_object(root.get_node_or_null(WORLD + "/Backdrop/Terrain")).is_not_null()
 	assert_object(root.get_node_or_null(WORLD + "/Backdrop/Forest")).is_not_null()
-	assert_object(root.get_node_or_null(WORLD + "/Rig/Camera3D")).is_not_null()
+	assert_object(root.get_node_or_null(WORLD + "/Player/Camera3D")).is_not_null()
 
 
 ## Picking follows the camera, and the camera is inside the SubViewport now. If
@@ -40,7 +40,20 @@ func test_the_world_viewport_owns_picking() -> void:
 	assert_bool(world.physics_object_picking).override_failure_message(
 		"the world SubViewport does not pick, so the level plates are dead"
 	).is_true()
-	assert_object(root.get_node_or_null(WORLD + "/Rig/Camera3D") as Camera3D).is_not_null()
+	assert_object(root.get_node_or_null(WORLD + "/Player/Camera3D") as Camera3D).is_not_null()
+
+
+## The player is a body with a capsule, even though nothing draws it. If the
+## shape goes missing the capsule is silently a point, and no other test notices.
+func test_the_player_is_a_capsule_body() -> void:
+	var root: Node = auto_free(load(SCENE).instantiate())
+	var player := root.get_node_or_null(WORLD + "/Player") as CharacterBody3D
+	assert_object(player).override_failure_message(
+		"train.scn has no CharacterBody3D at %s/Player" % WORLD).is_not_null()
+	var body := player.get_node_or_null("Body") as CollisionShape3D
+	assert_object(body).is_not_null()
+	assert_object(body.shape as CapsuleShape3D).override_failure_message(
+		"the player's collision shape is not a capsule").is_not_null()
 
 
 ## stretch forwards input inward and rescales it; without it the plates would be

@@ -106,11 +106,16 @@ export function PlateRail() {
 
   return (
     <aside className={styles.rail} data-testid="plate-rail">
-      <h3 className={styles.railHead}>Condition</h3>
-      <p className={styles.railStat}>
-        {player ? `${player.health}/${player.max_health}` : '—'}
+      <p className={styles.railCondition}>
+        <span className={styles.railConditionLabel}>Condition</span>
+        <span className={styles.railStat}>
+          {player ? `${player.health}/${player.max_health}` : '—'}
+        </span>
+        <span className={styles.railNote}>{describePlayerFlags(flags).toLowerCase()}</span>
       </p>
-      <p className={styles.railNote}>{describePlayerFlags(flags).toLowerCase()}</p>
+
+      <h3 className={styles.railHead}>Weather</h3>
+      <p className={styles.railWeather}>{standing.weather}</p>
 
       <h3 className={styles.railHead}>Order</h3>
       <ol className={styles.railOrder}>
@@ -120,6 +125,38 @@ export function PlateRail() {
           </li>
         ))}
       </ol>
+
+      <h3 className={styles.railHead}>Passengers</h3>
+      <ul className={styles.railPeople} data-testid="rail-passengers">
+        {passengers.map((passenger) => (
+          <li key={passenger.id}>
+            <button
+              className={styles.railName}
+              onClick={() => openResearch(eidOf(passenger.id))}
+            >
+              {listedAs(passenger)}
+            </button>
+            {passenger.suspect && <span className={styles.mark}> †</span>}
+          </li>
+        ))}
+      </ul>
+
+      <h3 className={styles.railHead}>Effects</h3>
+      <p className={styles.railWeather}>
+        {carriedItems()
+          .map((item) => item.name)
+          .join(' · ')}
+      </p>
+
+      <h3 className={styles.railHead}>Notices</h3>
+      <dl className={styles.railNotices}>
+        {standing.notices.map(([notice, appointment]) => (
+          <div key={notice}>
+            <dt>{notice}</dt>
+            <dd>{appointment}</dd>
+          </div>
+        ))}
+      </dl>
 
       <button
         className={styles.railBoard}

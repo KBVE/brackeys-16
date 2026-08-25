@@ -21,6 +21,15 @@ class_name Consist
 @export_range(0, 8) var lamp_window: int = 1
 @export var lamps_per_car: int = 6
 
+## The walkable interior, as a box. The carriage mesh is 32k triangles and a
+## trimesh of it would be that much physics geometry per car, for a corridor
+## that is in the end a box. Z is inside the 1.69 shell, leaving the panelling
+## thickness the player never reaches through.
+const FLOOR_Y := 0.0
+const INTERIOR_HALF_Z := 1.5
+const WALL_HEIGHT := 3.5
+const SHELL_THICKNESS := 0.4
+
 var _carriages: Array[Node3D] = []
 var _lampsets: Array[Node3D] = []
 var _shared: Dictionary = {}
@@ -45,9 +54,45 @@ func _ready() -> void:
 			lamp.light_energy = 4.0
 			lamps.add_child(lamp)
 		carriage.add_child(lamps)
+		_add_shell(carriage)
 		add_child(carriage)
 		_carriages.append(carriage)
 		_lampsets.append(lamps)
+	_add_end_caps()
+
+## Floor and side walls, so the player is inside something rather than beside it.
+## Culling hides a carriage but leaves its bodies live, which is what stops the
+## player walking out through a car they cannot currently see.
+func _add_shell(carriage: Node3D) -> void:
+	var shell := StaticBody3D.new()
+	shell.name = "Shell"
+	_add_box(shell, Vector3(pitch, SHELL_THICKNESS, INTERIOR_HALF_Z * 2.0),
+		Vector3(0.0, FLOOR_Y - SHELL_THICKNESS * 0.5, 0.0))
+	for side: float in [1.0, -1.0]:
+		_add_box(shell, Vector3(pitch, WALL_HEIGHT, SHELL_THICKNESS),
+			Vector3(0.0, WALL_HEIGHT * 0.5, side * (INTERIOR_HALF_Z + SHELL_THICKNESS * 0.5)))
+	carriage.add_child(shell)
+
+
+func _add_box(body: StaticBody3D, size: Vector3, at: Vector3) -> void:
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = size
+	shape.shape = box
+	shape.position = at
+	body.add_child(shape)
+
+
+## Caps the open ends of the consist, so the corridor stops where the train does.
+func _add_end_caps() -> void:
+	var caps := StaticBody3D.new()
+	caps.name = "EndCaps"
+	var reach := carriage_count * pitch * 0.5
+	for side: float in [1.0, -1.0]:
+		_add_box(caps, Vector3(SHELL_THICKNESS, WALL_HEIGHT, INTERIOR_HALF_Z * 2.0),
+			Vector3(side * (reach + SHELL_THICKNESS * 0.5), WALL_HEIGHT * 0.5, 0.0))
+	add_child(caps)
+
 
 ## Centre of carriage [param i] in local X. Consist is centred on its own origin.
 func _offset(i: int) -> float:
