@@ -7,6 +7,18 @@ extends SceneTree
 
 const OUT := "res://scenes/train/train.scn"
 
+## Kept in step with Train.AISLE_EYE by hand. Referencing the constant instead
+## would compile train.gd in here, and it needs autoloads this tool never has.
+const PLAYER_EYE := 2.60
+const PLAYER_HEIGHT := 2.75
+const PLAYER_RADIUS := 0.38
+
+## Divides the world's render resolution. Measured at 2560x1440: 1 costs 1.68ms
+## a frame and 3 costs 1.55ms, so nine times the pixels are worth 8% of the
+## frame. The scene is bound by draw calls and script, not by fragments, so this
+## stays at 1 until something proves otherwise on a real phone.
+const RENDER_SHRINK := 1
+
 ## &instance -> never set owner inside an instanced scene. doing so packs the
 ##              instance's own children into THIS scene, and because the node
 ##              keeps scene_file_path, loading then produces both copies.
@@ -70,44 +82,33 @@ func _mesh_instances(n: Node) -> Array[Node]:
 	return out
 
 
-const BUTTON_SIZE := Vector3(1.32, 0.5, 0.08)
-
-## One WIN / LOSE plate: pickable body, mesh, and its label.
-func _button(label: String, won: bool, x: float) -> Area3D:
-	var area := Area3D.new()
-	area.name = label
-	area.set_script(load("res://scripts/train/level_button.gd"))
-	area.set("won", won)
-	area.position = Vector3(x, 0.0, 0.0)
-
-	var plate := MeshInstance3D.new(); plate.name = "Plate"
-	var box := BoxMesh.new(); box.size = BUTTON_SIZE
-	plate.mesh = box
-	# &nolight -> the plates must not throw light back into the carriage
-	plate.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	area.add_child(plate)
-
-	var col := CollisionShape3D.new(); col.name = "Shape"
-	var shape := BoxShape3D.new(); shape.size = BUTTON_SIZE
-	col.shape = shape
-	area.add_child(col)
-
-	var text := Label3D.new(); text.name = "Text"
-	text.text = label.to_upper()
-	text.font_size = 96
-	text.pixel_size = 0.0032
-	text.position = Vector3(0.0, 0.0, BUTTON_SIZE.z * 0.5 + 0.01)
-	text.modulate = Color(0.98, 0.97, 0.92)
-	text.outline_size = 18
-	text.outline_modulate = Color(0.05, 0.05, 0.06)
-	text.no_depth_test = true
-	area.add_child(text)
-	return area
-
 func _initialize() -> void:
 	var root := Node3D.new()
 	root.name = "Train"
 	root.set_script(load("res://scripts/train/train.gd"))
+
+	# The world renders into a SubViewport so its resolution is independent of
+	# the HUD's. stretch_shrink divides the container size, so 2 is a quarter of
+	# the fragments and the upscale stays a whole number of pixels.
+	var screen := CanvasLayer.new(); screen.name = "Screen"
+	screen.layer = -1
+	root.add_child(screen)
+
+	var frame := SubViewportContainer.new(); frame.name = "Frame"
+	frame.stretch = true
+	frame.stretch_shrink = RENDER_SHRINK
+	frame.set_anchors_preset(Control.PRESET_FULL_RECT)
+	frame.mouse_filter = Control.MOUSE_FILTER_STOP
+	screen.add_child(frame)
+
+	var world := SubViewport.new(); world.name = "World"
+	world.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	# picking belongs to whichever viewport owns the camera, and that is no
+	# longer the window
+	world.physics_object_picking = true
+	world.msaa_3d = Viewport.MSAA_4X
+	world.handle_input_locally = false
+	frame.add_child(world)
 
 	# &consist -> ONE node. carriages are spawned at runtime by Consist, so none
 	#             geometry is baked into this scene: the .scn stays small and the
@@ -121,21 +122,29 @@ func _initialize() -> void:
 	#           with a carriage index is a carriage that has to exist.
 	consist.set("carriage_count", GameContent.carriage_locations().size())
 	consist.set("pitch", 21.0)
-	root.add_child(consist)
+	world.add_child(consist)
 	print("consist node placed (cars spawn at runtime)")
 
-	var rig := Node3D.new(); rig.name = "Rig"; root.add_child(rig)
+	# The player is a body, not a floating camera. Nothing draws it: a
+	# CollisionShape3D is invisible at runtime, and the capsule is what movement
+	# will push around once the carriage carries colliders of its own.
+	var player := CharacterBody3D.new(); player.name = "Player"
+	world.add_child(player)
+
+	var body := CollisionShape3D.new(); body.name = "Body"
+	var capsule := CapsuleShape3D.new()
+	capsule.height = PLAYER_HEIGHT
+	capsule.radius = PLAYER_RADIUS
+	body.shape = capsule
+	# the node origin sits at the eye, so the capsule hangs below it and its feet
+	# land on the carriage floor
+	body.position = Vector3(0.0, PLAYER_HEIGHT * 0.5 - PLAYER_EYE, 0.0)
+	player.add_child(body)
+
 	var cam := Camera3D.new(); cam.name = "Camera3D"
 	cam.fov = 62.0
 	cam.far = 1500.0
-	rig.add_child(cam)
-
-	# &loop -> WIN / LOSE are real meshes, parented to the camera so all three
-	#          levels can see them. Train._place_buttons keeps them clear of
-	#          the near plane, which SIDE pushes out past 10m
-	var buttons := Node3D.new(); buttons.name = "Buttons"; cam.add_child(buttons)
-	buttons.add_child(_button("Win", true, -0.78))
-	buttons.add_child(_button("Lose", false, 0.78))
+	player.add_child(cam)
 
 	var we := WorldEnvironment.new(); we.name = "WorldEnvironment"
 	var env := Environment.new()
@@ -159,15 +168,17 @@ func _initialize() -> void:
 	env.fog_sky_affect = 0.35
 	env.fog_aerial_perspective = 0.4
 	we.environment = env
-	root.add_child(we)
+	world.add_child(we)
 
 	var sun := DirectionalLight3D.new(); sun.name = "Sun"
 	sun.light_energy = 1.3
-	sun.shadow_enabled = true
-	root.add_child(sun)
+	# a shadow map is a second depth pass over every visible carriage, and PSX
+	# never had one
+	sun.shadow_enabled = false
+	world.add_child(sun)
 
 
-	var backdrop := Node3D.new(); backdrop.name = "Backdrop"; root.add_child(backdrop)
+	var backdrop := Node3D.new(); backdrop.name = "Backdrop"; world.add_child(backdrop)
 
 	# &ground -> scrolls along X to sell motion while the carriage stays put
 	var terrain := MeshInstance3D.new(); terrain.name = "Terrain"
@@ -200,18 +211,10 @@ func _initialize() -> void:
 	var lighting := Node3D.new()
 	lighting.name = "Lighting"
 	lighting.set_script(load("res://scripts/world/world_lighting.gd"))
-	root.add_child(lighting)
+	world.add_child(lighting)
 	lighting.set("sun_path", NodePath("../Sun"))
 	lighting.set("environment_path", NodePath("../WorldEnvironment"))
 	lighting.set("terrain_path", NodePath("../Backdrop/Terrain"))
-
-	var dbg := CanvasLayer.new(); dbg.name = "Debug"; root.add_child(dbg)
-	var label := Label.new(); label.name = "Label"
-	label.position = Vector2(16, 16)
-	label.add_theme_color_override("font_color", Color(0.88, 0.96, 1.0))
-	label.add_theme_color_override("font_outline_color", Color(0, 0, 0))
-	label.add_theme_constant_override("outline_size", 6)
-	dbg.add_child(label)
 
 	_own(root, root)
 	var packed := PackedScene.new()

@@ -17,7 +17,7 @@ func _on_update(delta: float) -> void:
 
 func _derive(clock: CTimeOfDay) -> void:
 	clock.daylight = clampf(cos(clock.phase * TAU) * 0.5 + 0.5, 0.0, 1.0)
-	# &noon -> phase 0 is noon, so the hour hand starts half a day round
+	# phase 0 is noon, so the hour hand starts half a day round
 	clock.minutes_past_midnight = int(fposmod(clock.phase * 24.0 + 12.0, 24.0) * 60.0)
 	if clock.minutes_past_midnight == clock.last_published_minute:
 		return
@@ -34,7 +34,7 @@ func set_phase(clock: CTimeOfDay, value: float) -> void:
 	_derive(clock)
 
 
-## &half -> _derive truncates, so aim at the middle of the target minute.
-##          Landing on its edge round-trips to the minute before.
+## Aims at the middle of the minute: _derive truncates, so landing on its edge
+## round-trips to the minute before.
 func set_minutes(clock: CTimeOfDay, minutes: int) -> void:
 	set_phase(clock, ((float(minutes) + 0.5) / 60.0 - 12.0) / 24.0)

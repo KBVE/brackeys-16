@@ -3,16 +3,16 @@ class_name ECSObserverCenter
 
 ## ECSObserverCenter : dispatch engine behind [ECSObserver]
 ##
-## &hook -> godot-ecs exposes add/remove to query caches ONLY, so we squat
-##          _query_caches["@observers"] to connect entity signals on first component
-##       -> runs BEFORE the entity emits, so nothing is missed
-## &dispatch -> from entity signals, not the hook: only they carry the component
-##              instance on removal
+## godot-ecs exposes its add/remove hook to query caches only, so this squats
+## [constant HOOK_KEY] in the cache table to hook entity signals on their first
+## component. That runs before the entity emits, so nothing is missed.
+##
+## Dispatch comes from the entity signals, not the hook: only they carry the
+## component instance on removal.
 
-## &key -> not a valid component-set key, so it cannot collide
+## Not a valid component-set key, so it cannot collide with a real query.
 const HOOK_KEY := &"@observers"
 
-## &binding -> one [query, callable] + match state for MATCH/UNMATCH edges
 class Binding extends RefCounted:
 	var observer: ECSObserver
 	var query: ECSObserverQuery
@@ -22,7 +22,7 @@ class Binding extends RefCounted:
 	func alive() -> bool:
 		return is_instance_valid(observer) and observer.active
 
-## &sentinel -> duck-typed query cache, holds no results
+## A duck-typed query cache that holds no results.
 class EntityHook extends RefCounted:
 	var center: WeakRef
 
@@ -31,10 +31,9 @@ class EntityHook extends RefCounted:
 		if c:
 			c._ensure_entity_hooked(entity_id)
 
-## &relay -> one per event name
-## &regression -> Godot 4.7 Callable eq ignores bound args: f.bind(a) == f.bind(b).
-##                GameEventCenter guards with is_connected(), so a bound Callable
-##                connects once and silently drops the rest. Distinct object dodges it.
+## One per event name, because Godot 4.7 Callable equality ignores bound args:
+## f.bind(a) == f.bind(b). GameEventCenter guards with is_connected(), so a bound
+## Callable connects once and silently drops the rest. A distinct object dodges it.
 class BusRelay extends RefCounted:
 	var center: WeakRef
 	var event_name: StringName
@@ -54,7 +53,7 @@ func _init(world: ECSWorld) -> void:
 	_world = world
 	var hook := EntityHook.new()
 	hook.center = weakref(self)
-	# &private -> ONLY reach into godot-ecs internals; pinned by godot_ecs_contract_test
+	# the only reach into godot-ecs internals; pinned by godot_ecs_contract_test
 	var caches: Variant = _world.get("_query_caches")
 	if caches == null:
 		push_error(
@@ -64,9 +63,9 @@ func _init(world: ECSWorld) -> void:
 		return
 	caches[HOOK_KEY] = hook
 
-# ---- &registration ----
+# ---- registration ----
 
-## &register -> safe before or after its entities exist
+## Safe to call before or after the observer's entities exist.
 func register(observer: ECSObserver) -> void:
 	observer._set_world(_world)
 	for pair: Array in observer._collect_bindings():
@@ -84,7 +83,6 @@ func register(observer: ECSObserver) -> void:
 		_seed_matched(binding)
 		_connect_bus(binding)
 
-## &unregister -> unbind + drop orphan relays
 func unregister(observer: ECSObserver) -> void:
 	var kept: Array[Binding] = []
 	var orphaned: Array[StringName] = []
@@ -95,13 +93,12 @@ func unregister(observer: ECSObserver) -> void:
 		for event_name: StringName in binding.query.event_names:
 			if not orphaned.has(event_name):
 				orphaned.append(event_name)
-	# &order -> swap first; _prune_relays reads _bindings post-removal
+	# swap first; _prune_relays reads _bindings after the removal
 	_bindings = kept
 	_prune_relays(orphaned)
 
-# ---- &hooks : world -> center ----
+# ---- hooks : world -> center ----
 
-## &hook -> connect signals on first component
 func _ensure_entity_hooked(entity_id: int) -> void:
 	if _hooked_entities.has(entity_id):
 		return
@@ -157,9 +154,9 @@ func _on_bus_event(event: GameEvent, event_name: StringName) -> void:
 		if binding.alive() and binding.query.event_names.has(event_name):
 			_dispatch(binding, ECSObserver.Event.EVENT, null, event.data)
 
-# ---- &internals ----
+# ---- internals ----
 
-## &edge -> fire only when the state flipped
+## Fires only on the edge, never on a change that keeps the same side.
 func _refresh_match(binding: Binding, entity: ECSEntity) -> void:
 	if not (binding.query.wants(ECSObserver.Event.MATCH) or binding.query.wants(ECSObserver.Event.UNMATCH)):
 		return
@@ -177,7 +174,7 @@ func _refresh_match(binding: Binding, entity: ECSEntity) -> void:
 		if binding.query.wants(ECSObserver.Event.UNMATCH):
 			_dispatch(binding, ECSObserver.Event.UNMATCH, entity, null)
 
-## &seed -> late registration replays nothing
+## Late registration replays nothing.
 func _seed_matched(binding: Binding) -> void:
 	if not (binding.query.wants(ECSObserver.Event.MATCH) or binding.query.wants(ECSObserver.Event.UNMATCH)):
 		return
@@ -197,7 +194,6 @@ func _connect_bus(binding: Binding) -> void:
 		_bus_relays[event_name] = relay
 		_world.add_callable(event_name, relay.receive)
 
-## &prune -> drop a relay once nothing listens
 func _prune_relays(event_names: Array[StringName]) -> void:
 	for event_name: StringName in event_names:
 		if _still_wanted(event_name):
@@ -219,8 +215,8 @@ func _anyone_watches_changes(name: StringName) -> bool:
 			return true
 	return false
 
-## &thread -> [ECSParallel] runs on [WorkerThreadPool] -> notify() can arrive
-##             off-main. Nodes and JavaScriptBridge are not thread-safe, so defer.
+## [ECSParallel] runs on [WorkerThreadPool], so notify() can arrive off-main.
+## Nodes and JavaScriptBridge are not thread-safe, so defer.
 func _dispatch(binding: Binding, event: int, entity: ECSEntity, payload: Variant) -> void:
 	if OS.get_thread_caller_id() == _main_thread_id:
 		binding.callback.call(event, entity, payload)

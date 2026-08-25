@@ -2,14 +2,14 @@ extends Node3D
 class_name Consist
 
 ## Consist : Node3D
-## &why  -> cars share meshes, materials and textures, so length costs transforms
-##          and draw calls only. VRAM does not move with carriage_count.
-## &cull -> looking down the aisle points the camera along the train, so every
-##          carriage ahead sits in the frustum and frustum culling saves nothing.
-##          web has no occlusion culling either -> cull by carriage index, explicitly.
-## &cost -> measured (tools/bench_consist.gd, native, 1080p, vsync off):
-##          21 cars drawn 1.14ms | windowed 0.64ms. windowed is O(1) in length.
-##          lights dominate: 0.85 -> 0.46ms by hiding lamps at equal geometry.
+## Cars share meshes, materials and textures, so length costs transforms and draw
+## calls only. VRAM does not move with [member carriage_count].
+## Looking down the aisle points the camera along the train, so every carriage
+## ahead sits in the frustum and frustum culling saves nothing. Web has no
+## occlusion culling either, so cull by carriage index, explicitly.
+## Measured (tools/bench_consist.gd, native, 1080p, vsync off): 21 cars drawn
+## 1.14ms, windowed 0.64ms, O(1) in length. Lights dominate: 0.85 -> 0.46ms by
+## hiding lamps at equal geometry.
 
 @export var carriage_scene: PackedScene
 @export var detail_normal: Texture2D
@@ -20,6 +20,15 @@ class_name Consist
 @export_range(0, 8) var mesh_window: int = 2
 @export_range(0, 8) var lamp_window: int = 1
 @export var lamps_per_car: int = 6
+
+## The walkable interior, as a box. The carriage mesh is 32k triangles and a
+## trimesh of it would be that much physics geometry per car, for a corridor
+## that is in the end a box. Z is inside the 1.69 shell, leaving the panelling
+## thickness the player never reaches through.
+const FLOOR_Y := 0.0
+const INTERIOR_HALF_Z := 1.5
+const WALL_HEIGHT := 3.5
+const SHELL_THICKNESS := 0.4
 
 var _carriages: Array[Node3D] = []
 var _lampsets: Array[Node3D] = []
@@ -45,9 +54,45 @@ func _ready() -> void:
 			lamp.light_energy = 4.0
 			lamps.add_child(lamp)
 		carriage.add_child(lamps)
+		_add_shell(carriage)
 		add_child(carriage)
 		_carriages.append(carriage)
 		_lampsets.append(lamps)
+	_add_end_caps()
+
+## Floor and side walls, so the player is inside something rather than beside it.
+## Culling hides a carriage but leaves its bodies live, which is what stops the
+## player walking out through a car they cannot currently see.
+func _add_shell(carriage: Node3D) -> void:
+	var shell := StaticBody3D.new()
+	shell.name = "Shell"
+	_add_box(shell, Vector3(pitch, SHELL_THICKNESS, INTERIOR_HALF_Z * 2.0),
+		Vector3(0.0, FLOOR_Y - SHELL_THICKNESS * 0.5, 0.0))
+	for side: float in [1.0, -1.0]:
+		_add_box(shell, Vector3(pitch, WALL_HEIGHT, SHELL_THICKNESS),
+			Vector3(0.0, WALL_HEIGHT * 0.5, side * (INTERIOR_HALF_Z + SHELL_THICKNESS * 0.5)))
+	carriage.add_child(shell)
+
+
+func _add_box(body: StaticBody3D, size: Vector3, at: Vector3) -> void:
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = size
+	shape.shape = box
+	shape.position = at
+	body.add_child(shape)
+
+
+## Caps the open ends of the consist, so the corridor stops where the train does.
+func _add_end_caps() -> void:
+	var caps := StaticBody3D.new()
+	caps.name = "EndCaps"
+	var reach := carriage_count * pitch * 0.5
+	for side: float in [1.0, -1.0]:
+		_add_box(caps, Vector3(SHELL_THICKNESS, WALL_HEIGHT, INTERIOR_HALF_Z * 2.0),
+			Vector3(side * (reach + SHELL_THICKNESS * 0.5), WALL_HEIGHT * 0.5, 0.0))
+	add_child(caps)
+
 
 ## Centre of carriage [param i] in local X. Consist is centred on its own origin.
 func _offset(i: int) -> float:
@@ -72,14 +117,6 @@ func lamps_for(index: int) -> Node3D:
 func glow_material() -> StandardMaterial3D:
 	return _shared.get("@glow")
 
-## Discards carriage fragments with world Z above [param z]; use a huge value
-## to disable. Replaces the camera near-plane trick, which also clipped terrain.
-func set_clip_z(z: float) -> void:
-	for key: String in _shared:
-		var sm := _shared[key] as ShaderMaterial
-		if sm != null:
-			sm.set_shader_parameter("clip_z_above", z)
-
 func tune_detail(tiling: float, strength: float, albedo: float) -> void:
 	for key: String in _shared:
 		var sm := _shared[key] as ShaderMaterial
@@ -95,7 +132,7 @@ func _reskin(carriage: Node3D) -> void:
 		for i in range(m.get_surface_count()):
 			var src := m.surface_get_material(i) as StandardMaterial3D
 			if src == null or src.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
-				continue # &glass -> window panes keep their own material
+				continue # window panes keep their own material
 			mi.set_surface_override_material(i, _material_for(src))
 	var em := carriage.get_node_or_null("emissive") as MeshInstance3D
 	if em != null and em.mesh.surface_get_material(0) != null:

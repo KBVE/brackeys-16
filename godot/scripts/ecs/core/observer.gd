@@ -3,9 +3,8 @@ class_name ECSObserver
 
 ## ECSObserver : query-driven reactive node
 ##
-## &gap -> godot-ecs has ECSSystem (polls) and GameEventCenter (flat bus), no observer
-## &use -> override query() + each(), or sub_observers() for several axes
-## &tuple -> [query, callable] ; callable takes (event, entity, payload)
+## godot-ecs ships [ECSSystem], which polls, and GameEventCenter, which is a flat
+## bus. Neither reacts to a query.
 ##
 ## [codeblock]
 ## func query() -> ECSObserverQuery:
@@ -32,7 +31,7 @@ enum Event {
 
 var _world: ECSWorld = null
 
-## &fresh -> new query per access; tuples never share state
+## A fresh query on every access, so two sub-observers can never share state.
 var q: ECSObserverQuery:
 	get:
 		return ECSObserverQuery.new(_world) if _world else null
@@ -41,22 +40,22 @@ var q: ECSObserverQuery:
 func world() -> ECSWorld:
 	return _world
 
-# ---- &overrides ----
+# ---- overrides ----
 
-## &override -> null when using sub_observers()
+## Null when using [method sub_observers] instead.
 func query() -> ECSObserverQuery:
 	return null
 
-## &override -> several [query, callable] pairs
+## Several [query, callable] pairs, for an observer watching more than one axis.
 func sub_observers() -> Array[Array]:
 	return []
 
-## &payload -> component on ADDED/REMOVED | value on CHANGED
-##             | dispatched value on EVENT | null on MATCH/UNMATCH
+## [param _payload] is the component on ADDED and REMOVED, the value on CHANGED,
+## the dispatched value on EVENT, and null on MATCH and UNMATCH.
 func each(_event: int, _entity: ECSEntity, _payload: Variant) -> void:
 	pass
 
-# ---- &internals ----
+# ---- internals ----
 
 func _set_world(w: ECSWorld) -> void:
 	_world = w

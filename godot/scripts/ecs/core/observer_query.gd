@@ -3,8 +3,9 @@ class_name ECSObserverQuery
 
 ## ECSObserverQuery : declarative reactive query
 ##
-## &gap -> [Querier] answers "who matches now"; this adds "tell me when that changes"
-## &build -> from [member ECSObserver.q]
+## [Querier] answers "who matches now"; this adds "tell me when that changes".
+## Build one from [member ECSObserver.q].
+##
 ## [codeblock]
 ## q.with([CHealth]).on_added().on_removed()
 ## q.with([CHealth]).on_changed([CHealth])
@@ -22,51 +23,47 @@ var events_mask: int = 0
 func _init(world: ECSWorld) -> void:
 	_world = world
 
-# ---- &filters : which entities ----
+# ---- filters : which entities ----
 
-## &all -> entity carries every key
 func with(keys: Array) -> ECSObserverQuery:
 	_resolve_into(keys, with_names)
 	return self
 
-## &none -> entity carries no key
 func without(keys: Array) -> ECSObserverQuery:
 	_resolve_into(keys, without_names)
 	return self
 
-# ---- &axes : when it fires ----
+# ---- axes : when it fires ----
 
-## &fire -> key added ; no keys = everything in with()
+## Empty [param keys] means everything in [method with].
 func on_added(keys: Array = []) -> ECSObserverQuery:
 	return _watch(ECSObserver.Event.ADDED, keys)
 
-## &fire -> key removed
+## Empty [param keys] means everything in [method with].
 func on_removed(keys: Array = []) -> ECSObserverQuery:
 	return _watch(ECSObserver.Event.REMOVED, keys)
 
-## &fire -> [ECSDataComponent] value changed
-## &note -> plain [ECSComponent] has no change signal; field writes are silent
+## Only [ECSDataComponent] has a change signal; writes to a plain
+## [ECSComponent] are silent and never fire this.
 func on_changed(keys: Array = []) -> ECSObserverQuery:
 	return _watch(ECSObserver.Event.CHANGED, keys)
 
-## &fire -> newly satisfies
 func on_match() -> ECSObserverQuery:
 	events_mask |= 1 << ECSObserver.Event.MATCH
 	return self
 
-## &fire -> stops satisfying
 func on_unmatch() -> ECSObserverQuery:
 	events_mask |= 1 << ECSObserver.Event.UNMATCH
 	return self
 
-## &fire -> event_name on the world bus ; entity is null
+## The entity is null; only the dispatched value is carried.
 func on_event(event_name: StringName) -> ECSObserverQuery:
 	if not event_names.has(event_name):
 		event_names.append(event_name)
 	events_mask |= 1 << ECSObserver.Event.EVENT
 	return self
 
-# ---- &internals ----
+# ---- internals ----
 
 func wants(event: int) -> bool:
 	return (events_mask & (1 << event)) != 0

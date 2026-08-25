@@ -72,6 +72,15 @@
       },
       "description": "In-world time of day, emitted when the minute changes rather than per frame.\n\nThe train runs a day/night cycle, and the Gazette prints by the clock: an article whose frontmatter carries `after`/`before` only reaches the front page inside that window. Wall-clock time is irrelevant; this is the world's."
     },
+    "VIEWER_STATE": {
+      "bus": "viewer_state",
+      "wire": "viewer:state",
+      "payload": {
+        "carriage": "number",
+        "location": "string"
+      },
+      "description": "Where the player is standing: the carriage they are in and the room that carriage stands in for.\n\nEmitted only when one of them changes, never per frame. This replaces the in-engine debug label, so the information lives in the React panel with everything else."
+    },
     "JOURNAL_ENTRY": {
       "bus": "journal_entry",
       "wire": "journal:entry",

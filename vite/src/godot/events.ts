@@ -41,6 +41,9 @@ export interface GodotToJs {
   'game:run_over': Record<string, unknown>;
   // In-world time of day, emitted when the minute changes rather than per frame.
   'world:clock': { hour: number; minute: number };
+  // Where the player is standing: the carriage they are in and the room that carriage
+  // stands in for.
+  'viewer:state': { carriage: number; location: string };
   // One fact the run has produced: a conversation, an item used, a room entered.
   'journal:entry': { id: string; kind: number; actor: string; target: string; place: string; at: number };
 }
@@ -72,6 +75,7 @@ export const WIRE_FIELDS: Record<string, readonly string[]> = {
   'game:score': ['score'],
   'level:changed': ['level', 'index', 'total', 'outcome'],
   'world:clock': ['hour', 'minute'],
+  'viewer:state': ['carriage', 'location'],
   'journal:entry': ['id', 'kind', 'actor', 'target', 'place', 'at'],
 };
 

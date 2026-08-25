@@ -5,8 +5,8 @@ class_name SPassengerPlace
 ## they are. This is the truth; what they CLAIM is prose in their `alibi` section,
 ## and the two disagreeing is the game.
 ##
-## &lane -> pure data, no nodes. The obvious first promotion to ECSParallel once
-##          the cast is large enough to pay for the dispatch. Five is not.
+## Pure data, no nodes: the first promotion to [ECSParallel] once the cast is
+## large enough to pay for the dispatch. Five is not.
 
 const MINUTES_PER_DAY := 1440
 
@@ -28,10 +28,9 @@ func _on_update(_delta: float) -> void:
 		entry[&"CLocation"].location_id = _where(passenger, minutes, elapsed)
 
 
-## &aboard -> before their boarding time a passenger is not on the train at all.
-##            Without this, where_was() reads a clock earlier than their first
-##            timeline step as the FOLLOWING day and reports where they end up:
-##            Lady Beaumont sat in her cabin two hours before she boarded.
+## Before their boarding time a passenger is not on the train at all. Without
+## this, where_was() reads a clock earlier than their first timeline step as the
+## following day: Lady Beaumont sat in her cabin two hours before she boarded.
 func _where(passenger: Dictionary, minutes: int, elapsed: int) -> StringName:
 	var boarded: Dictionary = passenger.get("boarded", {})
 	if boarded.has("at") and elapsed < _since_departure(_minutes_of(boarded["at"])):

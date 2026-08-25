@@ -99,6 +99,76 @@ export function Sidebar() {
   );
 }
 
+export function PlateRail() {
+  const player = usePlayer();
+  const flags = useFlags();
+  const runningOrder = useRunningOrder();
+
+  return (
+    <aside className={styles.rail} data-testid="plate-rail">
+      <p className={styles.railCondition}>
+        <span className={styles.railConditionLabel}>Condition</span>
+        <span className={styles.railStat}>
+          {player ? `${player.health}/${player.max_health}` : '—'}
+        </span>
+        <span className={styles.railNote}>{describePlayerFlags(flags).toLowerCase()}</span>
+      </p>
+
+      <h3 className={styles.railHead}>Weather</h3>
+      <p className={styles.railWeather}>{standing.weather}</p>
+
+      <h3 className={styles.railHead}>Order</h3>
+      <ol className={styles.railOrder}>
+        {standing.runningOrder.map((levelName, levelIndex) => (
+          <li key={levelName} data-mark={runningOrderMark(runningOrder, levelIndex)}>
+            {levelName}
+          </li>
+        ))}
+      </ol>
+
+      <h3 className={styles.railHead}>Passengers</h3>
+      <ul className={styles.railPeople} data-testid="rail-passengers">
+        {passengers.map((passenger) => (
+          <li key={passenger.id}>
+            <button
+              className={styles.railName}
+              onClick={() => openResearch(eidOf(passenger.id))}
+            >
+              {listedAs(passenger)}
+            </button>
+            {passenger.suspect && <span className={styles.mark}> †</span>}
+          </li>
+        ))}
+      </ul>
+
+      <h3 className={styles.railHead}>Effects</h3>
+      <p className={styles.railWeather}>
+        {carriedItems()
+          .map((item) => item.name)
+          .join(' · ')}
+      </p>
+
+      <h3 className={styles.railHead}>Notices</h3>
+      <dl className={styles.railNotices}>
+        {standing.notices.map(([notice, appointment]) => (
+          <div key={notice}>
+            <dt>{notice}</dt>
+            <dd>{appointment}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <button
+        className={styles.railBoard}
+        onClick={() => openResearch()}
+        data-testid="rail-dossier"
+      >
+        Case board
+      </button>
+    </aside>
+  );
+}
+
 export function Telegrams() {
   const dispatches = useDispatches();
 

@@ -217,38 +217,203 @@
 
 /* tabloid ----------------------------------------------------------------- */
 
+/* the rail only exists to fill the dead width beside a height-constrained
+   plate, which only happens on a tall narrow screen */
+.rail { display: none; }
+
 @media (max-width: 720px) {
   .sheet {
     gap: 0.4rem;
     padding: 0.4rem 0.6rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
   }
 
-  .mastTitle { margin: 0.15rem 0 0.1rem; font-size: clamp(1.3rem, 7vw, 1.9rem); }
+  .mastTitle { margin: 0.1rem 0 0.05rem; font-size: clamp(1rem, 5.4vw, 1.4rem); }
+
+  .mastRule { height: 2px; }
 
   .mastMeta {
     flex-wrap: wrap;
-    gap: 0.1rem 0.9rem;
-    padding-bottom: 0.2rem;
-    font-size: 0.58rem;
-    letter-spacing: 0.08em;
+    gap: 0.05rem 0.7rem;
+    padding-bottom: 0.12rem;
+    font-size: 0.5rem;
+    letter-spacing: 0.06em;
   }
 
+  /* &reclaim -> the plate's width is derived from its height and the canvas
+     aspect, so on a tall screen it leaves ~48% of the width unused either side.
+     `auto 1fr` hands all of that to the rail instead of splitting it into two
+     dead margins, and it re-derives itself when the aspect changes. */
   .body {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1.2fr) minmax(0, 1fr);
-    gap: 0.4rem;
+    /* &explicit -> NOT `auto`. An auto track sizes from the plate hole, whose
+       width comes from `aspect-ratio` against a definite height; Safari
+       collapses that to near zero in intrinsic sizing, so the plate shrank to
+       nothing and the 1fr rail took the row. A percentage needs no intrinsic
+       measurement, so both engines agree. */
+    grid-template-columns: 58% minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      'plate rail'
+      'lead  lead';
+    gap: 0.4rem 0.5rem;
+  }
+
+  .plate { grid-area: plate; }
+  .lead { grid-area: lead; }
+
+  .rail {
+    grid-area: rail;
+    /* &clear -> .sheet is its own stacking context at z-index 1, so nothing in
+       here can rise above the canvas layer at 2. The transformed canvas box can
+       round a pixel past the plate, so the rail keeps its text off the seam
+       with padding rather than a z-index that cannot win. */
+    padding-left: 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    font-size: 0.7rem;
+    line-height: 1.25;
+  }
+
+  .railHead {
+    margin: 0.35rem 0 0.1rem;
+    font-size: 0.55rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    border-bottom: 1px solid #171512;
+  }
+
+  .railHead:first-child { margin-top: 0; }
+
+  /* &oneline -> label, figure and disposition on a single baseline. Three
+     stacked blocks cost ~3.5rem of a rail that is only a few hundred px tall,
+     and the plate is the thing that wants that height. */
+  .railCondition {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    margin: 0 0 0.15rem;
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  .railConditionLabel {
+    font-size: 0.55rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .railStat {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .railNote {
+    margin: 0;
+    font-style: italic;
+    color: #55503f;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .railPeople {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .railPeople li {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .railName {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+
+  /* &once -> every sidebar section now lives in the rail beside the plate, so
+     the aside would only repeat it. Hidden rather than unmounted so the desktop
+     layout keeps the full-width prose versions. */
+  .sidebar { display: none; }
+
+  .railWeather {
+    margin: 0;
+    font-size: 0.6rem;
+    line-height: 1.3;
+    font-style: italic;
+    color: #55503f;
+  }
+
+  .railNotices {
+    margin: 0;
+    font-size: 0.6rem;
+    line-height: 1.3;
+  }
+
+  .railNotices dt { letter-spacing: 0.04em; }
+  .railNotices dd { margin: 0 0 0.15rem; color: #55503f; font-style: italic; }
+
+  .railOrder { margin: 0; padding: 0; list-style: none; }
+
+  .railOrder li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.25rem;
+    font-variant: small-caps;
+  }
+
+  /* &mark -> the standing of each level, printed as a mark rather than a word;
+     there is no room for "in progress" in a 200px column */
+  .railOrder li::after {
+    content: '·';
+    color: #55503f;
+  }
+  .railOrder li[data-mark='in progress']::after { content: '▸'; color: #6b2018; }
+  .railOrder li[data-mark='settled']::after { content: '✓'; }
+  .railOrder li[data-mark='lost']::after { content: '†'; color: #6b2018; }
+
+  .railBoard {
+    margin-top: auto;
+    border: 1px solid #171512;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.3rem 0.15rem;
+    cursor: pointer;
   }
 
   /* &flatten -> plate and lead story become rows of .body beside the sidebar */
   .main { display: contents; }
 
-  .plate { height: 56vh; }
+  /* &derive -> width is the definite side here and height follows from the
+     canvas aspect, the reverse of the desktop rule. One rule per selector: an
+     earlier override in this same block loses to a later one, which is how the
+     Safari collapse survived a "fix". */
+  .plate { height: auto; }
 
   .plateHole {
     min-height: 0;
-    width: auto;
-    max-width: 100%;
-    justify-self: center;
+    width: 100%;
+    height: auto;
+    /* &clamp -> stops a very tall phone pushing the lead story off the page;
+       when it bites, useFrameStyle's Math.min letterboxes rather than crops */
+    max-height: 62vh;
     aspect-ratio: var(--viewport-aspect, 16 / 9);
     cursor: pointer;
   }

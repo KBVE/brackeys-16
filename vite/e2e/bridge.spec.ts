@@ -11,7 +11,9 @@ const RUN_MENU = 'MENU (1)';
 async function booted(page: Page) {
   await page.goto('/index.html');
   await expect(page.locator('#godot-canvas')).toBeVisible();
-  await expect(page.locator('.godot-status')).toHaveCount(0);
+  // &live -> the curtain lifts on the first real scene, not when the engine
+  //          merely started, so this is the point the run is actually on screen
+  await expect(page.getByTestId('boot-curtain')).toHaveAttribute('aria-hidden', 'true');
 }
 
 // &why -> the debug trace is a 60-entry ring, and the train scene evicts the handshake out of it

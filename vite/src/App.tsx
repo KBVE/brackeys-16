@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { GodotGame } from './godot/GodotGame';
 import { DebugPanel } from './debug/DebugPanel';
 import { Newspaper } from './paper/Newspaper';
+import { Dossier } from './paper/Dossier';
 import { setView, toggleView, useView } from './state/paperStore';
 import { closeResearch, useResearchStore } from './state/researchStore';
 import {
@@ -73,6 +74,7 @@ export default function App() {
         {bridgeReady && playing && view === 'world' && <PlayerHud />}
         <DebugPanel />
       </div>
+      <Dossier />
     </div>
   );
 }

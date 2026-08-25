@@ -10,6 +10,12 @@ const crossOriginIsolation = {
 export default defineConfig({
   base: './',
   plugins: [contractPlugin(), react()],
+  // &stale -> hashed bundles plus an emptied outDir means any page still holding
+  //           a previous index.html asks for a file that no longer exists and
+  //           dies on a 404. Keeping old bundles costs a few KB and makes a
+  //           mid-rebuild reload survivable, which matters when testing on a
+  //           device that reloads on its own.
+  build: { emptyOutDir: false },
   server: { port: 5173, host: true, headers: crossOriginIsolation },
   preview: { headers: crossOriginIsolation },
 });

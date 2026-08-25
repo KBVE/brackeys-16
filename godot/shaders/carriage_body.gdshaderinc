@@ -14,23 +14,9 @@ uniform float detail_strength : hint_range(0.0, 3.0) = 0.55;
 uniform float detail_albedo : hint_range(0.0, 0.5) = 0.05;
 uniform float detail_rough : hint_range(0.0, 0.3) = 0.07;
 uniform float normal_depth : hint_range(0.0, 3.0) = 1.0;
-
-// &cutaway -> SIDE used to slice the near wall with a 10.6m camera near plane,
-//             which also clipped the ground under the camera and left a grey
-//             band. clipping here instead lets the camera keep a normal near.
-uniform float clip_z_above = 1000000.0;
-
-varying vec3 v_world;
-
-void vertex() {
-	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-}
+uniform float roughness_floor : hint_range(0.0, 1.0) = 0.22;
 
 void fragment() {
-	if (v_world.z > clip_z_above) {
-		discard;
-	}
-
 	vec4 alb = texture(tex_albedo, UV);
 	vec4 mr = texture(tex_mr, UV);
 
@@ -41,7 +27,10 @@ void fragment() {
 
 	float grain = (n_det.x + n_det.y) * 0.5;
 	ALBEDO = alb.rgb * (1.0 + grain * detail_albedo);
-	ROUGHNESS = clamp(mr.g + grain * detail_rough, 0.04, 1.0);
+	// a glossy surface sparkles when the normal map is minified, and at a low
+	// render resolution every carriage slat lands under one pixel. The floor is
+	// what stops that sparkle crawling as the train sways.
+	ROUGHNESS = clamp(mr.g + grain * detail_rough, roughness_floor, 1.0);
 	METALLIC = mr.b;
 	NORMAL_MAP = n * 0.5 + 0.5;
 	NORMAL_MAP_DEPTH = 1.0;

@@ -30,7 +30,7 @@ interface GameStore {
   trace: TracedEvent[];
   engineLog: EngineLine[];
   boot: BootPhase;
-  progress: number;
+  progress: number | null;
   bootError: string | null;
   bridgeReady: boolean;
   run: number;
@@ -38,6 +38,7 @@ interface GameStore {
   world: number;
   player: GodotToJs['player:state'] | null;
   level: GodotToJs['level:changed'] | null;
+  viewer: GodotToJs['viewer:state'] | null;
   loading: GodotToJs['scene:loading'] | null;
   journal: GodotToJs['journal:entry'][];
   send<C extends keyof JsToGodot>(cmd: C, payload: JsToGodot[C]): void;
@@ -50,7 +51,7 @@ export const useGameStore = create<GameStore>()(() => ({
   trace: [],
   engineLog: [],
   boot: 'idle',
-  progress: 0,
+  progress: null,
   bootError: null,
   bridgeReady: bridge.ready,
   run: RunState.BOOTING,
@@ -58,6 +59,7 @@ export const useGameStore = create<GameStore>()(() => ({
   world: 0,
   player: null,
   level: null,
+  viewer: null,
   loading: null,
   journal: [],
   send: (cmd, payload) => bridge.send(cmd, payload),
@@ -99,6 +101,7 @@ tracked('journal:entry', (entry) =>
   set({ journal: [entry, ...useGameStore.getState().journal].slice(0, JOURNAL_LIMIT) }),
 );
 tracked('level:changed', (level) => set({ level }));
+tracked('viewer:state', (viewer) => set({ viewer }));
 tracked('game:score');
 tracked('game:run_over');
 
@@ -123,8 +126,8 @@ export const logEngine = (text: string) => {
 };
 
 export const boot = {
-  start: () => set({ boot: 'loading', progress: 0, bootError: null }),
-  progress: (progress: number) => set({ progress }),
+  start: () => set({ boot: 'loading', progress: null, bootError: null }),
+  progress: (progress: number | null) => set({ progress }),
   running: () => set({ boot: 'running' }),
   fail: (bootError: string) => set({ boot: 'failed', bootError }),
 };
@@ -141,6 +144,7 @@ export const useBootError = () => useGameStore((s) => s.bootError);
 export const useBridgeReady = () => useGameStore((s) => s.bridgeReady);
 export const usePlayer = () => useGameStore((s) => s.player);
 export const useLevel = () => useGameStore((s) => s.level);
+export const useViewer = () => useGameStore((s) => s.viewer);
 export const useLoading = () => useGameStore((s) => s.loading);
 export const useJournal = () => useGameStore((s) => s.journal);
 export const useSend = () => useGameStore((s) => s.send);

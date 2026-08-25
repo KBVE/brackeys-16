@@ -17,7 +17,6 @@ html, body, #root {
 
 .app { position: relative; height: 100%; }
 
-
 .godot-layer {
   position: absolute;
   inset: 0;
@@ -68,6 +67,8 @@ html, body, #root {
 
 .ui-layer > * { pointer-events: auto; }
 
+/* the same newsprint the Gazette and the curtain are printed on, so the run
+   reads as one publication rather than a game with a web page around it */
 .hud {
   position: absolute;
   top: max(1rem, env(safe-area-inset-top, 0px));
@@ -75,24 +76,34 @@ html, body, #root {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
-  background: rgba(0, 0, 0, 0.55);
+  gap: 0.6rem;
+  padding: 0.4rem 0.7rem;
+  background: linear-gradient(180deg, #f2ead6 0%, #e6dcc2 100%);
+  color: #171512;
+  border: 1px solid #171512;
+  box-shadow: 0 2px 10px rgba(23, 21, 18, 0.35);
+  font-family: Georgia, 'Times New Roman', Times, serif;
+  font-size: 0.82rem;
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
   font-variant-numeric: tabular-nums;
 }
 
 .hud button {
-  padding: 0.25rem 0.6rem;
-  border: 1px solid #43435a;
-  border-radius: 0.35rem;
-  background: #1a1a24;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid #171512;
+  border-radius: 0;
+  background: transparent;
   color: inherit;
   font: inherit;
+  font-size: 0.68rem;
+  font-variant: normal;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   cursor: pointer;
 }
 
-.hud button:hover { background: #24243180; }
+.hud button:hover { background: rgba(107, 32, 24, 0.12); color: #6b2018; }
 
 /*
  * &thumbs -> on a touch screen the bar moves off the horizon and down to where
@@ -113,22 +124,89 @@ html, body, #root {
   .hud button { min-height: 2.75rem; padding: 0.5rem 0.75rem; }
 }
 
-.godot-status {
+.godot-curtain {
   position: absolute;
   inset: 0;
+  z-index: 1;
   display: grid;
   place-content: center;
-  gap: 0.5rem;
+  gap: 0.6rem;
+  padding: 2rem;
   text-align: center;
   color: #171512;
   font-family: Georgia, 'Times New Roman', Times, serif;
-  font-variant: small-caps;
-  letter-spacing: 0.12em;
+  background:
+    radial-gradient(120% 90% at 50% 40%, #f2ead6 0%, #e6dcc2 60%, #dcd1b4 100%);
+  opacity: 1;
+  transition: opacity 520ms ease;
 }
 
-.godot-error { color: #8c1f14; }
-.godot-error pre { white-space: pre-wrap; max-width: 40rem; }
+/* the plate is blank stock until the run is actually on screen, so nothing
+   half-drawn is ever visible through it */
+.godot-curtain.is-lifted {
+  opacity: 0;
+  pointer-events: none;
+}
 
-.hud-invuln { color: #7fd7ff; }
+.curtain-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
 
+.curtain-rule {
+  width: min(18rem, 60vw);
+  height: 3px;
+  border-top: 1px solid #171512;
+  border-bottom: 1px solid #171512;
+  padding: 1px 0;
+}
+
+.curtain-rule span {
+  display: block;
+  height: 1px;
+  background: #171512;
+  transition: width 240ms ease;
+}
+
+/* the engine cannot always report a total size, and a percentage nobody can
+   compute reads as a stall. A moving rule says working without claiming a
+   number that is not known. */
+.curtain-rule.is-indeterminate {
+  overflow: hidden;
+}
+
+.curtain-rule.is-indeterminate span {
+  width: 40%;
+  animation: curtain-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes curtain-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .curtain-rule.is-indeterminate span { animation: none; width: 100%; opacity: 0.4; }
+}
+
+.curtain-percent {
+  margin: 0;
+  font-size: 1.6rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.godot-curtain.is-error { color: #8c1f14; }
+
+.curtain-detail {
+  margin: 0;
+  white-space: pre-wrap;
+  max-width: 40rem;
+  font-size: 0.78rem;
+  text-align: left;
+}
+
+.hud-invuln { color: #6b2018; font-weight: 700; }
 

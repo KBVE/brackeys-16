@@ -1,6 +1,15 @@
 import { useEffect, useRef } from 'react';
 import { installGodotBridge } from './bridge';
-import { boot, logEngine, useBoot, useProgress, useBootError } from '../state/gameStore';
+import {
+  boot,
+  logEngine,
+  useBoot,
+  useProgress,
+  useBootError,
+  useLoading,
+  useRun,
+} from '../state/gameStore';
+import { RunState } from './state';
 import { useView } from '../state/paperStore';
 import { useFrameStyle } from '../paper/frame';
 
@@ -74,7 +83,9 @@ export function GodotGame() {
         await engine.startGame({
           canvas: canvasRef.current!,
           onProgress: (loadedBytes: number, totalBytes: number) => {
-            if (totalBytes > 0) boot.progress(Math.round((loadedBytes / totalBytes) * 100));
+            boot.progress(
+              totalBytes > 0 ? Math.round((loadedBytes / totalBytes) * 100) : null,
+            );
           },
           onPrintError: (...messageParts: unknown[]) => {
             const engineLine = messageParts.join(' ');
@@ -106,24 +117,59 @@ function GodotLayer({ canvasRef }: { canvasRef: React.RefObject<HTMLCanvasElemen
     >
       <canvas ref={canvasRef} id="godot-canvas" />
       <div className="halftone" aria-hidden />
-      <BootStatus />
+      <BootCurtain />
     </div>
   );
 }
 
-function BootStatus() {
+function BootCurtain() {
   const bootPhase = useBoot();
   const bootProgress = useProgress();
   const bootError = useBootError();
+  const sceneLoading = useLoading();
+  const run = useRun();
 
-  if (bootPhase === 'failed') {
+  const engineReady = bootPhase === 'running';
+  const sceneLive = run !== RunState.BOOTING;
+  const failed = bootPhase === 'failed' || sceneLoading?.status === 'failed';
+
+  const liftedOnce = useRef(false);
+  if (sceneLive && !failed) liftedOnce.current = true;
+  const lifted = liftedOnce.current;
+
+  if (failed) {
     return (
-      <div className="godot-status godot-error">
-        <strong>Failed to start</strong>
-        <pre>{bootError}</pre>
+      <div className="godot-curtain is-error" role="alert">
+        <p className="curtain-kicker">The presses have jammed</p>
+        <pre className="curtain-detail">
+          {bootError ?? `Could not load ${sceneLoading?.scene ?? 'the scene'}`}
+        </pre>
       </div>
     );
   }
-  if (bootPhase === 'running') return null;
-  return <div className="godot-status">Loading {bootProgress}%</div>;
+
+  const percent = engineReady
+    ? sceneLoading
+      ? Math.round(sceneLoading.progress * 100)
+      : null
+    : bootProgress;
+  const caption = engineReady ? 'Inking the plate' : 'Setting the presses';
+  const known = percent !== null;
+
+  return (
+    <div
+      className={`godot-curtain${lifted ? ' is-lifted' : ''}`}
+      aria-hidden={lifted}
+      aria-busy={!lifted}
+      data-testid="boot-curtain"
+    >
+      <p className="curtain-kicker">{caption}</p>
+      <div className={`curtain-rule${known ? '' : ' is-indeterminate'}`} aria-hidden>
+        <span style={known ? { width: `${Math.max(2, Math.min(100, percent))}%` } : undefined} />
+      </div>
+      <p className="curtain-percent" data-testid="boot-curtain-percent">
+        {known ? `${percent}%` : 'Please wait'}
+      </p>
+    </div>
+  );
 }

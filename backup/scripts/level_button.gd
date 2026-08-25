@@ -2,11 +2,11 @@ extends Area3D
 class_name LevelButton
 
 ## LevelButton : Area3D
-## &world -> a real mesh in the carriage, not a Control. It rides the camera rig
-##           so every shot can see it, but it is still a 3D object: lit, tweened
-##           and picked like the rest of the scene
-## &pick  -> Area3D picking needs Viewport.physics_object_picking, which TrainCar
-##           turns on; without it input_event never fires
+##
+## A real mesh in the carriage, not a Control. It rides the camera rig so every
+## shot can see it, but is still lit, tweened and picked like the rest of the scene.
+## Picking needs [member Viewport.physics_object_picking], which TrainCar turns
+## on; without it input_event never fires.
 
 signal pressed(won: bool)
 
@@ -27,7 +27,7 @@ func _ready() -> void:
 	_mat.emission_enabled = true
 	_mat.emission = tint
 	_mat.emission_energy_multiplier = 0.6
-	# &readable -> the carriage goes fully dark at night; unshaded keeps the button legible
+	# the carriage goes fully dark at night; unshaded keeps the button legible
 	_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_plate.set_surface_override_material(0, _mat)
 
