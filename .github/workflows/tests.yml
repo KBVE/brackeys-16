@@ -27,6 +27,15 @@ jobs:
           # authenticate against, and smudging here would 401 mid-checkout.
           lfs: false
 
+      # 113 pointers resolve to 260MB off a self-hosted Forgejo box, and four jobs
+      # in this repo each want the same bytes. Keyed on the pointer files, so it
+      # only misses when the art actually changes.
+      - name: Cache LFS objects
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .git/lfs/objects
+          key: lfs-${{ hashFiles('.gitattributes', 'godot/assets/characters/**') }}
+
       - name: Pull LFS assets (Forgejo)
         env:
           FORGEJO_USER: ${{ secrets.FORGEJO_USER }}
@@ -59,6 +68,22 @@ jobs:
             printf '%s\n' "$STUBS" | head -5
             exit 1
           fi
+
+      # Importing the characters is ~100s of CPU that produces byte-identical
+      # output until an asset or its .import settings change. Measured cold: 2.8s
+      # for this project without them, 47.2s with, on a machine with more cores
+      # than a runner has.
+      #
+      # Only .godot/imported is cached. The uid and script-class caches next to it
+      # are derived from scripts rather than assets, they rebuild in the 2.8s the
+      # baseline already costs, and a stale one of those is a debugging afternoon.
+      - name: Cache Godot imports
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: godot/.godot/imported
+          key: godot-import-${{ env.GODOT_VERSION }}-${{ hashFiles('godot/assets/**', 'godot/**/*.import') }}
+          restore-keys: |
+            godot-import-${{ env.GODOT_VERSION }}-
 
       - name: Set up Godot ${{ env.GODOT_VERSION }}
         uses: chickensoft-games/setup-godot@f166999204a4f2722c6fe042fbaa3b3ea0d9c789
@@ -121,6 +146,15 @@ jobs:
           # authenticate against, and smudging here would 401 mid-checkout.
           lfs: false
 
+      # 113 pointers resolve to 260MB off a self-hosted Forgejo box, and four jobs
+      # in this repo each want the same bytes. Keyed on the pointer files, so it
+      # only misses when the art actually changes.
+      - name: Cache LFS objects
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .git/lfs/objects
+          key: lfs-${{ hashFiles('.gitattributes', 'godot/assets/characters/**') }}
+
       - name: Pull LFS assets (Forgejo)
         env:
           FORGEJO_USER: ${{ secrets.FORGEJO_USER }}
@@ -153,6 +187,22 @@ jobs:
             printf '%s\n' "$STUBS" | head -5
             exit 1
           fi
+
+      # Importing the characters is ~100s of CPU that produces byte-identical
+      # output until an asset or its .import settings change. Measured cold: 2.8s
+      # for this project without them, 47.2s with, on a machine with more cores
+      # than a runner has.
+      #
+      # Only .godot/imported is cached. The uid and script-class caches next to it
+      # are derived from scripts rather than assets, they rebuild in the 2.8s the
+      # baseline already costs, and a stale one of those is a debugging afternoon.
+      - name: Cache Godot imports
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: godot/.godot/imported
+          key: godot-import-${{ env.GODOT_VERSION }}-${{ hashFiles('godot/assets/**', 'godot/**/*.import') }}
+          restore-keys: |
+            godot-import-${{ env.GODOT_VERSION }}-
 
       - name: Set up Godot ${{ env.GODOT_VERSION }}
         uses: chickensoft-games/setup-godot@f166999204a4f2722c6fe042fbaa3b3ea0d9c789
