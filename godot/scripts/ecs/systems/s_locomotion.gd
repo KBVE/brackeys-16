@@ -24,7 +24,8 @@ func _step(intent: CInput, locomotion: CLocomotion, body: CharacterBody3D, delta
 	body.position.y = locomotion.eye_height_metres
 
 	var forward := forward_of(locomotion)
-	var step := forward * intent.walk_units + right_of(locomotion) * intent.strafe_units
+	var right := right_of(locomotion)
+	var step := forward * intent.walk_units + right * intent.strafe_units
 	var metres := step.length() * locomotion.walk_metres_per_unit
 	var was_at := body.global_position
 	# the step is already a distance, so it becomes a velocity only because
@@ -33,8 +34,9 @@ func _step(intent: CInput, locomotion: CLocomotion, body: CharacterBody3D, delta
 	body.velocity = Vector3.ZERO if is_zero_approx(metres) \
 		else step.normalized() * metres / maxf(delta, 0.0001)
 	body.move_and_slide()
-	locomotion.forward_metres_per_second = \
-		forward.dot(body.global_position - was_at) / maxf(delta, 0.0001)
+	var covered := body.global_position - was_at
+	locomotion.forward_metres_per_second = forward.dot(covered) / maxf(delta, 0.0001)
+	locomotion.strafe_metres_per_second = right.dot(covered) / maxf(delta, 0.0001)
 
 
 ## Flattened, so looking is never a way to climb.

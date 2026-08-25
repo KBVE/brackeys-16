@@ -13,8 +13,9 @@ class_name CharacterRig
 ## tools/build_cast_kit.gd copies out of the shared library. Nothing here reaches into
 ## res://assets/characters, because the Web export excludes all of it.
 ##
-## [PlayerBody] is this with a camera inside its head. Passengers are this as it comes,
-## built by [SCastBody].
+## [PlayerBody] is this dressed at build time. Passengers are this dressed from a
+## rolled [CAppearance], built and thrown away by [SCastBody] as carriages come into
+## view.
 
 ## Quaternius characters are modelled facing +Z, and Godot walks a body down -Z.
 const MODEL_FACES_BACKWARD_DEGREES := 180.0
@@ -22,6 +23,12 @@ const MODEL_FACES_BACKWARD_DEGREES := 180.0
 const IDLE_CLIP := "Idle"
 const WALK_FORWARD_CLIP := "Walk_Fwd"
 const WALK_BACKWARD_CLIP := "Walk_Bwd"
+const WALK_LEFT_CLIP := "Walk_L"
+const WALK_RIGHT_CLIP := "Walk_R"
+const WALK_FORWARD_LEFT_CLIP := "Walk_Fwd_L"
+const WALK_FORWARD_RIGHT_CLIP := "Walk_Fwd_R"
+const WALK_BACKWARD_LEFT_CLIP := "Walk_Bwd_L"
+const WALK_BACKWARD_RIGHT_CLIP := "Walk_Bwd_R"
 
 const BLEND_POSITION_PARAMETER := "parameters/gait/blend_position"
 const TIME_SCALE_PARAMETER := "parameters/pace/scale"
@@ -72,16 +79,6 @@ static var _tinted_materials: Dictionary = {}
 ## The train's camera is a quarter turn off the body, so the visible rig has to be too.
 @export var forward_yaw_offset_radians: float = -PI * 0.5
 
-## Ground speed the walk clips were animated at, before the rig is scaled up. Sets how
-## fast the legs cycle for a given speed.
-@export var walk_clip_metres_per_second: float = 1.4
-
-## Seconds for the gait blend to catch up, so a knocked-back step does not snap the
-## legs between clips.
-@export var blend_seconds: float = 0.12
-
-@export var time_scale_limits := Vector2(0.6, 1.8)
-
 ## Applied to every grafted surface once the pieces are on. Null leaves every texture
 ## as it was authored, which is what the player does.
 var appearance: CAppearance
@@ -91,8 +88,9 @@ var animation_player: AnimationPlayer
 var animation_tree: AnimationTree
 
 var _rig: Node3D
-var _model_scale := 1.0
-var _blend := 0.0
+## How much the rig was scaled to reach [member stature_metres]. Read by [SCharacterAnimation],
+## which needs it to know how fast the clips were authored relative to this body.
+var model_scale := 1.0
 
 ## A rig for [param appearance], with everything it wears already loaded. The scene is
 ## not in the tree yet, so the caller sets its transform before the assembly in
@@ -113,8 +111,8 @@ func _ready() -> void:
 	if skeleton == null:
 		push_error("CharacterRig: no Skeleton3D in %s" % body_model.resource_path)
 		return
-	_model_scale = _scale_for_stature()
-	_rig.scale = Vector3.ONE * _model_scale
+	model_scale = _scale_for_stature()
+	_rig.scale = Vector3.ONE * model_scale
 	_rig.rotation.y = forward_yaw_offset_radians + deg_to_rad(MODEL_FACES_BACKWARD_DEGREES)
 	_rig.position = _rig_offset()
 	for piece: PackedScene in outfit_pieces:
@@ -130,7 +128,7 @@ func _scale_for_stature() -> float:
 
 
 func _eyes_above_the_floor() -> float:
-	return rest_eye_height_metres() * _model_scale
+	return rest_eye_height_metres() * model_scale
 
 
 ## Where this character's eyes end up once he is scaled. Read by whatever is measured
@@ -233,13 +231,19 @@ func _build_animation() -> void:
 	animation_player.root_node = animation_player.get_path_to(_rig)
 	animation_player.add_animation_library(animation_library_name, library)
 
-	var gait := AnimationNodeBlendSpace1D.new()
-	gait.min_space = -1.0
-	gait.max_space = 1.0
+	var gait := AnimationNodeBlendSpace2D.new()
+	gait.min_space = Vector2(-1.0, -1.0)
+	gait.max_space = Vector2(1.0, 1.0)
 	gait.sync = true
-	gait.add_blend_point(_clip(WALK_BACKWARD_CLIP), -1.0, -1, &"backward")
-	gait.add_blend_point(_clip(IDLE_CLIP), 0.0, -1, &"standing")
-	gait.add_blend_point(_clip(WALK_FORWARD_CLIP), 1.0, -1, &"forward")
+	gait.add_blend_point(_clip(IDLE_CLIP), Vector2.ZERO)
+	gait.add_blend_point(_clip(WALK_FORWARD_CLIP), Vector2(0.0, 1.0))
+	gait.add_blend_point(_clip(WALK_BACKWARD_CLIP), Vector2(0.0, -1.0))
+	gait.add_blend_point(_clip(WALK_LEFT_CLIP), Vector2(-1.0, 0.0))
+	gait.add_blend_point(_clip(WALK_RIGHT_CLIP), Vector2(1.0, 0.0))
+	gait.add_blend_point(_clip(WALK_FORWARD_LEFT_CLIP), Vector2(-1.0, 1.0))
+	gait.add_blend_point(_clip(WALK_FORWARD_RIGHT_CLIP), Vector2(1.0, 1.0))
+	gait.add_blend_point(_clip(WALK_BACKWARD_LEFT_CLIP), Vector2(-1.0, -1.0))
+	gait.add_blend_point(_clip(WALK_BACKWARD_RIGHT_CLIP), Vector2(1.0, -1.0))
 
 	var blend_tree := AnimationNodeBlendTree.new()
 	blend_tree.add_node(&"gait", gait)
@@ -264,17 +268,13 @@ func _clip(clip_name: String) -> AnimationNodeAnimation:
 	return node
 
 
-## Called by [SCharacterAnimation] with the signed speed along the walking direction.
-func drive(forward_metres_per_second: float, delta: float) -> void:
+## Where in the blend space to stand and how fast to play it. Both are decided by
+## [SCharacterAnimation]; this only puts them on the tree.
+func set_gait(blend_position: Vector2, time_scale: float) -> void:
 	if animation_tree == null:
 		return
-	var walking_metres_per_second := walk_clip_metres_per_second * _model_scale
-	var wanted := clampf(forward_metres_per_second / walking_metres_per_second, -1.0, 1.0)
-	_blend = lerpf(_blend, wanted, clampf(delta / maxf(blend_seconds, 0.0001), 0.0, 1.0))
-	animation_tree.set(BLEND_POSITION_PARAMETER, _blend)
-	animation_tree.set(TIME_SCALE_PARAMETER, clampf(
-		absf(forward_metres_per_second) / walking_metres_per_second,
-		time_scale_limits.x, time_scale_limits.y))
+	animation_tree.set(BLEND_POSITION_PARAMETER, blend_position)
+	animation_tree.set(TIME_SCALE_PARAMETER, time_scale)
 
 
 func _find_skeleton(node: Node) -> Skeleton3D:

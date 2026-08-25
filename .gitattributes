@@ -36,6 +36,22 @@ godot/assets/player/**/*.webp  filter=lfs diff=lfs merge=lfs -text
 godot/assets/player/**/*.exr   filter=lfs diff=lfs merge=lfs -text
 godot/assets/player/**/*.hdr   filter=lfs diff=lfs merge=lfs -text
 
+# assets/cast is the same slice for the passengers, copied out the same way. Without
+# these rules its 110MB of glb goes in as ordinary git blobs, which GitHub refuses
+# past 100MB a file and which cannot be undone without rewriting history.
+godot/assets/cast/**/*.glb   filter=lfs diff=lfs merge=lfs -text
+godot/assets/cast/**/*.gltf  filter=lfs diff=lfs merge=lfs -text
+godot/assets/cast/**/*.fbx   filter=lfs diff=lfs merge=lfs -text
+godot/assets/cast/**/*.bin   filter=lfs diff=lfs merge=lfs -text
+godot/assets/cast/**/*.blend filter=lfs diff=lfs merge=lfs -text
+godot/assets/cast/**/*.png   filter=lfs diff=lfs merge=lfs -text
+godot/assets/cast/**/*.jpg   filter=lfs diff=lfs merge=lfs -text
+godot/assets/cast/**/*.jpeg  filter=lfs diff=lfs merge=lfs -text
+godot/assets/cast/**/*.tga   filter=lfs diff=lfs merge=lfs -text
+godot/assets/cast/**/*.webp  filter=lfs diff=lfs merge=lfs -text
+godot/assets/cast/**/*.exr   filter=lfs diff=lfs merge=lfs -text
+godot/assets/cast/**/*.hdr   filter=lfs diff=lfs merge=lfs -text
+
 # Godot's .import and .tres sidecars are deliberately absent. They are text, the
 # rules above never match them (*.png does not match *.png.import), and spelling
 # out "-diff" to say so would mark them binary -- which is the opposite of what

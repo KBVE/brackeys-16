@@ -229,6 +229,58 @@ const HAIR_TINTS: Array[Color] = [
 	Color(0.70, 0.70, 0.72),
 ]
 
+## The five who are evidence. A named passenger has to be recognisable two carriages
+## later, so their clothes are written down rather than rolled, and every piece here is
+## one [constant POOL] ships.
+##
+## Anyone not listed rolls off their content id, which is what the crowd will do.
+const CAST := {
+	&"beaumont": {
+		"body": &"regular_female",
+		"outfit": &"female_noble",
+		"hair": &"long",
+		"accessories": ["models/outfits/Female_Noble_Acc_Gorget.glb"],
+		"cloth_tint": Color(0.34, 0.32, 0.36),
+		"skin_tint": Color(0.96, 0.92, 0.88),
+		"hair_tint": Color(0.72, 0.72, 0.74),
+	},
+	&"carrow": {
+		"body": &"teen_female",
+		"outfit": &"female_peasant",
+		"hair": &"bob",
+		"cloth_tint": Color(0.62, 0.66, 0.62),
+		"skin_tint": Color(0.92, 0.86, 0.80),
+		"hair_tint": Color(0.45, 0.34, 0.26),
+	},
+	&"dupont": {
+		"body": &"regular_male",
+		"outfit": &"male_peasant",
+		"hair": &"simple_parted",
+		"beard": &"beard",
+		"cloth_tint": Color(0.85, 0.76, 0.66),
+		"skin_tint": Color(0.78, 0.68, 0.60),
+		"hair_tint": Color(0.28, 0.24, 0.22),
+	},
+	&"thompson": {
+		"body": &"regular_male",
+		"outfit": &"male_noble",
+		"hair": &"simple_parted",
+		"cloth_tint": Color(0.58, 0.56, 0.64),
+		"skin_tint": Color(1.00, 1.00, 1.00),
+		"hair_tint": Color(0.72, 0.62, 0.46),
+	},
+	&"weiss": {
+		"body": &"regular_male",
+		"outfit": &"male_noble",
+		"hair": &"simple_parted",
+		"beard": &"beard",
+		"accessories": ["models/outfits/Male_Noble_Acc_Gorget.glb"],
+		"cloth_tint": Color(0.72, 0.74, 0.82),
+		"skin_tint": Color(0.92, 0.86, 0.80),
+		"hair_tint": Color(0.70, 0.70, 0.72),
+	},
+}
+
 ## Odds an accessory the outfit offers is actually worn, per accessory.
 const ACCESSORY_CHANCE := 0.5
 
@@ -280,6 +332,26 @@ static func roll(character_seed: int) -> CAppearance:
 ## without anyone writing a number into the content.
 static func seed_of(content_id: StringName) -> int:
 	return int(String(content_id).hash())
+
+
+## What the passenger with [param content_id] wears: what [constant CAST] says, or a
+## roll off their id when nobody has written them down.
+static func appearance_of(content_id: StringName) -> CAppearance:
+	if not CAST.has(content_id):
+		return roll(seed_of(content_id))
+
+	var written: Dictionary = CAST[content_id]
+	var appearance := CAppearance.new()
+	appearance.character_seed = seed_of(content_id)
+	appearance.body = written.get("body", &"regular_male")
+	appearance.outfit = written.get("outfit", &"male_peasant")
+	appearance.hair = written.get("hair", &"")
+	appearance.beard = written.get("beard", &"")
+	appearance.accessories = PackedStringArray(written.get("accessories", []))
+	appearance.cloth_tint = written.get("cloth_tint", Color.WHITE)
+	appearance.skin_tint = written.get("skin_tint", Color.WHITE)
+	appearance.hair_tint = written.get("hair_tint", Color.WHITE)
+	return appearance
 
 
 ## Every glb the rig has to graft onto the body, in the order they go on: hair before

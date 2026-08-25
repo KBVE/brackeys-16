@@ -23,10 +23,15 @@ func _ready() -> void:
 	places.departure_minutes = DEPARTURE_MINUTES
 	_scope.add_system(&"passenger_place", places)
 
+	# What they wear is decided here, once, rather than when a carriage comes into
+	# view: the rig [SCastBody] builds is thrown away and rebuilt every time the player
+	# walks back, and a passenger who changed coat on the way past would be a lie the
+	# whole game is about telling deliberately.
 	for passenger: Dictionary in GameContent.passengers():
 		var identity := CIdentity.new()
 		identity.content_id = passenger.get("id", "")
-		_scope.spawn().add(CPassenger.new()).add(identity).add(CLocation.new())
+		_scope.spawn().add(CPassenger.new()).add(identity).add(CLocation.new()) \
+			.add(Wardrobe.appearance_of(identity.content_id)).add(CCharacterRig.new())
 
 	begin()
 

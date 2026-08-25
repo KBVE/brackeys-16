@@ -146,7 +146,7 @@ func _ready() -> void:
 	_intent = CInput.new()
 	_scope.spawn().add(_viewer).add(_occupant).add(_here).add(_intent) \
 		.add(_locomotion).add(_carriage_camera()) \
-		.add(CCharacterRig.new(body)) \
+		.add(CCharacterRig.new(body)).add(CGait.new()) \
 		.add(ECSViewComponent.new(_player))
 	_control = SPlayerControl.new()
 	_control.drag_screens_per_unit = DRAG_SCREENS_PER_UNIT
@@ -159,6 +159,7 @@ func _ready() -> void:
 	occupancy.carriage_pitch = _consist.pitch
 	occupancy.carriage_count = _consist.carriage_count
 	_scope.add_system(&"occupancy", occupancy)
+	_scope.add_system(&"cast_body", _cast_body_system())
 	_scope.spawn().add(CParallax.new()).add(ECSViewComponent.new(_forest))
 	_scope.add_system(&"parallax", SParallax.new())
 	_scope.spawn().add(CWorldLighting.new()).add(ECSViewComponent.new($Screen/Frame/World/Lighting))
@@ -281,6 +282,23 @@ func _add_player_body() -> PlayerBody:
 	body.forward_yaw_offset_radians = CAMERA_YAW_OFFSET
 	_player.add_child(body)
 	return body
+
+
+## Passengers hang off a node of their own rather than off the consist, because a
+## carriage is culled by visibility and a rig is culled by being built at all.
+func _cast_body_system() -> SCastBody:
+	var cast_root := Node3D.new()
+	cast_root.name = "Cast"
+	_consist.get_parent().add_child(cast_root)
+
+	var bodies := SCastBody.new()
+	bodies.cast_root = cast_root
+	bodies.carriage_pitch = _consist.pitch
+	bodies.carriage_count = _consist.carriage_count
+	bodies.carriage_window = _consist.mesh_window
+	bodies.floor_height_metres = Consist.DRAWN_FLOOR_Y
+	bodies.forward_yaw_offset_radians = _locomotion.forward_yaw_offset_radians
+	return bodies
 
 
 ## The carriage is mesh, not collision, so the spring arm cannot be trusted to keep

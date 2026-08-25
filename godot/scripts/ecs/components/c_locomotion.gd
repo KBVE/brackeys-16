@@ -18,3 +18,8 @@ var walk_metres_per_unit: float = 4.0
 ## Signed along the walking direction, so backing up reads negative. Written by
 ## [SLocomotion] from distance actually covered, which is zero against a wall.
 var forward_metres_per_second: float = 0.0
+
+## The same measurement across the walking direction, positive to the character's own
+## right. Kept apart from the forward speed rather than folded into one magnitude,
+## because the legs do something different sideways.
+var strafe_metres_per_second: float = 0.0

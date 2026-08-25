@@ -320,3 +320,24 @@ func test_a_held_look_keeps_the_pitch_it_was_given() -> void:
 	assert_float(locomotion.pitch_radians).override_failure_message(
 		"the view drifted back to level while the player was still holding the look"
 	).is_equal_approx(-0.6, 0.01)
+
+
+## Strafing used to play the standing clip, because the gait was a single forward axis
+## and a sidestep reads as zero on it. He slid sideways on his heels.
+func test_sidestepping_puts_the_legs_in_a_sideways_clip() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(6)
+	var train: Node = runner.scene()
+	var body: PlayerBody = train.get_node("Screen/Frame/World/Player/Rig")
+	train._control.set_update(false)
+
+	train._intent.strafe_units = 0.02
+	await runner.simulate_frames(20)
+	var blend: Vector2 = body.animation_tree.get(CharacterRig.BLEND_POSITION_PARAMETER)
+
+	assert_float(blend.x).override_failure_message(
+		"stepping right left the gait on the forward axis, so he is standing still and sliding"
+	).is_greater(0.2)
+	assert_float(absf(blend.y)).override_failure_message(
+		"a pure sidestep leaked into the forward axis, so the legs are striding as well"
+	).is_less(0.2)
