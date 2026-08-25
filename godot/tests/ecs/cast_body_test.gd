@@ -110,20 +110,36 @@ func test_a_rebuilt_passenger_is_the_same_person() -> void:
 
 
 ## The Order does not send one knight with a crate. The escort is aboard from the first
-## frame, standing where the cargo is, and on no timeline that could move them off it.
+## frame and on no timeline that could move them, so the ones on the cargo stay on it.
+##
+## Not all four. One of them is walking the train, and that is what makes it a watch
+## rather than a tableau: [SGuardWatch] gives the patrol a beat and [SCastBody] then
+## reads their room off where the walk has got to. Asserting the whole escort was in the
+## van only passed while the patrol had not had time to leave it yet, which is a test of
+## how fast the machine is.
 func test_the_escort_stands_with_the_cargo() -> void:
 	var runner := scene_runner(SCENE)
 	await runner.simulate_frames(30)
 
 	var sworn := 0
+	var on_rounds := 0
 	for entry: Dictionary in _escort():
-		assert_str(String(entry[&"CLocation"].location_id)).override_failure_message(
-			"a sworn knight should be with the crate, not wandering the train"
-		).is_equal(String(Session.ESCORT_LOCATION))
 		sworn += 1
+		if _is_on_patrol(entry):
+			on_rounds += 1
+			assert_array(_errand_of(entry).beat).override_failure_message(
+				"the knight on patrol was given no rounds to walk"
+			).is_not_empty()
+			continue
+		assert_str(String(entry[&"CLocation"].location_id)).override_failure_message(
+			"a sworn knight who is not on patrol should be with the crate"
+		).is_equal(String(Session.ESCORT_LOCATION))
 	assert_int(sworn).override_failure_message(
 		"the guard's van should hold the Order's escort"
 	).is_equal(Session.ESCORT.size())
+	assert_int(on_rounds).override_failure_message(
+		"nobody is walking the train, so the watch never turns"
+	).is_equal(1)
 
 
 ## Escorts have no timeline, so nothing should ever move them; passengers do, and the
@@ -142,6 +158,17 @@ func test_the_escort_is_never_moved_by_the_clock() -> void:
 				"the escort left the cargo at %d minutes past midnight" % minutes
 			).is_equal(String(Session.ESCORT_LOCATION))
 	Session.time_of_day.running = true
+
+
+## Whether this knight is the one walking the train. Their duty rather than their room:
+## where the patrol has got to is the answer, not the question.
+func _is_on_patrol(entry: Dictionary) -> bool:
+	var duty: CWatch = entry["entity"].getc(CWatch) as CWatch
+	return duty != null and duty.duty == CWatch.PATROL
+
+
+func _errand_of(entry: Dictionary) -> CErrand:
+	return entry["entity"].getc(CErrand) as CErrand
 
 
 ## The escort, told from the cast by what they lack: Dame Marchand wears the same plate
