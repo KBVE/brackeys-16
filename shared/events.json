@@ -81,6 +81,16 @@
       },
       "description": "Where the player is standing: the carriage they are in and the room that carriage stands in for.\n\nEmitted only when one of them changes, never per frame. This replaces the in-engine debug label, so the information lives in the React panel with everything else."
     },
+    "DOOR_STATE": {
+      "bus": "door_state",
+      "wire": "door:state",
+      "payload": {
+        "open": "boolean",
+        "locked": "boolean",
+        "distance": "number"
+      },
+      "description": "A door was used, and what happened. Emitted on the press rather than per frame.\n\nA locked door reports too, with open unchanged: silence would be indistinguishable from the player failing to reach it, and the panel is the only place to tell the difference while the run has no dialogue."
+    },
     "RENDER_BUDGET": {
       "bus": "render_budget",
       "wire": "render:budget",

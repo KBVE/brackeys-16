@@ -76,3 +76,34 @@ func test_antialiasing_goes_before_the_resolution_does() -> void:
 	assert_int(budget.msaa()).is_equal(Viewport.MSAA_2X)
 	budget.shrink = 3
 	assert_int(budget.msaa()).is_equal(Viewport.MSAA_DISABLED)
+
+
+## A hitch is not a workload. Streaming a carriage in, a tab coming back from the
+## background and a garbage collection all arrive as one very long frame, and
+## dropping a level for one is what made the whole run go soft mid-aisle.
+func test_one_long_stall_does_not_cost_a_level() -> void:
+	var budget := RenderBudget.new()
+	budget.begin(false, 1.0)
+	_run_at(budget, 60.0, 4.0)
+
+	for _i in range(6):
+		budget.sample(4.0, 0.30)
+
+	assert_int(budget.shrink).override_failure_message(
+		"a stall spent the resolution the player was already holding"
+	).is_equal(RenderBudget.FASTEST_SHRINK)
+
+
+## The wait before retrying a level doubles on every degrade. Without a ceiling and
+## a way back, one bad minute puts the next attempt minutes out and the run never
+## recovers what it gave up.
+func test_a_bad_patch_is_forgiven_once_the_device_proves_itself() -> void:
+	var patchy := RenderBudget.new()
+	patchy.begin(false, 1.0)
+	_run_at(patchy, 20.0, 30.0)
+	assert_int(patchy.shrink).is_greater(RenderBudget.FASTEST_SHRINK)
+
+	_run_at(patchy, 60.0, 120.0)
+	assert_int(patchy.shrink).override_failure_message(
+		"two clean minutes and it still will not give the pixels back"
+	).is_equal(RenderBudget.FASTEST_SHRINK)

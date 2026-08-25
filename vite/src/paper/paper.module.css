@@ -239,16 +239,8 @@
     letter-spacing: 0.06em;
   }
 
-  /* &reclaim -> the plate's width is derived from its height and the canvas
-     aspect, so on a tall screen it leaves ~48% of the width unused either side.
-     `auto 1fr` hands all of that to the rail instead of splitting it into two
-     dead margins, and it re-derives itself when the aspect changes. */
+  
   .body {
-    /* &explicit -> NOT `auto`. An auto track sizes from the plate hole, whose
-       width comes from `aspect-ratio` against a definite height; Safari
-       collapses that to near zero in intrinsic sizing, so the plate shrank to
-       nothing and the 1fr rail took the row. A percentage needs no intrinsic
-       measurement, so both engines agree. */
     grid-template-columns: 58% minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
     grid-template-areas:

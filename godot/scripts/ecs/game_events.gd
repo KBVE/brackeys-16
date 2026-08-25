@@ -89,6 +89,16 @@ const WORLD_CLOCK := &"world_clock"
 ## Payload: {"carriage": number, "location": string}. Reaches JS as "viewer:state".
 const VIEWER_STATE := &"viewer_state"
 
+## A door was used, and what happened. Emitted on the press rather than per frame.
+##
+## A locked door reports too, with open unchanged: silence would be indistinguishable
+## from the player failing to reach it, and the panel is the only place to tell the
+## difference while the run has no dialogue.
+##
+## Payload: {"open": boolean, "locked": boolean, "distance": number}. Reaches JS as
+## "door:state".
+const DOOR_STATE := &"door_state"
+
 ## How far the world's render resolution is currently divided, and the antialiasing that
 ## goes with it.
 ##
@@ -155,6 +165,7 @@ const OUTBOUND_WIRE: Dictionary[StringName, String] = {
 	RUN_OVER: "game:run_over",
 	WORLD_CLOCK: "world:clock",
 	VIEWER_STATE: "viewer:state",
+	DOOR_STATE: "door:state",
 	RENDER_BUDGET: "render:budget",
 	JOURNAL_ENTRY: "journal:entry",
 }
@@ -171,6 +182,7 @@ const WIRE_FIELDS: Dictionary[String, Array] = {
 	"level:changed": ["level", "index", "total", "outcome"],
 	"world:clock": ["hour", "minute"],
 	"viewer:state": ["carriage", "location"],
+	"door:state": ["open", "locked", "distance"],
 	"render:budget": ["shrink", "detail"],
 	"journal:entry": ["id", "kind", "actor", "target", "place", "at"],
 }

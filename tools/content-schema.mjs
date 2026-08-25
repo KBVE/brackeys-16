@@ -121,10 +121,41 @@ export const item = z.object({
  *              that one. Without it the location is off the train, so nobody
  *         and the ECS never spawns a carriage for it.
  */
+/**
+ * One prop standing in a room, placed in carriage-local metres.
+ *
+ * Not world space. Consist centres itself on its own origin, so inserting a
+ * carriage moves every world X by half a pitch, and a prop authored in world
+ * space slides half a car every time the train changes length. Local placement
+ * is what survives the consist growing, which is the whole reason for the field.
+ *
+ * `along` runs down the train from the carriage centre, `across` from the aisle
+ * centreline toward a wall, `above` lifts it off the deck so a plate can stand on
+ * a table rather than under it, and `facing` turns the prop about its own up axis.
+ * The prop compiler puts every origin on the ground under its prop, so `above` is
+ * the height of whatever surface it is standing on and nothing else. The
+ * carriage geometry those have to clear -- end walls, door swing, the aisle
+ * between the benches -- is checked engine side against the measured constants
+ * on Consist rather than restated here, because a second copy of 8.615 is a
+ * second copy that can drift.
+ */
+const furnishing = z.object({
+  prop: z.string().min(1),
+  along: z.number(),
+  across: z.number(),
+  above: z.number().min(0).default(0),
+  facing: z.number().default(0),
+  /** Stamped on by gen-content from the prop library; not authored per room. */
+  seats: z.boolean().optional(),
+  cushionHeight: z.number().optional(),
+});
+
 export const location = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   carriage: z.number().int().min(0).optional(),
+  /** What stands in the room, for a location that is a place in the consist. */
+  furnishings: z.array(furnishing).default([]),
   ...prose,
 });
 

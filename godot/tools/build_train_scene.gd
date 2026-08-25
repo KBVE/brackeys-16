@@ -120,7 +120,24 @@ func _initialize() -> void:
 	var consist := Node3D.new()
 	consist.name = "Consist"
 	consist.set_script(load("res://scripts/train/consist.gd"))
-	consist.set("carriage_scene", load("res://assets/train/carriage.gltf"))
+	consist.set("carriage_scene", load("res://assets/train/carriage_empty.gltf"))
+	consist.set("seating_scene", load("res://assets/train/carriage_seating.gltf"))
+	consist.set("doors_scene", load("res://assets/train/carriage_doors.gltf"))
+	consist.set("props_scene", load("res://assets/props/props.glb"))
+	# shared/data/locations furnishes the guard's van with crates and a cold stove,
+	# so the bench seating in there was always contradicting its own description.
+	# The dining car loses its benches for a different reason: the stock seating is
+	# back to back, which seats every second diner facing away from the table, and
+	# the tables and chairs it gets instead are props that food can later stand on.
+	var bare: Array[StringName] = [&"guard_van", &"dining"]
+	var undressed: Array[int] = []
+	for room: StringName in bare:
+		var at := GameContent.carriage_locations().find(room)
+		assert(at >= 0, "no %s in shared/data/locations" % room)
+		# typed, because set() drops an untyped Array on an Array[int] property and
+		# leaves the default behind without saying so
+		undressed.append(at)
+	consist.set("undressed_carriages", undressed)
 	consist.set("detail_normal", load("res://assets/train/detail_normal.png"))
 	# &count -> the consist is as long as the content says. A location authored
 	#           with a carriage index is a carriage that has to exist.

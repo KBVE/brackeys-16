@@ -3,6 +3,11 @@ extends GdUnitTestSuite
 
 const SCENE := "res://scenes/train/train.scn"
 const TRIS_PER_CARRIAGE := 32274
+## The bench seating, split out of the shell so a carriage can be dressed as
+## something other than a seating saloon.
+const TRIS_IN_SEATING := 2966
+## Both end-wall door leaves, glass included, split out so they can swing.
+const TRIS_IN_DOORS := 108
 ## Everything 3D now lives under the SubViewport, so the world renders at its own
 ## resolution while the HUD stays sharp.
 const WORLD := "Screen/Frame/World"
@@ -74,9 +79,26 @@ func test_the_carriage_is_packed_once_not_twice() -> void:
 	).is_not_null()
 	var carriage: Node = auto_free(carriage_scene.instantiate())
 	assert_int(_triangles(carriage)).override_failure_message(
-		"one carriage should be %d triangles, double that means the builder packed "
-		% TRIS_PER_CARRIAGE + "the glTF instance's children as well as the instance."
-	).is_equal(TRIS_PER_CARRIAGE)
+		"the bare shell should be %d triangles, double that means the builder packed "
+		% (TRIS_PER_CARRIAGE - TRIS_IN_SEATING - TRIS_IN_DOORS)
+		+ "the glTF instance's children as well as the instance."
+	).is_equal(TRIS_PER_CARRIAGE - TRIS_IN_SEATING - TRIS_IN_DOORS)
+
+	var seating_scene: PackedScene = root.get_node(WORLD + "/Consist").seating_scene
+	assert_object(seating_scene).override_failure_message(
+		"Consist.seating_scene is unset, so every carriage would be a bare box."
+	).is_not_null()
+	var seating: Node = auto_free(seating_scene.instantiate())
+	var doors_scene: PackedScene = root.get_node(WORLD + "/Consist").doors_scene
+	assert_object(doors_scene).override_failure_message(
+		"Consist.doors_scene is unset, so every doorway would be an open hole."
+	).is_not_null()
+	var doors: Node = auto_free(doors_scene.instantiate())
+	assert_int(_triangles(carriage) + _triangles(seating) + _triangles(doors)) \
+		.override_failure_message(
+			"the shell, the seating and the doors no longer add up to the carriage "
+			+ "they were split from, so the split dropped or duplicated geometry."
+		).is_equal(TRIS_PER_CARRIAGE)
 
 
 func _triangles(node: Node) -> int:
@@ -97,3 +119,34 @@ func test_the_consist_is_as_long_as_the_content_says() -> void:
 		+ "authors a carriage index for, so a room would have no carriage or the "
 		+ "reverse. Rebuild with build_train_scene.gd."
 	).is_equal(GameContent.carriage_locations().size())
+
+
+## Two rooms carry no bench seating, and both are deliberate. The guard's van is
+## described in shared/data/locations as crates and a cold stove and shipped full
+## of benches anyway, because the seating was part of the carriage mesh and there
+## was no way to leave it out. The dining car is bare because the stock seating is
+## back to back, which seats every second diner facing away from the table it is
+## meant to be laid on; it gets tables and chairs as props instead.
+##
+## Anything else turning up bare is a room that has quietly lost its furniture.
+func test_only_the_rooms_that_ask_to_be_bare_are_bare() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(2)
+	var consist: Node = runner.scene().get_node(WORLD + "/Consist")
+	var aboard: Array = GameContent.carriage_locations()
+	var expected: Array[int] = []
+	for room: StringName in [&"guard_van", &"dining"]:
+		var at: int = aboard.find(room)
+		assert_int(at).override_failure_message(
+			"no %s in shared/data/locations" % room).is_greater_equal(0)
+		expected.append(at)
+	expected.sort()
+
+	var bare: Array[int] = []
+	for i in range(consist.carriage_count):
+		var carriage := consist.get_node("Carriage_%02d" % i)
+		if carriage.get_node_or_null("Seating") == null:
+			bare.append(i)
+	assert_array(bare).override_failure_message(
+		"expected %s to be the bare rooms, found %s" % [expected, bare]
+	).is_equal(expected)

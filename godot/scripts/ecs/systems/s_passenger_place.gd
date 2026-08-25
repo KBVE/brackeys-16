@@ -25,6 +25,11 @@ func _on_update(_delta: float) -> void:
 		var passenger := GameContent.by_id("passengers", entry[&"CIdentity"].content_id)
 		if passenger.is_empty():
 			continue
+		# Anybody walking rounds is somewhere because they walked there, and saying
+		# otherwise would teleport the conductor back up the train mid-stride.
+		var errand: CErrand = entry["entity"].getc(CErrand) as CErrand
+		if errand != null and not errand.beat.is_empty():
+			continue
 		entry[&"CLocation"].location_id = _where(passenger, minutes, elapsed)
 
 
