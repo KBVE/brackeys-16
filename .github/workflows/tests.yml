@@ -23,7 +23,51 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          lfs: true
+          lfs: false
+
+      - name: Cache LFS objects
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .git/lfs/objects
+          key: lfs-${{ hashFiles('.gitattributes', 'godot/assets/characters/**') }}
+
+      - name: Pull LFS assets (Forgejo)
+        env:
+          FORGEJO_USER: ${{ secrets.FORGEJO_USER }}
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: |
+          set -euo pipefail
+          command -v git-lfs >/dev/null 2>&1 || sudo apt-get install -y -qq git-lfs
+          git lfs install --local
+          git lfs ls-files -n > /tmp/lfs-files.txt
+          if [ ! -s /tmp/lfs-files.txt ]; then
+            echo "::notice::No LFS-tracked files - skipping"
+            exit 0
+          fi
+          if [ -z "${FORGEJO_USER:-}" ] || [ -z "${FORGEJO_TOKEN:-}" ]; then
+            echo "::error::FORGEJO_USER / FORGEJO_TOKEN missing. Godot imports an"
+            echo "::error::unsmudged .glb as ERR_FILE_CORRUPT and dies on a signal,"
+            echo "::error::so this fails here where the reason is still legible."
+            exit 1
+          fi
+          printf 'machine git.kbve.com\nlogin %s\npassword %s\n' \
+            "$FORGEJO_USER" "$FORGEJO_TOKEN" > "$HOME/.netrc"
+          chmod 600 "$HOME/.netrc"
+          git lfs pull
+          STUBS=$(xargs -r grep -l "^version https://git-lfs" < /tmp/lfs-files.txt 2>/dev/null || true)
+          if [ -n "$STUBS" ]; then
+            echo "::error::LFS pointers unresolved after pull:"
+            printf '%s\n' "$STUBS" | head -5
+            exit 1
+          fi
+
+      - name: Cache Godot imports
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: godot/.godot/imported
+          key: godot-import-${{ env.GODOT_VERSION }}-${{ hashFiles('godot/assets/**', 'godot/**/*.import') }}
+          restore-keys: |
+            godot-import-${{ env.GODOT_VERSION }}-
 
       - name: Set up Godot ${{ env.GODOT_VERSION }}
         uses: chickensoft-games/setup-godot@f166999204a4f2722c6fe042fbaa3b3ea0d9c789
@@ -82,7 +126,51 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          lfs: true
+          lfs: false
+
+      - name: Cache LFS objects
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .git/lfs/objects
+          key: lfs-${{ hashFiles('.gitattributes', 'godot/assets/characters/**') }}
+
+      - name: Pull LFS assets (Forgejo)
+        env:
+          FORGEJO_USER: ${{ secrets.FORGEJO_USER }}
+          FORGEJO_TOKEN: ${{ secrets.FORGEJO_TOKEN }}
+        run: |
+          set -euo pipefail
+          command -v git-lfs >/dev/null 2>&1 || sudo apt-get install -y -qq git-lfs
+          git lfs install --local
+          git lfs ls-files -n > /tmp/lfs-files.txt
+          if [ ! -s /tmp/lfs-files.txt ]; then
+            echo "::notice::No LFS-tracked files - skipping"
+            exit 0
+          fi
+          if [ -z "${FORGEJO_USER:-}" ] || [ -z "${FORGEJO_TOKEN:-}" ]; then
+            echo "::error::FORGEJO_USER / FORGEJO_TOKEN missing. Godot imports an"
+            echo "::error::unsmudged .glb as ERR_FILE_CORRUPT and dies on a signal,"
+            echo "::error::so this fails here where the reason is still legible."
+            exit 1
+          fi
+          printf 'machine git.kbve.com\nlogin %s\npassword %s\n' \
+            "$FORGEJO_USER" "$FORGEJO_TOKEN" > "$HOME/.netrc"
+          chmod 600 "$HOME/.netrc"
+          git lfs pull
+          STUBS=$(xargs -r grep -l "^version https://git-lfs" < /tmp/lfs-files.txt 2>/dev/null || true)
+          if [ -n "$STUBS" ]; then
+            echo "::error::LFS pointers unresolved after pull:"
+            printf '%s\n' "$STUBS" | head -5
+            exit 1
+          fi
+
+      - name: Cache Godot imports
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: godot/.godot/imported
+          key: godot-import-${{ env.GODOT_VERSION }}-${{ hashFiles('godot/assets/**', 'godot/**/*.import') }}
+          restore-keys: |
+            godot-import-${{ env.GODOT_VERSION }}-
 
       - name: Set up Godot ${{ env.GODOT_VERSION }}
         uses: chickensoft-games/setup-godot@f166999204a4f2722c6fe042fbaa3b3ea0d9c789

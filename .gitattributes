@@ -1,0 +1,26 @@
+# Git LFS — character art shared with friendslop
+#
+# Pointer files (text, ~130 bytes) live in this GitHub repo; the blobs live on
+# git.kbve.com/KBVE/friendslop.git, named by .lfsconfig.
+#
+# Scoped to assets/characters on purpose. A blanket rule over godot/assets would
+# also claim the train textures, which are already committed as ordinary git
+# blobs, and converting those means rewriting history for no gain. Anything new
+# and large goes under a path listed here, or it goes in plain.
+godot/assets/characters/**/*.glb   filter=lfs diff=lfs merge=lfs -text
+godot/assets/characters/**/*.gltf  filter=lfs diff=lfs merge=lfs -text
+godot/assets/characters/**/*.fbx   filter=lfs diff=lfs merge=lfs -text
+godot/assets/characters/**/*.bin   filter=lfs diff=lfs merge=lfs -text
+godot/assets/characters/**/*.blend filter=lfs diff=lfs merge=lfs -text
+godot/assets/characters/**/*.png   filter=lfs diff=lfs merge=lfs -text
+godot/assets/characters/**/*.jpg   filter=lfs diff=lfs merge=lfs -text
+godot/assets/characters/**/*.jpeg  filter=lfs diff=lfs merge=lfs -text
+godot/assets/characters/**/*.tga   filter=lfs diff=lfs merge=lfs -text
+godot/assets/characters/**/*.webp  filter=lfs diff=lfs merge=lfs -text
+godot/assets/characters/**/*.exr   filter=lfs diff=lfs merge=lfs -text
+godot/assets/characters/**/*.hdr   filter=lfs diff=lfs merge=lfs -text
+
+# Godot's .import and .tres sidecars are deliberately absent. They are text, the
+# rules above never match them (*.png does not match *.png.import), and spelling
+# out "-diff" to say so would mark them binary -- which is the opposite of what
+# that line would have been trying to do.
