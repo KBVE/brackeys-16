@@ -191,14 +191,14 @@ func test_he_stands_on_the_floor_he_can_see() -> void:
 		* body.skeleton.get_bone_global_pose(toes).origin
 	assert_float(at.y).override_failure_message(
 		"his toes are under the floorboards"
-	).is_greater(Consist.DRAWN_FLOOR_Y - 0.01)
+	).is_greater(Consist.FLOOR_Y - 0.01)
 	# the deck sits above the underframe; anything near zero is the car's underside
-	assert_float(Consist.DRAWN_FLOOR_Y).override_failure_message(
+	assert_float(Consist.FLOOR_Y).override_failure_message(
 		"the drawn floor is back under the carriage, where the underframe is"
 	).is_greater(1.0)
 	assert_float(at.y).override_failure_message(
 		"he is hovering above the floor"
-	).is_less(Consist.DRAWN_FLOOR_Y + 0.1)
+	).is_less(Consist.FLOOR_Y + 0.1)
 
 
 ## Moving the collision floor to match the drawn one lifted the player, because his
@@ -235,7 +235,7 @@ func test_the_camera_cannot_leave_the_carriage() -> void:
 		).is_less(Consist.WALL_HEIGHT)
 		assert_float(at.y).override_failure_message(
 			"looking at %f put the camera under the floor" % pitch
-		).is_greater(Consist.DRAWN_FLOOR_Y)
+		).is_greater(Consist.FLOOR_Y)
 		assert_float(absf(at.z)).override_failure_message(
 			"looking at %f put the camera out through a side wall" % pitch
 		).is_less(Consist.INTERIOR_HALF_Z)
@@ -256,7 +256,7 @@ func test_he_is_the_size_of_a_person() -> void:
 		"nobody is this tall; the rig is being scaled off something other than stature"
 	).is_between(1.5, 2.0)
 
-	assert_float(body.eye_height_metres() - Consist.DRAWN_FLOOR_Y).override_failure_message(
+	assert_float(body.eye_height_metres() - Consist.FLOOR_Y).override_failure_message(
 		"his eyes are not a person's height above the floor he stands on"
 	).is_between(1.5, 1.7)
 
@@ -336,8 +336,10 @@ func test_sidestepping_puts_the_legs_in_a_sideways_clip() -> void:
 	var body: PlayerBody = train.get_node("Screen/Frame/World/Player/Rig")
 	train._control.set_update(false)
 
-	train._intent.strafe_units = 0.02
-	await runner.simulate_frames(20)
+	# the aisle is a foot and a half wide and the benches are solid now, so a sidestep
+	# has to be slow enough to still be moving when the gait is read
+	train._intent.strafe_units = 0.0015
+	await runner.simulate_frames(12)
 	var blend: Vector2 = body.animation_tree.get(CharacterRig.BLEND_POSITION_PARAMETER)
 
 	assert_float(blend.x).override_failure_message(

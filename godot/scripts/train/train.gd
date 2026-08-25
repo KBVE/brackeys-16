@@ -288,7 +288,7 @@ func _fit_the_capsule_to(body: PlayerBody) -> void:
 func _add_player_body() -> PlayerBody:
 	var body := PlayerBody.new()
 	body.name = "Rig"
-	body.floor_height_metres = Consist.DRAWN_FLOOR_Y
+	body.floor_height_metres = Consist.FLOOR_Y
 	body.forward_yaw_offset_radians = CAMERA_YAW_OFFSET
 	_player.add_child(body)
 	return body
@@ -306,7 +306,7 @@ func _cast_body_system() -> SCastBody:
 	bodies.carriage_pitch = _consist.pitch
 	bodies.carriage_count = _consist.carriage_count
 	bodies.carriage_window = _consist.mesh_window
-	bodies.floor_height_metres = Consist.DRAWN_FLOOR_Y
+	bodies.floor_height_metres = Consist.FLOOR_Y
 	bodies.forward_yaw_offset_radians = _locomotion.forward_yaw_offset_radians
 	return bodies
 
@@ -317,7 +317,7 @@ func _carriage_camera() -> CCamera:
 	var eye := CCamera.new(_add_boom(), _cam)
 	eye.rest_offset = BOOM_SHOULDER_OFFSET
 	eye.interior_half_z = Consist.INTERIOR_HALF_Z - 0.15
-	eye.lowest_y = Consist.DRAWN_FLOOR_Y + 0.4
+	eye.lowest_y = Consist.FLOOR_Y + 0.4
 	eye.highest_y = Consist.WALL_HEIGHT - 0.35
 	return eye
 

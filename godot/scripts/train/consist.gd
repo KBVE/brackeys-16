@@ -32,19 +32,15 @@ class_name Consist
 ## trimesh of it would be that much physics geometry per car, for a corridor
 ## that is in the end a box. Z is inside the 1.69 shell, leaving the panelling
 ## thickness the player never reaches through.
-const FLOOR_Y := 0.0
-
-## Where the floorboards are actually drawn, found by casting a ray down the aisle
-## against a trimesh of the carriage. It is not the model's lowest vertex, which is a
-## bogie a metre under the rails, and it is not the busiest run of vertices either:
-## the car body has an underside at 0.04 and an underframe between, and both look
-## like floors to anything counting vertices. The deck is a metre and a quarter up.
+## The deck, found by casting a ray down the aisle against a trimesh of the carriage.
+## It is not the model's lowest vertex, which is a bogie a metre under the rails, and
+## it is not the busiest run of vertices either: the car body has an underside at 0.04
+## and an underframe between, and both look like floors to anything counting them.
 ##
-## [constant FLOOR_Y] is a metre and a quarter below it and stays there. The player's
-## capsule is sized against it, and moving it lifts him off his own collider; nothing
-## stands on the collision floor anyway, because the walk pins Y rather than falling.
-## What needed the real number was the body, which was buried to the ankles without it.
-const DRAWN_FLOOR_Y := 1.2735
+## Collision and drawing were two numbers until the seating was split out of the shell.
+## They are one now, so a ray cast at the floor hits the floor the player can see, and
+## the capsule stands on the deck rather than a plane a metre and a quarter beneath it.
+const FLOOR_Y := 1.2735
 const INTERIOR_HALF_Z := 1.5
 const WALL_HEIGHT := 3.5
 const SHELL_THICKNESS := 0.4
@@ -91,6 +87,31 @@ func _dress(carriage: Node3D, index: int) -> void:
 	var seating := seating_scene.instantiate()
 	seating.name = "Seating"
 	carriage.add_child(seating)
+	_add_seat_collision(seating)
+
+
+## Collision for the benches, which the shell box cannot describe: it is a room, and a
+## room with seats in it is not a box. Trimesh rather than a box per bench because the
+## seating is its own mesh now and small enough to afford -- roughly two thousand
+## triangles a car against the thirty-two thousand the whole shell would have cost,
+## which is the reason the shell is still a box.
+##
+## What it buys is a floor a ray can find: the foot planting and anything that asks
+## what is underfoot now get the seat top rather than the deck under it.
+func _add_seat_collision(seating: Node3D) -> void:
+	var body := StaticBody3D.new()
+	body.name = "SeatingCollision"
+	for mesh: MeshInstance3D in _mesh_instances(seating):
+		if mesh.mesh == null:
+			continue
+		var shape := CollisionShape3D.new()
+		shape.shape = mesh.mesh.create_trimesh_shape()
+		shape.transform = mesh.transform
+		body.add_child(shape)
+	if body.get_child_count() > 0:
+		seating.add_child(body)
+	else:
+		body.free()
 
 
 ## Floor and side walls, so the player is inside something rather than beside it.
