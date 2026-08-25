@@ -25,7 +25,7 @@ const OUTFIT := [
 ## Godot's use_name_suffixes strips the _Loop suffix on import and sets the loop mode
 ## from it, so these are the glTF names minus that suffix.
 const CLIPS_BY_SOURCE := {
-	"animations/UAL1.glb": ["Idle"],
+	"animations/UAL1.glb": ["Idle", "Jump_Start", "Jump", "Jump_Land"],
 	"animations/UAL2.glb": [
 		"Walk_Fwd", "Walk_Bwd", "Walk_L", "Walk_R",
 		"Walk_Fwd_L", "Walk_Fwd_R", "Walk_Bwd_L", "Walk_Bwd_R",

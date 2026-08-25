@@ -81,6 +81,8 @@ var _eye_override := INF
 var _viewer: CViewer
 var _locomotion: CLocomotion
 var _intent: CInput
+var _posture: CPosture
+var _foot_planting: CFootPlanting
 var _control: SPlayerControl
 var _occupant: COccupant
 var _here: CLocation
@@ -144,9 +146,11 @@ func _ready() -> void:
 	_locomotion.turn_radians_per_unit = TURN_RADIANS_PER_UNIT
 	_locomotion.walk_metres_per_unit = WALK_METRES_PER_UNIT
 	_intent = CInput.new()
+	_posture = CPosture.new()
+	_foot_planting = CFootPlanting.new()
 	_scope.spawn().add(_viewer).add(_occupant).add(_here).add(_intent) \
 		.add(_locomotion).add(_carriage_camera()) \
-		.add(CCharacterRig.new(body)).add(CGait.new()) \
+		.add(CCharacterRig.new(body)).add(CGait.new()).add(_posture).add(_foot_planting) \
 		.add(ECSViewComponent.new(_player))
 	_control = SPlayerControl.new()
 	# a headless run has no window to steal focus from, and its tests press real actions
@@ -156,6 +160,8 @@ func _ready() -> void:
 	_scope.add_system(&"locomotion", SLocomotion.new())
 	_scope.add_system(&"camera_aim", SCameraAim.new())
 	_scope.add_system(&"character_animation", SCharacterAnimation.new())
+	_scope.add_system(&"posture", SPosture.new())
+	_scope.add_system(&"foot_planting", SFootPlanting.new())
 	_scope.add_system(&"viewer", SViewer.new())
 	var occupancy := SOccupancy.new()
 	occupancy.carriage_pitch = _consist.pitch

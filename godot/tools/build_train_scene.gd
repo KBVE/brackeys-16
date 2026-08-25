@@ -122,6 +122,14 @@ func _initialize() -> void:
 	consist.set_script(load("res://scripts/train/consist.gd"))
 	consist.set("carriage_scene", load("res://assets/train/carriage_empty.gltf"))
 	consist.set("seating_scene", load("res://assets/train/carriage_seating.gltf"))
+	# shared/data/locations furnishes the guard's van with crates and a cold stove,
+	# so the bench seating in there was always contradicting its own description
+	var guard_van := GameContent.carriage_locations().find(&"guard_van")
+	assert(guard_van >= 0, "no guard_van in shared/data/locations")
+	# typed, because set() drops an untyped Array on an Array[int] property and
+	# leaves the default behind without saying so
+	var undressed: Array[int] = [guard_van]
+	consist.set("undressed_carriages", undressed)
 	consist.set("detail_normal", load("res://assets/train/detail_normal.png"))
 	# &count -> the consist is as long as the content says. A location authored
 	#           with a carriage index is a carriage that has to exist.

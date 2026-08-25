@@ -22,12 +22,14 @@ func _rigs_in(train: Node) -> Array:
 		if cast_root != null else []
 
 
-func _passengers_within(train: Node) -> int:
+## Everybody with a face and a place, not only the passengers: the guard's van holds an
+## escort that is on no timeline and in no content file.
+func _cast_within(train: Node) -> int:
 	var aboard := GameContent.carriage_locations()
 	var here: int = train._occupant.carriage_index
 	var window: int = train.get_node("Screen/Frame/World/Consist").mesh_window
 	var count := 0
-	for entry: Dictionary in Ecs.world.multi_view([CPassenger, CLocation]):
+	for entry: Dictionary in Ecs.world.multi_view([CLocation, CAppearance]):
 		var carriage := aboard.find(entry[&"CLocation"].location_id)
 		if carriage >= 0 and absi(carriage - here) <= window:
 			count += 1
@@ -52,7 +54,7 @@ func test_only_passengers_in_a_drawn_carriage_have_a_body() -> void:
 	await runner.simulate_frames(30)
 	var train: Node = runner.scene()
 
-	var expected := _passengers_within(train)
+	var expected := _cast_within(train)
 	assert_int(expected).override_failure_message(
 		"the evening was picked so that somebody is aboard and near the player"
 	).is_greater(0)
@@ -101,3 +103,46 @@ func test_a_rebuilt_passenger_is_the_same_person() -> void:
 	assert_array(_looks_of(train)).override_failure_message(
 		"the same passengers should come back identical, down to where they stand"
 	).is_equal(before)
+
+
+## The Order does not send one knight with a crate. The escort is aboard from the first
+## frame, standing where the cargo is, and on no timeline that could move them off it.
+func test_the_escort_stands_with_the_cargo() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(30)
+
+	var sworn := 0
+	for entry: Dictionary in _escort():
+		assert_str(String(entry[&"CLocation"].location_id)).override_failure_message(
+			"a sworn knight should be with the crate, not wandering the train"
+		).is_equal(String(Session.ESCORT_LOCATION))
+		sworn += 1
+	assert_int(sworn).override_failure_message(
+		"the guard's van should hold the Order's escort"
+	).is_equal(Session.ESCORT.size())
+
+
+## Escorts have no timeline, so nothing should ever move them; passengers do, and the
+## same system must not confuse the two.
+func test_the_escort_is_never_moved_by_the_clock() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(4)
+	var clock: SClock = Ecs.runner.get_system(&"clock")
+	Session.time_of_day.running = false
+
+	for minutes: int in [17 * 60, 21 * 60, 2 * 60]:
+		clock.set_minutes(Session.time_of_day, minutes)
+		await runner.simulate_frames(2)
+		for entry: Dictionary in _escort():
+			assert_str(String(entry[&"CLocation"].location_id)).override_failure_message(
+				"the escort left the cargo at %d minutes past midnight" % minutes
+			).is_equal(String(Session.ESCORT_LOCATION))
+	Session.time_of_day.running = true
+
+
+## The escort, told from the cast by what they lack: Dame Marchand wears the same plate
+## and is a passenger, with a timeline that moves her off the cargo at twenty to ten.
+func _escort() -> Array:
+	return Ecs.world.multi_view([CLocation, CAppearance]).filter(
+		func(entry: Dictionary) -> bool:
+			return not entry["entity"].has(CPassenger))

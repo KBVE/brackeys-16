@@ -2,6 +2,21 @@ extends Node
 
 ## Session : ECS state that outlives a scene swap.
 
+## Where the Order's escort stands, and who stands there. Two sworn knights on a crate
+## nobody is permitted to open, from the hour it is loaded to the hour it is unloaded.
+##
+## They are not passengers: no berth, no timeline, no alibi, and nothing in the content
+## about them, because they are the image the guard's van is selling rather than anybody
+## the mystery turns on. Dame Marchand is the one with a name, and she is content.
+##
+## The seeds are written down rather than derived so the two of them stay the two of
+## them; the faces under the helmets are rolled, the plate is not.
+const ESCORT_LOCATION := &"guard_van"
+const ESCORT := [
+	{"seed": 0x5eed_0001, "outfit": &"male_knight"},
+	{"seed": 0x5eed_0002, "outfit": &"female_knight"},
+]
+
 ## Departure, in minutes past midnight. Earliest authored timeline is Dupont boarding at Paris.
 const DEPARTURE_MINUTES := 16 * 60 + 5
 
@@ -32,6 +47,12 @@ func _ready() -> void:
 		identity.content_id = passenger.get("id", "")
 		_scope.spawn().add(CPassenger.new()).add(identity).add(CLocation.new()) \
 			.add(Wardrobe.appearance_of(identity.content_id)).add(CCharacterRig.new())
+
+	for sworn: Dictionary in ESCORT:
+		var post := CLocation.new()
+		post.location_id = ESCORT_LOCATION
+		_scope.spawn().add(post).add(CCharacterRig.new()) \
+			.add(Wardrobe.roll(sworn["seed"], sworn["outfit"]))
 
 	begin()
 

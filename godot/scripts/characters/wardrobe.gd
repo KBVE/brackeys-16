@@ -51,24 +51,28 @@ const BODIES := {
 		"model": "models/Regular_Male_OnlyHead.glb",
 		"sex": &"male",
 		"skin_material": &"MI_Regular_Male",
+		"adult": true,
 		"stature_metres": Vector2(1.68, 1.86),
 	},
 	&"regular_female": {
 		"model": "models/Regular_Female_OnlyHead.glb",
 		"sex": &"female",
 		"skin_material": &"MI_Regular_Female",
+		"adult": true,
 		"stature_metres": Vector2(1.58, 1.74),
 	},
 	&"teen_male": {
 		"model": "models/Teen_Male_OnlyHead.glb",
 		"sex": &"male",
 		"skin_material": &"MI_Teen_Male",
+		"adult": false,
 		"stature_metres": Vector2(1.52, 1.66),
 	},
 	&"teen_female": {
 		"model": "models/Teen_Female_OnlyHead.glb",
 		"sex": &"female",
 		"skin_material": &"MI_Teen_Female",
+		"adult": false,
 		"stature_metres": Vector2(1.48, 1.62),
 	},
 }
@@ -98,7 +102,9 @@ const STYLES := {
 	&"ranger": {"group": &"common"},
 	&"noble": {"group": &"fine"},
 	&"wizard": {"group": &"fine", "crowd": false},
-	&"knight": {"group": &"plate", "whole_set": true, "crowd": false},
+	## Nobody takes an oath at fifteen. Plate on a teen body reads as a child in their
+	## father's armour, which is a story this one is not telling.
+	&"knight": {"group": &"plate", "whole_set": true, "crowd": false, "adult_only": true},
 }
 
 ## An outfit is the four covering slots plus whatever it can wear over them. Wear all
@@ -265,7 +271,7 @@ const OUTFITS := {
 const POOL := {
 	"bodies": [&"regular_male", &"regular_female", &"teen_female"],
 	"outfits": [&"male_peasant", &"female_peasant", &"male_ranger", &"female_ranger",
-		&"male_noble", &"female_noble", &"female_knight"],
+		&"male_noble", &"female_noble", &"male_knight", &"female_knight"],
 	"hair": [&"simple_parted", &"bob", &"long", &"ponytail"],
 	"beards": [&"beard"],
 }
@@ -488,13 +494,20 @@ static func library_path(relative: String) -> String:
 ## A whole character, decided by [param character_seed] alone. The same seed is the
 ## same person on every machine and every reload, which is what lets a passenger be
 ## recognised as the woman in the grey coat two carriages later.
-static func roll(character_seed: int) -> CAppearance:
+static func roll(character_seed: int, wearing: StringName = &"") -> CAppearance:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = character_seed
 
 	var appearance := CAppearance.new()
 	appearance.character_seed = character_seed
-	appearance.body = _pick(rng, POOL["bodies"])
+	# A forced suit decides the sex before the body does, because there is no male cut
+	# of her armour and no amount of scaling makes one.
+	var bodies: Array = POOL["bodies"]
+	if OUTFITS.has(wearing):
+		bodies = _matching(bodies, BODIES, OUTFITS[wearing]["sex"])
+		if STYLES[OUTFITS[wearing]["style"]].get("adult_only", false):
+			bodies = bodies.filter(func(key: StringName) -> bool: return BODIES[key]["adult"])
+	appearance.body = _pick(rng, bodies)
 
 	var sex: StringName = BODIES[appearance.body]["sex"]
 	appearance.hair = _pick(rng, _matching(POOL["hair"], HAIR, sex))
@@ -503,7 +516,7 @@ static func roll(character_seed: int) -> CAppearance:
 	if not beards.is_empty() and rng.randf() < BEARD_CHANCE:
 		appearance.beard = _pick(rng, beards)
 
-	_dress(rng, appearance, sex)
+	_dress(rng, appearance, sex, wearing)
 
 	for accessory: Dictionary in OUTFITS[appearance.outfit]["accessories"]:
 		if rng.randf() >= ACCESSORY_CHANCE:
@@ -527,9 +540,13 @@ static func roll(character_seed: int) -> CAppearance:
 ## being chosen against nothing.
 ##
 ## A [code]whole_set[/code] style skips the mixing entirely and arrives as it was made.
-static func _dress(rng: RandomNumberGenerator, appearance: CAppearance, sex: StringName) -> void:
-	var suits := _rollable(POOL["outfits"], OUTFITS, sex)
-	var coat: StringName = _pick(rng, suits)
+## [param wearing] names a suit to put on rather than roll for, which is how a retinue
+## is dressed: sworn orders are kept out of the crowd rolls, and asking for one by name
+## is the only way anybody gets into plate.
+static func _dress(rng: RandomNumberGenerator, appearance: CAppearance, sex: StringName,
+		wearing: StringName = &"") -> void:
+	var suits := _rollable(POOL["outfits"], OUTFITS, sex, appearance.body)
+	var coat: StringName = wearing if OUTFITS.has(wearing) else _pick(rng, suits)
 	appearance.outfit = coat
 
 	var style: Dictionary = STYLES[OUTFITS[coat]["style"]]
@@ -700,10 +717,16 @@ static func _matching(keys: Array, catalogue: Dictionary, sex: StringName) -> Ar
 
 
 ## What [method roll] may choose from: the shipped list, minus anything the catalogue
-## keeps out of the crowd.
-static func _rollable(keys: Array, catalogue: Dictionary, sex: StringName) -> Array:
+## keeps out of the crowd, minus anything this body has no business wearing.
+static func _rollable(keys: Array, catalogue: Dictionary, sex: StringName,
+		body: StringName = &"") -> Array:
 	return _matching(keys, catalogue, sex).filter(func(key: StringName) -> bool:
-		return STYLES[catalogue[key]["style"]].get("crowd", true))
+		var style: Dictionary = STYLES[catalogue[key]["style"]]
+		if not style.get("crowd", true):
+			return false
+		if style.get("adult_only", false) and BODIES.has(body) and not BODIES[body]["adult"]:
+			return false
+		return true)
 
 
 static func _pick(rng: RandomNumberGenerator, from: Array) -> StringName:

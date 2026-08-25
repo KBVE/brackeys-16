@@ -111,3 +111,25 @@ func test_the_consist_is_as_long_as_the_content_says() -> void:
 		+ "authors a carriage index for, so a room would have no carriage or the "
 		+ "reverse. Rebuild with build_train_scene.gd."
 	).is_equal(GameContent.carriage_locations().size())
+
+
+## The guard's van is described in shared/data/locations as crates and a cold
+## stove. It shipped full of bench seating anyway, because the seating was part
+## of the carriage mesh and there was no way to leave it out.
+func test_the_guard_van_is_the_one_carriage_without_seating() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(2)
+	var consist: Node = runner.scene().get_node(WORLD + "/Consist")
+	var guard_van: int = GameContent.carriage_locations().find(&"guard_van")
+	assert_int(guard_van).override_failure_message(
+		"no guard_van in shared/data/locations"
+	).is_greater_equal(0)
+
+	var bare: Array[int] = []
+	for i in range(consist.carriage_count):
+		var carriage := consist.get_node("Carriage_%02d" % i)
+		if carriage.get_node_or_null("Seating") == null:
+			bare.append(i)
+	assert_array(bare).override_failure_message(
+		"only the guard's van should be bare, found %s" % [bare]
+	).is_equal([guard_van])

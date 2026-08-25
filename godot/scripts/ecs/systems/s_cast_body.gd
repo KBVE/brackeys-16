@@ -3,7 +3,11 @@ class_name SCastBody
 
 ## SCastBody is the seam between where a passenger is and whether anyone can see them.
 ##
-## [SPassengerPlace] decides where all of them are, always, from their timeline. Almost
+## Anything with a place and a face is built, passenger or not. The cast move on their
+## timelines; the escort in the guard's van never moves at all, and neither needs to
+## know the other exists.
+##
+## [SPassengerPlace] decides where the passengers are, always, from their timeline. Almost
 ## none of that is on screen: the player stands in one carriage and [Consist] draws two
 ## either side. So a passenger owns a [CharacterRig] only while their carriage is drawn,
 ## and the moment it is culled the rig goes with it.
@@ -58,7 +62,7 @@ func _on_update(_delta: float) -> void:
 
 	var here := _viewer_carriage()
 	var built := 0
-	for entry: Dictionary in multi_view([CPassenger, CLocation, CAppearance, CCharacterRig]):
+	for entry: Dictionary in multi_view([CLocation, CAppearance, CCharacterRig]):
 		var rig_slot: CCharacterRig = entry[&"CCharacterRig"]
 		var carriage: int = _carriage_of.get(entry[&"CLocation"].location_id, -1)
 		var within_the_drawn_window := carriage >= 0 and here >= 0 \
@@ -129,7 +133,7 @@ func _facing(appearance: CAppearance) -> float:
 func _exit_tree() -> void:
 	if _world == null:
 		return
-	for entry: Dictionary in multi_view([CPassenger, CCharacterRig]):
+	for entry: Dictionary in multi_view([CAppearance, CCharacterRig]):
 		var rig_slot: CCharacterRig = entry[&"CCharacterRig"]
 		if rig_slot.rig != null:
 			rig_slot.rig.queue_free()

@@ -144,3 +144,13 @@ func _suit_of(model: String) -> String:
 			if Wardrobe.OUTFITS[key]["parts"][slot] == model:
 				return String(key)
 	return ""
+
+
+## An oath is not taken at fifteen. Plate on a teen body is a child in their father's
+## armour, and the escort is rolled rather than authored, so nothing else stops it.
+func test_plate_is_only_ever_worn_by_an_adult() -> void:
+	for i in range(64):
+		for suit: StringName in [&"male_knight", &"female_knight"]:
+			var appearance := Wardrobe.roll(i, suit)
+			assert_bool(Wardrobe.BODIES[appearance.body]["adult"]).override_failure_message(
+				"seed %d put %s in %s" % [i, appearance.body, suit]).is_true()

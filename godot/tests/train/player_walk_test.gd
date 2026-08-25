@@ -465,3 +465,83 @@ func test_an_inert_run_ignores_the_keyboard_until_it_is_clicked_into() -> void:
 	assert_float(absf(player.position.x - stood_at)).override_failure_message(
 		"clicking into the run did not hand the keyboard back"
 	).is_greater(0.01)
+
+
+## The legs cycle is a question that only makes sense with feet on the floor, so leaving
+## it has to change what the whole body is playing, not just how fast.
+func test_a_jump_walks_the_body_through_its_postures() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(10)
+	var train: Node = runner.scene()
+	train._control.set_update(false)
+	var posture: CPosture = train._posture
+	var seen: Array[StringName] = []
+
+	assert_str(posture.state).override_failure_message(
+		"standing on the deck should be afoot"
+	).is_equal(CPosture.AFOOT)
+
+	train._intent.jump_requested = true
+	await runner.simulate_frames(2)
+	train._intent.jump_requested = false
+
+	# polled rather than counted: the flight is six tenths of a second at 0.45m, and a
+	# frame count that assumes 60 of them is a test that fails on a slow machine
+	for i in 240:
+		await runner.simulate_frames(1)
+		if seen.is_empty() or seen[-1] != posture.state:
+			seen.append(posture.state)
+		if seen.size() >= 2 and posture.state == CPosture.AFOOT:
+			break
+
+	assert_array(seen).override_failure_message(
+		"the jump did not pass through launch, fall and landing in that order: %s" % [seen]
+	).is_equal([CPosture.LAUNCHING, CPosture.AIRBORNE, CPosture.LANDING, CPosture.AFOOT])
+
+
+## Asking a transition for the state it is already in restarts the crossfade, so a
+## request every frame is a clip that never gets past its first frame.
+func test_a_posture_is_only_requested_when_it_changes() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(10)
+	var train: Node = runner.scene()
+	var posture: CPosture = train._posture
+
+	posture.requested = &"deliberately wrong"
+	await runner.simulate_frames(1)
+	assert_str(posture.requested).override_failure_message(
+		"a changed state was not passed on to the rig"
+	).is_equal(posture.state)
+
+	await runner.simulate_frames(20)
+	assert_str(posture.requested).is_equal(posture.state)
+
+
+## Planting the feet is only meaningful with weight on them. Held on through a jump it
+## drags the legs back down to a deck that is no longer under him.
+func test_the_feet_stop_being_planted_in_the_air() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(10)
+	var train: Node = runner.scene()
+	train._control.set_update(false)
+	var planting: CFootPlanting = train._foot_planting
+
+	assert_float(planting.weight).override_failure_message(
+		"standing on the deck, the feet should be held to it"
+	).is_equal_approx(1.0, 0.01)
+
+	train._intent.jump_requested = true
+	await runner.simulate_frames(2)
+	train._intent.jump_requested = false
+	await runner.simulate_frames(20)
+	assert_float(planting.weight).override_failure_message(
+		"the feet were still being pulled to the deck while he was off it"
+	).is_less(0.2)
+
+	for i in 240:
+		await runner.simulate_frames(1)
+		if planting.weight > 0.99:
+			break
+	assert_float(planting.weight).override_failure_message(
+		"the feet never went back to being planted after landing"
+	).is_equal_approx(1.0, 0.01)

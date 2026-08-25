@@ -29,9 +29,17 @@ const WALK_FORWARD_LEFT_CLIP := "Walk_Fwd_L"
 const WALK_FORWARD_RIGHT_CLIP := "Walk_Fwd_R"
 const WALK_BACKWARD_LEFT_CLIP := "Walk_Bwd_L"
 const WALK_BACKWARD_RIGHT_CLIP := "Walk_Bwd_R"
+const JUMP_LAUNCH_CLIP := "Jump_Start"
+const JUMP_AIR_CLIP := "Jump"
+const JUMP_LAND_CLIP := "Jump_Land"
 
 const BLEND_POSITION_PARAMETER := "parameters/gait/blend_position"
 const TIME_SCALE_PARAMETER := "parameters/pace/scale"
+const POSTURE_PARAMETER := "parameters/posture/transition_request"
+
+## Seconds to cross from one posture to the next. Long enough that a landing is not a
+## cut, short enough that the legs are under him before he is standing on them.
+const POSTURE_CROSSFADE_SECONDS := 0.14
 
 ## Materials named this way carry hair rather than cloth, and take the hair tint.
 const HAIR_MATERIAL_PREFIX := "MI_Hair"
@@ -94,6 +102,7 @@ var appearance: CAppearance
 var skeleton: Skeleton3D
 var animation_player: AnimationPlayer
 var animation_tree: AnimationTree
+var foot_planter: FootPlanter
 
 var _rig: Node3D
 ## How much the rig was scaled to reach [member stature_metres]. Read by [SCharacterAnimation],
@@ -130,6 +139,7 @@ func _ready() -> void:
 	for i in range(outfit_pieces.size()):
 		_graft(outfit_pieces[i], outfit_tints[i] if i < outfit_tints.size() else Color.WHITE)
 	_build_animation()
+	_build_foot_planting()
 
 
 func _scale_for_stature() -> float:
@@ -268,11 +278,30 @@ func _build_animation() -> void:
 	gait.add_blend_point(_clip(WALK_BACKWARD_LEFT_CLIP), Vector2(-1.0, -1.0), -1, &"backward_left")
 	gait.add_blend_point(_clip(WALK_BACKWARD_RIGHT_CLIP), Vector2(1.0, -1.0), -1, &"backward_right")
 
+	# the gait is one posture among several, so it goes through the transition rather
+	# than straight to the output. Everything past input 0 is a whole-body clip that
+	# the blend space has no say in.
+	var posture := AnimationNodeTransition.new()
+	posture.xfade_time = POSTURE_CROSSFADE_SECONDS
+	posture.input_count = 4
+	posture.set_input_name(0, CPosture.AFOOT)
+	posture.set_input_name(1, CPosture.LAUNCHING)
+	posture.set_input_name(2, CPosture.AIRBORNE)
+	posture.set_input_name(3, CPosture.LANDING)
+
 	var blend_tree := AnimationNodeBlendTree.new()
 	blend_tree.add_node(&"gait", gait)
 	blend_tree.add_node(&"pace", AnimationNodeTimeScale.new())
+	blend_tree.add_node(&"posture", posture)
+	blend_tree.add_node(&"launch", _clip(JUMP_LAUNCH_CLIP))
+	blend_tree.add_node(&"air", _clip(JUMP_AIR_CLIP))
+	blend_tree.add_node(&"land", _clip(JUMP_LAND_CLIP))
 	blend_tree.connect_node(&"pace", 0, &"gait")
-	blend_tree.connect_node(&"output", 0, &"pace")
+	blend_tree.connect_node(&"posture", 0, &"pace")
+	blend_tree.connect_node(&"posture", 1, &"launch")
+	blend_tree.connect_node(&"posture", 2, &"air")
+	blend_tree.connect_node(&"posture", 3, &"land")
+	blend_tree.connect_node(&"output", 0, &"posture")
 
 	animation_tree = AnimationTree.new()
 	animation_tree.tree_root = blend_tree
@@ -289,6 +318,37 @@ func _clip(clip_name: String) -> AnimationNodeAnimation:
 	var node := AnimationNodeAnimation.new()
 	node.animation = qualified
 	return node
+
+
+## The feet are planted in the skeleton's own space, where the deck the rig stands on is
+## zero: [member _rig] is already offset so the model's soles land on it.
+func _build_foot_planting() -> void:
+	foot_planter = FootPlanter.new()
+	foot_planter.floor_height_metres = 0.0
+	foot_planter.ankle_height_metres = _rest_ankle_height()
+	skeleton.add_child(foot_planter)
+
+
+## The ankle's own rest height, so the correction puts the sole on the deck rather than
+## the ankle. Read off the rig instead of guessed, because a different body has a
+## different boot.
+func _rest_ankle_height() -> float:
+	var foot := skeleton.find_bone(&"LeftFoot")
+	return skeleton.get_bone_global_rest(foot).origin.y if foot >= 0 else 0.075
+
+
+## How hard the feet are held to the deck. Decided by [SFootPlanting].
+func set_foot_planting(weight: float) -> void:
+	if foot_planter != null:
+		foot_planter.weight = weight
+
+
+## Which whole-body clip is playing. Decided by [SPosture]; this only asks for it, and
+## only when it changes, because asking again restarts the crossfade.
+func set_posture(state: StringName) -> void:
+	if animation_tree == null:
+		return
+	animation_tree.set(POSTURE_PARAMETER, state)
 
 
 ## Where in the blend space to stand and how fast to play it. Both are decided by
