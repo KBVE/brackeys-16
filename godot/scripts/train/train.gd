@@ -85,6 +85,7 @@ var _posture: CPosture
 var _foot_planting: CFootPlanting
 var _seating: CSeating
 var _pointer: CPointer
+var _seated_idle: CSeatedIdle
 var _control: SPlayerControl
 var _occupant: COccupant
 var _here: CLocation
@@ -152,9 +153,10 @@ func _ready() -> void:
 	_foot_planting = CFootPlanting.new()
 	_seating = CSeating.new()
 	_pointer = CPointer.new()
+	_seated_idle = _rolled_seated_idle()
 	_scope.spawn().add(_viewer).add(_occupant).add(_here).add(_intent) \
 		.add(_locomotion).add(_carriage_camera()) \
-		.add(CCharacterRig.new(body)).add(CGait.new()).add(_posture).add(_foot_planting).add(_seating).add(_pointer).add(_the_highlight()) \
+		.add(CCharacterRig.new(body)).add(CGait.new()).add(_posture).add(_foot_planting).add(_seating).add(_seated_idle).add(_pointer).add(_the_highlight()) \
 		.add(ECSViewComponent.new(_player))
 	_control = SPlayerControl.new()
 	# an exported build is somebody playing and starts live. A debug run is somebody
@@ -171,6 +173,7 @@ func _ready() -> void:
 	_scope.add_system(&"locomotion", SLocomotion.new())
 	_scope.add_system(&"camera_aim", SCameraAim.new())
 	_scope.add_system(&"character_animation", SCharacterAnimation.new())
+	_scope.add_system(&"seated_idle", SSeatedIdle.new())
 	_scope.add_system(&"posture", SPosture.new())
 	_scope.add_system(&"foot_planting", SFootPlanting.new())
 	_scope.add_system(&"viewer", SViewer.new())
@@ -473,3 +476,11 @@ func _the_highlight() -> CHighlight:
 	var pointing := CHighlight.new()
 	pointing.view = marker
 	return pointing
+
+
+## Seeded off the clock so two runs do not shift their weight at the same moments, and
+## so the player does not learn the rhythm of his own idle.
+func _rolled_seated_idle() -> CSeatedIdle:
+	var idle := CSeatedIdle.new()
+	idle.rng.randomize()
+	return idle

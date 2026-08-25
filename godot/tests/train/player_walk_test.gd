@@ -576,7 +576,9 @@ func test_pressing_use_beside_a_bench_sits_him_on_it() -> void:
 	assert_float(train._locomotion.eye_height_metres).override_failure_message(
 		"his eye did not drop, so he is standing at seat height rather than sitting"
 	).is_less(stood_eye - 0.2)
-	assert_str(train._posture.state).is_equal(CPosture.SEATED)
+	assert_array(CPosture.SEATED_STATES).override_failure_message(
+		"sitting down did not put him in any of the sitting clips"
+	).contains([train._posture.state])
 
 	train._intent.interact_requested = true
 	await runner.simulate_frames(2)
@@ -615,3 +617,62 @@ func test_a_taken_seat_is_not_offered_twice() -> void:
 	assert_bool(train._seating.seated).override_failure_message(
 		"he sat in a seat that somebody else was already in"
 	).is_false()
+
+
+## Sitting still is what most of this cast does for most of the run, and one looping
+## clip across a carriage of them reads as a row of clockwork.
+func test_a_seated_character_moves_between_the_sitting_clips() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(10)
+	var train: Node = runner.scene()
+	train._control.set_update(false)
+
+	train._intent.interact_requested = true
+	await runner.simulate_frames(2)
+	assert_bool(train._seating.seated).is_true()
+
+	var idle: CSeatedIdle = train._seated_idle
+	idle.shortest_seconds = 0.02
+	idle.longest_seconds = 0.05
+	# the first interval was rolled from the real bounds when he sat down, so it has to
+	# be spent as well or the test waits five seconds for a change it asked to be quick
+	idle.seconds_until_change = 0.0
+	var seen: Array[StringName] = []
+	for i in 200:
+		await runner.simulate_frames(1)
+		if not seen.has(idle.state):
+			seen.append(idle.state)
+		if seen.size() >= 3:
+			break
+
+	assert_int(seen.size()).override_failure_message(
+		"the sitting clip never changed, so a carriage of passengers breathes in time"
+	).is_greater(1)
+	for state: StringName in seen:
+		assert_array(CPosture.SEATED_STATES).override_failure_message(
+			"%s is not a sitting clip, so somebody stood up while seated" % state
+		).contains([state])
+	assert_str(train._posture.state).override_failure_message(
+		"the posture did not follow the idle onto the clip it chose"
+	).is_equal(idle.state)
+
+
+## Standing up has to put the idle back, or the next time he sits down it starts
+## halfway through a nod.
+func test_standing_up_resets_the_sitting_clip() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(10)
+	var train: Node = runner.scene()
+	train._control.set_update(false)
+	var idle: CSeatedIdle = train._seated_idle
+
+	train._intent.interact_requested = true
+	await runner.simulate_frames(2)
+	idle.state = CPosture.SEATED_NODDING
+	train._intent.interact_requested = true
+	await runner.simulate_frames(4)
+
+	assert_bool(train._seating.seated).is_false()
+	assert_str(idle.state).override_failure_message(
+		"he stood up still nodding, and will sit back down mid-nod"
+	).is_equal(CPosture.SEATED)

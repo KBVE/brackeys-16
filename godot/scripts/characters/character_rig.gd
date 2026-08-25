@@ -33,6 +33,9 @@ const JUMP_LAUNCH_CLIP := "Jump_Start"
 const JUMP_AIR_CLIP := "Jump"
 const JUMP_LAND_CLIP := "Jump_Land"
 const SEATED_CLIP := "Sitting_Idle"
+const SEATED_SHIFTING_CLIP := "Sitting_Idle02"
+const SEATED_SETTLED_CLIP := "Sitting_Idle03"
+const SEATED_NODDING_CLIP := "Sitting_Nodding"
 
 const BLEND_POSITION_PARAMETER := "parameters/gait/blend_position"
 const TIME_SCALE_PARAMETER := "parameters/pace/scale"
@@ -284,12 +287,15 @@ func _build_animation() -> void:
 	# the blend space has no say in.
 	var posture := AnimationNodeTransition.new()
 	posture.xfade_time = POSTURE_CROSSFADE_SECONDS
-	posture.input_count = 5
+	posture.input_count = 8
 	posture.set_input_name(0, CPosture.AFOOT)
 	posture.set_input_name(1, CPosture.LAUNCHING)
 	posture.set_input_name(2, CPosture.AIRBORNE)
 	posture.set_input_name(3, CPosture.LANDING)
 	posture.set_input_name(4, CPosture.SEATED)
+	posture.set_input_name(5, CPosture.SEATED_SHIFTING)
+	posture.set_input_name(6, CPosture.SEATED_SETTLED)
+	posture.set_input_name(7, CPosture.SEATED_NODDING)
 
 	var blend_tree := AnimationNodeBlendTree.new()
 	blend_tree.add_node(&"gait", gait)
@@ -299,12 +305,18 @@ func _build_animation() -> void:
 	blend_tree.add_node(&"air", _clip(JUMP_AIR_CLIP))
 	blend_tree.add_node(&"land", _clip(JUMP_LAND_CLIP))
 	blend_tree.add_node(&"seated", _clip(SEATED_CLIP))
+	blend_tree.add_node(&"seated_shifting", _clip(SEATED_SHIFTING_CLIP))
+	blend_tree.add_node(&"seated_settled", _clip(SEATED_SETTLED_CLIP))
+	blend_tree.add_node(&"seated_nodding", _clip(SEATED_NODDING_CLIP))
 	blend_tree.connect_node(&"pace", 0, &"gait")
 	blend_tree.connect_node(&"posture", 0, &"pace")
 	blend_tree.connect_node(&"posture", 1, &"launch")
 	blend_tree.connect_node(&"posture", 2, &"air")
 	blend_tree.connect_node(&"posture", 3, &"land")
 	blend_tree.connect_node(&"posture", 4, &"seated")
+	blend_tree.connect_node(&"posture", 5, &"seated_shifting")
+	blend_tree.connect_node(&"posture", 6, &"seated_settled")
+	blend_tree.connect_node(&"posture", 7, &"seated_nodding")
 	blend_tree.connect_node(&"output", 0, &"posture")
 
 	animation_tree = AnimationTree.new()

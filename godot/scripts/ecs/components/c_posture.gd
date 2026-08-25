@@ -14,6 +14,16 @@ const AIRBORNE := &"airborne"
 const LANDING := &"landing"
 const SEATED := &"seated"
 
+## The same body doing the same nothing, differently. A carriage of passengers all
+## breathing in time is the thing anybody notices first.
+const SEATED_SHIFTING := &"seated_shifting"
+const SEATED_SETTLED := &"seated_settled"
+const SEATED_NODDING := &"seated_nodding"
+
+const SEATED_STATES: Array[StringName] = [
+	SEATED, SEATED_SHIFTING, SEATED_SETTLED, SEATED_NODDING,
+]
+
 var state: StringName = AFOOT
 
 ## What the rig was last told, so a state that has not changed is not requested again.
