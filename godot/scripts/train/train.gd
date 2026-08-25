@@ -14,6 +14,18 @@ const LEVEL_NAME := "Aisle"
 ## Where a run starts, in metres along the train.
 const START_X := -7.0
 
+## How far behind the player the camera rides, and where it sits relative to the end
+## of that arm. The offset is what makes it over the shoulder rather than straight
+## down the spine: the body sits left of centre and the aisle ahead stays clear.
+##
+## Metres, framed against a person of [member PlayerBody.stature_metres]; shrinking
+## him and leaving these alone films him from a giant's remove. Shorter still than an outdoor game would use, because only the
+## floor and the side walls of a carriage carry collision: the seats and the end
+## bulkheads are mesh with nothing behind them, so a longer arm does not get pulled
+## in by the spring, it simply ends up inside them or outside the train.
+const BOOM_LENGTH := 0.95
+const BOOM_SHOULDER_OFFSET := Vector3(0.12, 0.28, 0.0)
+
 ## Radians turned per unit of input, so one full swipe is most of a turn.
 const TURN_RADIANS_PER_UNIT := 2.4
 
@@ -39,9 +51,14 @@ const JOLT_ROLL := 0.0032
 
 
 
-## Measured. At 3.02 the camera sat above the side windows, so every sightline
-## out of them hit ground and the forest was never visible.
-const AISLE_EYE := 2.60
+## Wide enough that he cannot slip between a seat and the wall, narrow enough for the
+## aisle, which is three metres across.
+const PLAYER_RADIUS := 0.30
+
+## The camera is a quarter turn off the body so it looks down the train rather than
+## across it. Shared by the rig, which has to face the same way, and by the walk,
+## which has to go that way.
+const CAMERA_YAW_OFFSET := -PI * 0.5
 
 ## Screen heights a finger travels for one unit of movement, so a swipe covers
 ## the same arc on any display.
@@ -50,6 +67,7 @@ const DRAG_SCREENS_PER_UNIT := 2.6
 @onready var _frame: SubViewportContainer = $Screen/Frame
 @onready var _world: SubViewport = $Screen/Frame/World
 @onready var _player: CharacterBody3D = $Screen/Frame/World/Player
+@onready var _player_shape: CollisionShape3D = $Screen/Frame/World/Player/Body
 @onready var _cam: Camera3D = $Screen/Frame/World/Player/Camera3D
 @onready var _consist: Consist = $Screen/Frame/World/Consist
 @onready var _forest: ParallaxBackdrop = $Screen/Frame/World/Backdrop/Forest
@@ -110,20 +128,29 @@ func _ready() -> void:
 		_scope.spawn().add(carriage).add(room).add(CLamp.new()) \
 			.add(ECSViewComponent.new(_consist.lamps_for(i)))
 
+	# built first: how tall he is decides where his eyes are, and his eyes are where
+	# the camera goes
+	var body := _add_player_body()
+	_fit_the_capsule_to(body)
+
 	_viewer = CViewer.new()
 	_occupant = COccupant.new()
 	_here = CLocation.new()
 	_locomotion = CLocomotion.new()
-	_locomotion.eye_height_metres = _eye_override if is_finite(_eye_override) else AISLE_EYE
+	_locomotion.forward_yaw_offset_radians = CAMERA_YAW_OFFSET
+	_locomotion.eye_height_metres = \
+		_eye_override if is_finite(_eye_override) else body.eye_height_metres()
 	_locomotion.turn_radians_per_unit = TURN_RADIANS_PER_UNIT
 	_locomotion.walk_metres_per_unit = WALK_METRES_PER_UNIT
 	_scope.spawn().add(_viewer).add(_occupant).add(_here).add(CInput.new()) \
-		.add(_locomotion).add(CCharacterRig.new(_add_player_body())) \
+		.add(_locomotion).add(_carriage_camera()) \
+		.add(CCharacterRig.new(body)) \
 		.add(ECSViewComponent.new(_player))
 	_control = SPlayerControl.new()
 	_control.drag_screens_per_unit = DRAG_SCREENS_PER_UNIT
 	_scope.add_system(&"player_control", _control)
 	_scope.add_system(&"locomotion", SLocomotion.new())
+	_scope.add_system(&"camera_aim", SCameraAim.new())
 	_scope.add_system(&"character_animation", SCharacterAnimation.new())
 	_scope.add_system(&"viewer", SViewer.new())
 	var occupancy := SOccupancy.new()
@@ -137,6 +164,8 @@ func _ready() -> void:
 	var lamps := SCarriageLamps.new()
 	lamps.lamp_glass = _consist.glow_material()
 	_scope.add_system(&"carriage_lamps", lamps)
+
+	_frame.get_parent().add_child(Crosshair.new())
 
 	# the world owns the camera now, so picking is its viewport's job, not the
 	# window's
@@ -183,6 +212,10 @@ func _process(delta: float) -> void:
 ## Runs every frame because the sampling and the hysteresis belong to the budget,
 ## not to its caller.
 func _adapt_render_scale(delta: float) -> void:
+	# an unfocused window is not a slow one; the browser throttles the tab and every
+	# frame of it would read as a device that cannot cope
+	if not get_window().has_focus():
+		return
 	var before := _render_budget.shrink
 	if _render_budget.sample(Engine.get_frames_per_second(), delta) != before:
 		_apply_render_budget()
@@ -214,13 +247,27 @@ func _advance_jolt(delta: float) -> void:
 func _exit_tree() -> void:
 	_scope.dispose()
 
-## The body carries the yaw and [SLocomotion] writes it, so the camera only ever
-## needs framing: it hangs at the eye, a quarter turn round to look down the train.
+## Where the camera hangs is the boom's business now, and where it points is
+## [SCameraAim]'s. This is what is left: the near plane and the announcement.
 func _frame_the_shot() -> void:
-	_cam.position = Vector3.ZERO
-	_cam.rotation = Vector3(0.0, _locomotion.forward_yaw_offset_radians, 0.0)
 	_cam.near = 0.05
 	GameBridge.set_world_mode(StateBits.WorldMode.MODE_3D)
+
+
+## The capsule was authored around a camera hung at two metres sixty, which is what
+## the player used to be: a viewpoint with no body under it. Sized against a person
+## it is nearly a metre too long, and its bottom ends up under the floor, where
+## depenetration lifts him off it every frame.
+##
+## Y is pinned by [SLocomotion] and there is no gravity, so this shape only ever has
+## to keep him out of the walls.
+func _fit_the_capsule_to(body: PlayerBody) -> void:
+	var capsule := CapsuleShape3D.new()
+	capsule.height = body.stature_metres
+	capsule.radius = PLAYER_RADIUS
+	_player_shape.shape = capsule
+	_player_shape.position.y = body.floor_height_metres + body.stature_metres * 0.5 \
+		- body.eye_height_metres()
 
 
 ## The rig is a child of the body, so walking and turning carry it for free and
@@ -228,10 +275,44 @@ func _frame_the_shot() -> void:
 func _add_player_body() -> PlayerBody:
 	var body := PlayerBody.new()
 	body.name = "Rig"
-	body.eye_height_metres = _locomotion.eye_height_metres
-	body.forward_yaw_offset_radians = _locomotion.forward_yaw_offset_radians
+	body.floor_height_metres = Consist.DRAWN_FLOOR_Y
+	body.forward_yaw_offset_radians = CAMERA_YAW_OFFSET
 	_player.add_child(body)
 	return body
+
+
+## The carriage is mesh, not collision, so the spring arm cannot be trusted to keep
+## the camera indoors. These are the bounds it is held within.
+func _carriage_camera() -> CCamera:
+	var eye := CCamera.new(_add_boom(), _cam)
+	eye.interior_half_z = Consist.INTERIOR_HALF_Z - 0.15
+	eye.lowest_y = Consist.DRAWN_FLOOR_Y + 0.4
+	eye.highest_y = Consist.WALL_HEIGHT - 0.35
+	return eye
+
+
+## Hangs the camera off a spring arm and hands back the arm, because the arm is what
+## [SCameraAim] turns. Children of a [SpringArm3D] are placed along its +Z, so the
+## camera ends up behind whatever the arm is pointing at, and pulls in on its own
+## when a seat back or a bulkhead gets between the two.
+##
+## The mount exists because the arm writes the position of its direct children every
+## frame; the shoulder offset has to hang off something the arm does not own.
+func _add_boom() -> SpringArm3D:
+	var boom := SpringArm3D.new()
+	boom.name = "Boom"
+	boom.spring_length = BOOM_LENGTH
+	boom.add_excluded_object(_player.get_rid())
+	_player.add_child(boom)
+
+	var mount := Node3D.new()
+	mount.name = "Mount"
+	boom.add_child(mount)
+
+	_cam.reparent(mount, false)
+	_cam.position = BOOM_SHOULDER_OFFSET
+	_cam.rotation = Vector3.ZERO
+	return boom
 
 
 ## Starts the run. There is one scene and one camera, so this sets the framing
@@ -239,6 +320,7 @@ func _add_player_body() -> PlayerBody:
 func _begin() -> void:
 	_run.level_index = 0
 	_locomotion.facing_radians = 0.0
+	_locomotion.pitch_radians = 0.0
 	_player.velocity = Vector3.ZERO
 	_player.position = Vector3(START_X, _locomotion.eye_height_metres, 0.0)
 	_player.rotation.y = 0.0
@@ -267,6 +349,10 @@ func _notify_level(outcome: String) -> void:
 ## Drag pans the camera. A tap produces no drag event, so the WIN and LOSE plates
 ## keep their picking and no on-screen stick is needed.
 ##
+## A mouse looks the same way, on the right button, and the pointer is never
+## captured: the left button has to stay a pointer or there is nothing to click the
+## evidence with. The web export already swallows the context menu.
+##
 ## _input, not _unhandled_input: the SubViewportContainer consumes pointer events
 ## to forward them inward, so nothing reaches the unhandled pass. Sizes come from
 ## the window rather than the world, so lowering RENDER_SHRINK cannot change how
@@ -274,6 +360,10 @@ func _notify_level(outcome: String) -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventScreenDrag:
 		_control.accumulate_drag((event as InputEventScreenDrag).relative,
+			float(get_window().size.y))
+	elif event is InputEventMouseMotion \
+			and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+		_control.accumulate_look((event as InputEventMouseMotion).relative,
 			float(get_window().size.y))
 
 

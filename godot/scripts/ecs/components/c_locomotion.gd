@@ -4,6 +4,10 @@ class_name CLocomotion
 var forward_yaw_offset_radians: float = -PI * 0.5
 
 var facing_radians: float = 0.0
+
+## Where the head is aimed. The body never carries this: pitching a
+## [CharacterBody3D] would tilt the collision capsule with it.
+var pitch_radians: float = 0.0
 var eye_height_metres: float = 2.60
 var turn_radians_per_unit: float = 2.4
 var walk_metres_per_unit: float = 4.0

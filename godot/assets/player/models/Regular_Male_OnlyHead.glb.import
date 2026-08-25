@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://delmaf4ww88d5"
-path="res://.godot/imported/Male_Noble_Legs.glb-aac0ccd13b12c6723c35fe97269a8f44.scn"
+uid="uid://d07i0qlmotret"
+path="res://.godot/imported/Regular_Male_OnlyHead.glb-b40187b3c671a4a2c4d67294b5fe286b.scn"
 
 [deps]
 
-source_file="res://assets/player/models/outfits/Male_Noble_Legs.glb"
-dest_files=["res://.godot/imported/Male_Noble_Legs.glb-aac0ccd13b12c6723c35fe97269a8f44.scn"]
+source_file="res://assets/player/models/Regular_Male_OnlyHead.glb"
+dest_files=["res://.godot/imported/Regular_Male_OnlyHead.glb-b40187b3c671a4a2c4d67294b5fe286b.scn"]
 
 [params]
 

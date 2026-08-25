@@ -13,19 +13,22 @@ func _step(intent: CInput, locomotion: CLocomotion, body: CharacterBody3D, delta
 	# wraps rather than clamps: the player can turn all the way round and look
 	# back down the train
 	locomotion.facing_radians = wrapf(
-		locomotion.facing_radians - intent.turn_units * locomotion.turn_radians_per_unit,
+		locomotion.facing_radians + intent.turn_units * locomotion.turn_radians_per_unit,
 		-PI, PI)
+	# clamped by [SCameraAim], which owns the bounds along with the head
+	locomotion.pitch_radians += intent.pitch_units * locomotion.turn_radians_per_unit
 	body.rotation.y = locomotion.facing_radians
 	body.position.y = locomotion.eye_height_metres
 
 	var forward := forward_of(locomotion)
-	var metres := intent.walk_units * locomotion.walk_metres_per_unit
+	var step := forward * intent.walk_units + right_of(locomotion) * intent.strafe_units
+	var metres := step.length() * locomotion.walk_metres_per_unit
 	var was_at := body.global_position
 	# the step is already a distance, so it becomes a velocity only because
 	# move_and_slide wants one; sliding is what carries the player along a wall
 	# instead of stopping dead against it
 	body.velocity = Vector3.ZERO if is_zero_approx(metres) \
-		else forward * metres / maxf(delta, 0.0001)
+		else step.normalized() * metres / maxf(delta, 0.0001)
 	body.move_and_slide()
 	locomotion.forward_metres_per_second = \
 		forward.dot(body.global_position - was_at) / maxf(delta, 0.0001)
@@ -35,3 +38,8 @@ func _step(intent: CInput, locomotion: CLocomotion, body: CharacterBody3D, delta
 static func forward_of(locomotion: CLocomotion) -> Vector3:
 	var yaw := locomotion.facing_radians + locomotion.forward_yaw_offset_radians
 	return Vector3(-sin(yaw), 0.0, -cos(yaw))
+
+
+static func right_of(locomotion: CLocomotion) -> Vector3:
+	var yaw := locomotion.facing_radians + locomotion.forward_yaw_offset_radians
+	return Vector3(cos(yaw), 0.0, -sin(yaw))
