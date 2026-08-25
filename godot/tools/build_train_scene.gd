@@ -120,7 +120,8 @@ func _initialize() -> void:
 	var consist := Node3D.new()
 	consist.name = "Consist"
 	consist.set_script(load("res://scripts/train/consist.gd"))
-	consist.set("carriage_scene", load("res://assets/train/carriage.gltf"))
+	consist.set("carriage_scene", load("res://assets/train/carriage_empty.gltf"))
+	consist.set("seating_scene", load("res://assets/train/carriage_seating.gltf"))
 	consist.set("detail_normal", load("res://assets/train/detail_normal.png"))
 	# &count -> the consist is as long as the content says. A location authored
 	#           with a carriage index is a carriage that has to exist.

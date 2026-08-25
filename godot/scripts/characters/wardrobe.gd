@@ -85,6 +85,22 @@ const BEARDS := {
 	&"beard": {"model": "models/hair/Hair_Beard.glb", "sex": &"male"},
 }
 
+## What a suit of clothes is, as far as mixing goes. Slots are rolled one at a time
+## rather than as a set, because a peasant coat over ranger trousers is a person and a
+## set worn whole every time is a uniform.
+##
+## [code]group[/code] is what may be mixed with what. Within a group the pieces were
+## made to sit near each other and do; across one they read as a costume change at the
+## waist. [code]whole_set[/code] is for a suit that has to arrive complete: a
+## breastplate over a peasant shirt is not a knight down on his luck, it is a mistake.
+const STYLES := {
+	&"peasant": {"group": &"common"},
+	&"ranger": {"group": &"common"},
+	&"noble": {"group": &"fine"},
+	&"wizard": {"group": &"fine", "crowd": false},
+	&"knight": {"group": &"plate", "whole_set": true, "crowd": false},
+}
+
 ## An outfit is the four covering slots plus whatever it can wear over them. Wear all
 ## four or the bare skin shows through where a piece is missing, which is why they are
 ## one entry rather than four rollable slots.
@@ -94,6 +110,7 @@ const BEARDS := {
 const OUTFITS := {
 	&"male_peasant": {
 		"sex": &"male",
+		"style": &"peasant",
 		"parts": {
 			SLOT_TORSO: "models/outfits/Male_Peasant_Body.glb",
 			SLOT_ARMS: "models/outfits/Male_Peasant_Arms.glb",
@@ -104,6 +121,7 @@ const OUTFITS := {
 	},
 	&"female_peasant": {
 		"sex": &"female",
+		"style": &"peasant",
 		"parts": {
 			SLOT_TORSO: "models/outfits/Female_Peasant_Body.glb",
 			SLOT_ARMS: "models/outfits/Female_Peasant_Arms.glb",
@@ -114,6 +132,7 @@ const OUTFITS := {
 	},
 	&"male_noble": {
 		"sex": &"male",
+		"style": &"noble",
 		"parts": {
 			SLOT_TORSO: "models/outfits/Male_Noble_Body.glb",
 			SLOT_ARMS: "models/outfits/Male_Noble_Arms.glb",
@@ -130,6 +149,7 @@ const OUTFITS := {
 	},
 	&"female_noble": {
 		"sex": &"female",
+		"style": &"noble",
 		"parts": {
 			SLOT_TORSO: "models/outfits/Female_Noble_Body.glb",
 			SLOT_ARMS: "models/outfits/Female_Noble_Arms.glb",
@@ -146,6 +166,7 @@ const OUTFITS := {
 	},
 	&"male_ranger": {
 		"sex": &"male",
+		"style": &"ranger",
 		"parts": {
 			SLOT_TORSO: "models/outfits/Male_Ranger_Body.glb",
 			SLOT_ARMS: "models/outfits/Male_Ranger_Arms.glb",
@@ -160,6 +181,7 @@ const OUTFITS := {
 	},
 	&"female_ranger": {
 		"sex": &"female",
+		"style": &"ranger",
 		"parts": {
 			SLOT_TORSO: "models/outfits/Female_Ranger_Body.glb",
 			SLOT_ARMS: "models/outfits/Female_Ranger_Arms.glb",
@@ -174,7 +196,7 @@ const OUTFITS := {
 	},
 	&"male_wizard": {
 		"sex": &"male",
-		"crowd": false,
+		"style": &"wizard",
 		"parts": {
 			SLOT_TORSO: "models/outfits/Male_Wizard_Body.glb",
 			SLOT_ARMS: "models/outfits/Male_Wizard_Arms.glb",
@@ -185,7 +207,7 @@ const OUTFITS := {
 	},
 	&"female_wizard": {
 		"sex": &"female",
-		"crowd": false,
+		"style": &"wizard",
 		"parts": {
 			SLOT_TORSO: "models/outfits/Female_Wizard_Body.glb",
 			SLOT_ARMS: "models/outfits/Female_Wizard_Arms.glb",
@@ -198,7 +220,7 @@ const OUTFITS := {
 	## the armoured one is a separate outfit rather than an accessory over the other.
 	&"male_knight": {
 		"sex": &"male",
-		"crowd": false,
+		"style": &"knight",
 		"parts": {
 			SLOT_TORSO: "models/outfits/Male_Knight_Body_Armor.glb",
 			SLOT_ARMS: "models/outfits/Male_Knight_Arms.glb",
@@ -215,7 +237,7 @@ const OUTFITS := {
 	},
 	&"female_knight": {
 		"sex": &"female",
-		"crowd": false,
+		"style": &"knight",
 		"parts": {
 			SLOT_TORSO: "models/outfits/Female_Knight_Body_Armor.glb",
 			SLOT_ARMS: "models/outfits/Female_Knight_Arms.glb",
@@ -237,13 +259,13 @@ const OUTFITS := {
 ## so this is the line where variety is paid for. The catalogue above stays complete
 ## so widening the pool is a one-line edit rather than a research trip.
 ##
-## An outfit marked [code]crowd: false[/code] ships without being rolled. Sworn orders
+## A style marked [code]crowd: false[/code] ships without being rolled. Sworn orders
 ## and wizardry are rare enough on this line that meeting one at random would spend the
 ## surprise the story is saving.
 const POOL := {
 	"bodies": [&"regular_male", &"regular_female", &"teen_female"],
-	"outfits": [&"male_peasant", &"female_peasant", &"male_noble", &"female_noble",
-		&"female_knight"],
+	"outfits": [&"male_peasant", &"female_peasant", &"male_ranger", &"female_ranger",
+		&"male_noble", &"female_noble", &"female_knight"],
 	"hair": [&"simple_parted", &"bob", &"long", &"ponytail"],
 	"beards": [&"beard"],
 }
@@ -475,12 +497,13 @@ static func roll(character_seed: int) -> CAppearance:
 	appearance.body = _pick(rng, POOL["bodies"])
 
 	var sex: StringName = BODIES[appearance.body]["sex"]
-	appearance.outfit = _pick(rng, _rollable(POOL["outfits"], OUTFITS, sex))
 	appearance.hair = _pick(rng, _matching(POOL["hair"], HAIR, sex))
 
 	var beards: Array = _matching(POOL["beards"], BEARDS, sex)
 	if not beards.is_empty() and rng.randf() < BEARD_CHANCE:
 		appearance.beard = _pick(rng, beards)
+
+	_dress(rng, appearance, sex)
 
 	for accessory: Dictionary in OUTFITS[appearance.outfit]["accessories"]:
 		if rng.randf() >= ACCESSORY_CHANCE:
@@ -494,6 +517,36 @@ static func roll(character_seed: int) -> CAppearance:
 	appearance.tints[SLOT_SKIN] = SKIN_TINTS[rng.randi() % SKIN_TINTS.size()]
 	appearance.tints[SLOT_HAIR] = HAIR_TINTS[rng.randi() % HAIR_TINTS.size()]
 	return appearance
+
+
+## Fills the four covering slots, one garment at a time, out of whatever suits sit in
+## the same group as the coat.
+##
+## The coat is picked first and the rest follow it, because the torso is what a person
+## is read by: everything else is chosen to go with something rather than each piece
+## being chosen against nothing.
+##
+## A [code]whole_set[/code] style skips the mixing entirely and arrives as it was made.
+static func _dress(rng: RandomNumberGenerator, appearance: CAppearance, sex: StringName) -> void:
+	var suits := _rollable(POOL["outfits"], OUTFITS, sex)
+	var coat: StringName = _pick(rng, suits)
+	appearance.outfit = coat
+
+	var style: Dictionary = STYLES[OUTFITS[coat]["style"]]
+	if style.get("whole_set", false):
+		appearance.parts = OUTFITS[coat]["parts"].duplicate()
+		return
+
+	var mixable := suits.filter(func(key: StringName) -> bool:
+		var other: Dictionary = STYLES[OUTFITS[key]["style"]]
+		return not other.get("whole_set", false) and other["group"] == style["group"])
+
+	appearance.parts = {SLOT_TORSO: OUTFITS[coat]["parts"][SLOT_TORSO]}
+	for slot: StringName in COVERING_SLOTS:
+		if slot == SLOT_TORSO:
+			continue
+		var from: StringName = _pick(rng, mixable)
+		appearance.parts[slot] = OUTFITS[from]["parts"][slot]
 
 
 ## Puts one accessory on, and takes off whatever it would be worn through. A helmet
@@ -543,6 +596,11 @@ static func appearance_of(content_id: StringName) -> CAppearance:
 	appearance.character_seed = seed_of(content_id)
 	appearance.body = written.get("body", &"regular_male")
 	appearance.outfit = written.get("outfit", &"male_peasant")
+	appearance.parts = OUTFITS[appearance.outfit]["parts"].duplicate()
+	# A written character can swap a single garment without leaving the suit behind,
+	# which is how the conductor gets trousers that are not the coat's.
+	for slot: StringName in written.get("parts", {}):
+		appearance.parts[slot] = written["parts"][slot]
 	appearance.hair = written.get("hair", &"")
 	appearance.beard = written.get("beard", &"")
 	appearance.stature_metres = written.get("stature_metres",
@@ -588,13 +646,12 @@ static func pieces_of(appearance: CAppearance) -> Array[Dictionary]:
 		pieces.append({"model": HAIR[appearance.hair]["model"], "slot": SLOT_HAIR})
 	if BEARDS.has(appearance.beard):
 		pieces.append({"model": BEARDS[appearance.beard]["model"], "slot": SLOT_BEARD})
-	if OUTFITS.has(appearance.outfit):
-		for slot: StringName in COVERING_SLOTS:
-			var model: String = OUTFITS[appearance.outfit]["parts"].get(slot, "")
-			if model == "":
-				push_error("Wardrobe: %s has nothing for the %s slot" % [appearance.outfit, slot])
-				continue
-			pieces.append({"model": model, "slot": slot})
+	for slot: StringName in COVERING_SLOTS:
+		var model: String = appearance.parts.get(slot, "")
+		if model == "":
+			push_error("Wardrobe: %s is wearing nothing on the %s" % [appearance.outfit, slot])
+			continue
+		pieces.append({"model": model, "slot": slot})
 	for slot: StringName in appearance.accessories:
 		pieces.append({"model": appearance.accessories[slot], "slot": slot})
 	return pieces
@@ -646,7 +703,7 @@ static func _matching(keys: Array, catalogue: Dictionary, sex: StringName) -> Ar
 ## keeps out of the crowd.
 static func _rollable(keys: Array, catalogue: Dictionary, sex: StringName) -> Array:
 	return _matching(keys, catalogue, sex).filter(func(key: StringName) -> bool:
-		return catalogue[key].get("crowd", true))
+		return STYLES[catalogue[key]["style"]].get("crowd", true))
 
 
 static func _pick(rng: RandomNumberGenerator, from: Array) -> StringName:

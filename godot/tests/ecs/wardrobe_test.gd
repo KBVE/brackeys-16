@@ -92,3 +92,55 @@ func test_an_outfit_covers_the_whole_body() -> void:
 			assert_str(Wardrobe.OUTFITS[key]["parts"].get(slot, "")) \
 				.override_failure_message("%s has nothing for the %s slot" % [key, slot]) \
 				.is_not_empty()
+
+
+## Garments mix, but only among suits that were made to sit near each other. A noble
+## coat over peasant trousers is a costume change at the waist, and reads as one.
+func test_a_mixed_outfit_stays_in_one_family() -> void:
+	for i in range(256):
+		var appearance := Wardrobe.roll(i)
+		var group: StringName = Wardrobe.STYLES[Wardrobe.OUTFITS[appearance.outfit]["style"]]["group"]
+		for slot: StringName in appearance.parts:
+			var from := _suit_of(appearance.parts[slot])
+			assert_str(String(Wardrobe.STYLES[Wardrobe.OUTFITS[from]["style"]]["group"])) \
+				.override_failure_message("seed %d wears %s from the %s group over a %s coat"
+					% [i, slot, Wardrobe.OUTFITS[from]["style"], group]) \
+				.is_equal(String(group))
+
+
+## Plate arrives whole or not at all. A breastplate over a peasant shirt is not a
+## knight fallen on hard times, it is a bug with a story attached.
+func test_a_whole_set_is_never_half_worn() -> void:
+	for i in range(256):
+		var appearance := Wardrobe.roll(i)
+		var style: Dictionary = Wardrobe.STYLES[Wardrobe.OUTFITS[appearance.outfit]["style"]]
+		if not style.get("whole_set", false):
+			continue
+		for slot: StringName in appearance.parts:
+			assert_str(_suit_of(appearance.parts[slot])).override_failure_message(
+				"seed %d wears a %s that is not part of the suit" % [i, slot]
+			).is_equal(String(appearance.outfit))
+
+
+## Mixing is the point, so at least some of the crowd has to actually be mixed. A rule
+## that quietly stopped mixing would leave every passenger in a matching set and no
+## test would notice.
+func test_the_crowd_actually_mixes() -> void:
+	var mixed := 0
+	for i in range(256):
+		var appearance := Wardrobe.roll(i)
+		for slot: StringName in appearance.parts:
+			if _suit_of(appearance.parts[slot]) != appearance.outfit:
+				mixed += 1
+				break
+	assert_int(mixed).override_failure_message(
+		"none of 256 rolled passengers wears a piece from another suit"
+	).is_greater(32)
+
+
+func _suit_of(model: String) -> String:
+	for key: StringName in Wardrobe.OUTFITS:
+		for slot: StringName in Wardrobe.OUTFITS[key]["parts"]:
+			if Wardrobe.OUTFITS[key]["parts"][slot] == model:
+				return String(key)
+	return ""

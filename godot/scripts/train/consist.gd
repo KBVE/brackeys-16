@@ -12,6 +12,13 @@ class_name Consist
 ## hiding lamps at equal geometry.
 
 @export var carriage_scene: PackedScene
+## The bench seating, added per carriage rather than modelled into the shell.
+## tools/build_carriage_variants.sh splits the original into the two, so a car
+## can be dressed as something other than a seating saloon.
+@export var seating_scene: PackedScene
+## Carriages that stay bare, by index. Everything else gets the seating back, so
+## adding a room here is what changes, not the look of the rest of the train.
+@export var undressed_carriages: Array[int] = []
 @export var detail_normal: Texture2D
 @export_range(1, 32) var carriage_count: int = 5
 ## Car centre spacing. Mesh bounds are 20.88m, so 21.0 butts the end platforms.
@@ -54,6 +61,9 @@ func _ready() -> void:
 		var carriage: Node3D = carriage_scene.instantiate()
 		carriage.name = "Carriage_%02d" % i
 		carriage.position = Vector3(_offset(i), 0.0, 0.0)
+		_dress(carriage, i)
+		# after the seating goes in, so its surfaces take the same shared materials
+		# as the shell instead of keeping the ones the glb shipped with
 		_reskin(carriage)
 		var lamps := Node3D.new()
 		lamps.name = "Lamps"
@@ -71,6 +81,17 @@ func _ready() -> void:
 		_carriages.append(carriage)
 		_lampsets.append(lamps)
 	_add_end_caps()
+
+## Puts the bench seating back into carriage [param index], unless it is meant to
+## be a bare room. The seating is a child rather than part of the shell, so it is
+## hidden and culled with the carriage and costs nothing when it is not there.
+func _dress(carriage: Node3D, index: int) -> void:
+	if seating_scene == null or undressed_carriages.has(index):
+		return
+	var seating := seating_scene.instantiate()
+	seating.name = "Seating"
+	carriage.add_child(seating)
+
 
 ## Floor and side walls, so the player is inside something rather than beside it.
 ## Culling hides a carriage but leaves its bodies live, which is what stops the

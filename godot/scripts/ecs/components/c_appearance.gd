@@ -11,8 +11,16 @@ class_name CAppearance
 ## Key into [constant Wardrobe.BODIES].
 var body: StringName = &"regular_male"
 
-## Key into [constant Wardrobe.OUTFITS]. Carries all four covering slots at once.
+## Key into [constant Wardrobe.OUTFITS]: the suit the coat came from, which is also
+## the only suit whose accessories this character may wear. The other garments can be
+## from any suit in the same group, so this names where they are read from, not what
+## every slot holds.
 var outfit: StringName = &"male_peasant"
+
+## Slot to library-relative model, for the four covering slots. Rolled a garment at a
+## time within one group, so a coat and the trousers under it need not be the same
+## suit, and cannot be a suit that would look like a costume change at the waist.
+var parts: Dictionary = {}
 
 ## Key into [constant Wardrobe.HAIR], or empty for none. Cleared when something worn
 ## on the head would grow through it.

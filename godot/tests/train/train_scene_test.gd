@@ -3,6 +3,9 @@ extends GdUnitTestSuite
 
 const SCENE := "res://scenes/train/train.scn"
 const TRIS_PER_CARRIAGE := 32274
+## The bench seating, split out of the shell so a carriage can be dressed as
+## something other than a seating saloon.
+const TRIS_IN_SEATING := 2974
 ## Everything 3D now lives under the SubViewport, so the world renders at its own
 ## resolution while the HUD stays sharp.
 const WORLD := "Screen/Frame/World"
@@ -74,8 +77,19 @@ func test_the_carriage_is_packed_once_not_twice() -> void:
 	).is_not_null()
 	var carriage: Node = auto_free(carriage_scene.instantiate())
 	assert_int(_triangles(carriage)).override_failure_message(
-		"one carriage should be %d triangles, double that means the builder packed "
-		% TRIS_PER_CARRIAGE + "the glTF instance's children as well as the instance."
+		"the bare shell should be %d triangles, double that means the builder packed "
+		% (TRIS_PER_CARRIAGE - TRIS_IN_SEATING)
+		+ "the glTF instance's children as well as the instance."
+	).is_equal(TRIS_PER_CARRIAGE - TRIS_IN_SEATING)
+
+	var seating_scene: PackedScene = root.get_node(WORLD + "/Consist").seating_scene
+	assert_object(seating_scene).override_failure_message(
+		"Consist.seating_scene is unset, so every carriage would be a bare box."
+	).is_not_null()
+	var seating: Node = auto_free(seating_scene.instantiate())
+	assert_int(_triangles(carriage) + _triangles(seating)).override_failure_message(
+		"the shell and the seating no longer add up to the carriage they were split "
+		+ "from, so the split dropped or duplicated geometry."
 	).is_equal(TRIS_PER_CARRIAGE)
 
 
