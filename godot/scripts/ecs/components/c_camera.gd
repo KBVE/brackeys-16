@@ -10,6 +10,13 @@ class_name CCamera
 
 var pivot: Node3D
 var camera: Camera3D
+
+## Where the camera sits on its mount with nothing pushing it, restored every frame
+## before the containment runs. Containment moves the camera by writing its transform,
+## and that write outlives the look that caused it: shoved in against the roof at full
+## pitch, the camera stayed shoved once the view came back level, and every glance
+## downward walked it further into the back of the player's head.
+var rest_offset := Vector3.ZERO
 var lowest_pitch_radians: float = -1.25
 var highest_pitch_radians: float = 0.9
 

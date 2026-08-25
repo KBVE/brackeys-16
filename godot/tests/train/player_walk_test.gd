@@ -282,9 +282,9 @@ func test_the_capsule_is_the_size_of_the_man_inside_it() -> void:
 	).is_greater(Consist.FLOOR_Y - 0.05)
 
 
-## A right-drag is a glance, not a setting. Left to stand, a look at the floor stayed a
-## look at the floor, and nothing in the game brought the horizon back.
-func test_the_view_returns_to_level_once_the_look_ends() -> void:
+## A look is left where the player put it. Easing it back to level the moment they let
+## go of the button read as the camera taking the view off them.
+func test_the_view_holds_where_the_look_left_it() -> void:
 	var runner := scene_runner(SCENE)
 	await runner.simulate_frames(4)
 	var train: Node = runner.scene()
@@ -292,34 +292,39 @@ func test_the_view_returns_to_level_once_the_look_ends() -> void:
 
 	train._control.accumulate_look(Vector2(0.0, 200.0), 720.0)
 	await runner.simulate_frames(2)
-	assert_float(locomotion.pitch_radians).override_failure_message(
-		"the look never pitched the view down, so there is nothing to recover from"
+	var looked_at := locomotion.pitch_radians
+	assert_float(looked_at).override_failure_message(
+		"the look never pitched the view down, so there is nothing to hold"
 	).is_less(-0.2)
 
 	await runner.simulate_frames(90)
 	assert_float(locomotion.pitch_radians).override_failure_message(
-		"the view never came back level, so a glance at the floor is permanent"
-	).is_equal_approx(0.0, 0.05)
+		"the view drifted off on its own after the look ended"
+	).is_equal_approx(looked_at, 0.01)
 
 
-## The recentre must not fight the player while they are still aiming, or the view
-## crawls back to level under the mouse.
-func test_a_held_look_keeps_the_pitch_it_was_given() -> void:
+## Asking for the view back is the only thing that levels it, and it has to arrive
+## rather than easing most of the way and stopping.
+func test_asking_for_the_view_back_levels_it() -> void:
 	var runner := scene_runner(SCENE)
 	await runner.simulate_frames(4)
 	var train: Node = runner.scene()
 	var locomotion := _locomotion_of(train)
 	train._control.set_update(false)
 
-	var intent: CInput = train._intent
-	intent.holding_look = true
-	intent.pitch_units = 0.0
-	locomotion.pitch_radians = -0.6
-	await runner.simulate_frames(20)
-
+	locomotion.pitch_radians = -0.9
+	train._intent.pitch_units = 0.0
+	train._intent.recentring_view = false
+	await runner.simulate_frames(30)
 	assert_float(locomotion.pitch_radians).override_failure_message(
-		"the view drifted back to level while the player was still holding the look"
-	).is_equal_approx(-0.6, 0.01)
+		"the view levelled itself without being asked"
+	).is_equal_approx(-0.9, 0.01)
+
+	train._intent.recentring_view = true
+	await runner.simulate_frames(120)
+	assert_float(locomotion.pitch_radians).override_failure_message(
+		"asking for the view back did not bring it level"
+	).is_equal_approx(0.0, 0.02)
 
 
 ## Strafing used to play the standing clip, because the gait was a single forward axis
@@ -341,3 +346,44 @@ func test_sidestepping_puts_the_legs_in_a_sideways_clip() -> void:
 	assert_float(absf(blend.y)).override_failure_message(
 		"a pure sidestep leaked into the forward axis, so the legs are striding as well"
 	).is_less(0.2)
+
+
+## Containment moves the camera by writing its transform, and that write used to outlive
+## the look that needed it. Every glance downward left the camera a little further into
+## the back of his head, and levelling the view never brought it back.
+func test_a_look_leaves_the_camera_where_it_found_it() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(20)
+	var train: Node = runner.scene()
+	var camera: Camera3D = train.get_node("Screen/Frame/World/Player/Boom/Mount/Camera3D")
+	var rested := camera.position
+
+	train._control.accumulate_look(Vector2(0.0, 260.0), 720.0)
+	await runner.simulate_frames(10)
+	train._control.set_update(false)
+	train._intent.pitch_units = 0.0
+	train._intent.recentring_view = true
+	await runner.simulate_frames(150)
+
+	assert_vector(camera.position).override_failure_message(
+		"the camera never came back to its mount, so the shoulder shot is now a haircut"
+	).is_equal_approx(rested, Vector3.ONE * 0.001)
+
+
+## The crosshair used to read the mouse itself, which meant a finger dragging on a
+## touchscreen aimed at nothing. It reads the intent now, and the intent knows a drag
+## is a look.
+func test_a_drag_raises_the_look_the_crosshair_watches() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(6)
+	var train: Node = runner.scene()
+
+	assert_bool(train._intent.holding_look).override_failure_message(
+		"a look was already underway with nothing touching the screen"
+	).is_false()
+
+	train._control.accumulate_drag(Vector2(40.0, 0.0), 720.0)
+	await runner.simulate_frames(1)
+	assert_bool(train._intent.holding_look).override_failure_message(
+		"dragging a finger did not count as looking, so the crosshair stays hidden on touch"
+	).is_true()

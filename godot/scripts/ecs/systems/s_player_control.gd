@@ -41,7 +41,12 @@ func _on_update(delta: float) -> void:
 	# a map moves under it, a mouse points the head the way it moves
 	var turn_units := _drag_units.x - _look_units.x
 	var pitch_units := -_look_units.y
-	var holding_look := Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
+	# a finger that is dragging is looking, the same as a held right button, so the
+	# crosshair comes up on a touchscreen without a second thing to press
+	var holding_look := Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) \
+		or not _drag_units.is_zero_approx()
+	# the middle button, because left picks up evidence and right is already the look
+	var recentring_view := Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)
 	_drag_units = Vector2.ZERO
 	_look_units = Vector2.ZERO
 	for intent: CInput in view(&"CInput"):
@@ -50,3 +55,4 @@ func _on_update(delta: float) -> void:
 		intent.turn_units = turn_units
 		intent.pitch_units = pitch_units
 		intent.holding_look = holding_look
+		intent.recentring_view = recentring_view

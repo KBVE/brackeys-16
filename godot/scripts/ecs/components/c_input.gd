@@ -12,8 +12,13 @@ var turn_units: float = 0.0
 var pitch_units: float = 0.0
 
 
-## True while the player is actively aiming the view. The pitch holds where it was put
-## for as long as this is true and eases back to level once it is not, so a look is a
-## gesture rather than a setting; without it a glance at the floor stays a glance at
-## the floor and nothing brings the horizon back.
+## True while the player is actively aiming the view, by whatever means: the right
+## button on a pointer, a drag or a look stick on a touchscreen. Kept apart from the
+## button that raises it so the [Crosshair] and anything else that wants to know a look
+## is underway does not have to care which device asked.
 var holding_look: bool = false
+
+## True while the player is asking for the view back. A look holds where it was left,
+## because taking it away the moment they let go of the button reads as the camera
+## fighting them; this is the way back, and it is theirs to ask for.
+var recentring_view: bool = false

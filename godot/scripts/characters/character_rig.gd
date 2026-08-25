@@ -56,6 +56,14 @@ static var _tinted_materials: Dictionary = {}
 ## or bare skin shows through where a piece is missing.
 @export var outfit_pieces: Array[PackedScene] = []
 
+## One colour per entry in [member outfit_pieces], multiplied into everything that
+## piece brings with it. Left empty, as the player leaves it, nothing is tinted.
+##
+## Paired by index rather than read off the material, because which slot a mesh came
+## from is knowable while it is being grafted and guesswork afterwards: a coat and the
+## trousers under it are one material name apart, and sometimes not even that.
+@export var outfit_tints: Array[Color] = []
+
 @export var animation_library_path := "res://assets/player/animations/player_animations.res"
 @export var animation_library_name := &"player"
 
@@ -99,8 +107,9 @@ static func from_appearance(rolled: CAppearance) -> CharacterRig:
 	var rig := CharacterRig.new()
 	rig.appearance = rolled
 	rig.body_model = load(Wardrobe.kit_path(Wardrobe.body_model_of(rolled)))
-	for piece: String in Wardrobe.pieces_of(rolled):
-		rig.outfit_pieces.append(load(Wardrobe.kit_path(piece)))
+	for piece: Dictionary in Wardrobe.pieces_of(rolled):
+		rig.outfit_pieces.append(load(Wardrobe.kit_path(piece["model"])))
+		rig.outfit_tints.append(Wardrobe.tint_of(rolled, piece["slot"]))
 	return rig
 
 
@@ -115,10 +124,11 @@ func _ready() -> void:
 	_rig.scale = Vector3.ONE * model_scale
 	_rig.rotation.y = forward_yaw_offset_radians + deg_to_rad(MODEL_FACES_BACKWARD_DEGREES)
 	_rig.position = _rig_offset()
-	for piece: PackedScene in outfit_pieces:
-		_graft(piece)
+	# Before the grafts, while the only meshes on the skeleton are still the body's own.
 	if appearance != null:
-		_recolour()
+		_dye_the_body()
+	for i in range(outfit_pieces.size()):
+		_graft(outfit_pieces[i], outfit_tints[i] if i < outfit_tints.size() else Color.WHITE)
 	_build_animation()
 
 
@@ -163,7 +173,7 @@ func _rig_offset() -> Vector3:
 
 ## Grafts one piece's meshes onto this skeleton. The piece arrives with a skeleton of
 ## its own, which is the same rig, so only the meshes move across.
-func _graft(piece: PackedScene) -> void:
+func _graft(piece: PackedScene, tint: Color = Color.WHITE) -> void:
 	if piece == null:
 		return
 	var worn: Node = piece.instantiate()
@@ -187,11 +197,13 @@ func _graft(piece: PackedScene) -> void:
 	worn.free()
 
 
-## Tints every surface the character wears. Which tint a surface takes is read off the
-## material it already carries rather than configured per mesh, because the piece a
-## mesh came from does not survive the graft and the material name does: skin is the
-## body's own material, hair is MI_Hair_*, and whatever is left is cloth.
-func _recolour() -> void:
+## Skin and eyebrows, which are the body's own and arrive before anything is worn.
+##
+## These two are told apart by material name because the body brings several in one
+## mesh set and nothing else can separate them: the skin material is the one the
+## catalogue names, the brows share the hair material, and the eyes are left alone
+## because a tinted iris reads as an injury.
+func _dye_the_body() -> void:
 	var skin_material := Wardrobe.skin_material_of(appearance)
 	for child: Node in skeleton.get_children():
 		var mesh := child as MeshInstance3D
@@ -201,13 +213,24 @@ func _recolour() -> void:
 			var base := mesh.mesh.surface_get_material(surface) as StandardMaterial3D
 			if base == null:
 				continue
-			var tint := appearance.cloth_tint
+			var tint := Color.WHITE
 			if base.resource_name == String(skin_material):
-				tint = appearance.skin_tint
+				tint = Wardrobe.tint_of(appearance, Wardrobe.SLOT_SKIN)
 			elif base.resource_name.begins_with(HAIR_MATERIAL_PREFIX):
-				tint = appearance.hair_tint
+				tint = Wardrobe.tint_of(appearance, Wardrobe.SLOT_HAIR)
 			if tint == Color.WHITE:
 				continue
+			mesh.set_surface_override_material(surface, _tinted(base, tint))
+
+
+## Multiplies [param tint] through every surface of one grafted piece. The whole piece
+## takes one colour, because a piece is one garment: the coat is the coat.
+func _dye(mesh: MeshInstance3D, tint: Color) -> void:
+	if tint == Color.WHITE or mesh.mesh == null:
+		return
+	for surface in range(mesh.mesh.get_surface_count()):
+		var base := mesh.mesh.surface_get_material(surface) as StandardMaterial3D
+		if base != null:
 			mesh.set_surface_override_material(surface, _tinted(base, tint))
 
 

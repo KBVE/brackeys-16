@@ -17,10 +17,13 @@ func _on_update(_delta: float) -> void:
 		_keep_inside_the_carriage(eye)
 
 
-## Runs after the arm has placed the camera, and only ever pulls it in.
+## Runs after the arm has placed the camera, and only ever pulls it in. The rest offset
+## goes back on first, so what this does lasts exactly as long as the look that needs it.
 func _keep_inside_the_carriage(eye: CCamera) -> void:
 	if eye.camera == null:
 		return
+	eye.camera.position = eye.rest_offset
+	eye.camera.force_update_transform()
 	var at := eye.camera.global_position
 	var inside := Vector3(at.x,
 		clampf(at.y, eye.lowest_y, eye.highest_y),

@@ -13,6 +13,25 @@ class_name Wardrobe
 ## game actually loads, under [constant KIT_DIR], because the Web preset excludes
 ## res://assets/characters wholesale.
 
+## The places a piece can sit. One piece to a slot: a second in the same slot replaces
+## the first rather than fighting it for the same square centimetre of shoulder.
+##
+## [constant COVERING_SLOTS] is the set an outfit has to fill. Anything not covered is
+## bare skin showing through a gap, which is why an outfit is one catalogue entry and
+## not four rollable ones.
+const SLOT_SKIN := &"skin"
+const SLOT_HAIR := &"hair"
+const SLOT_BEARD := &"beard"
+const SLOT_HEAD := &"head"
+const SLOT_NECK := &"neck"
+const SLOT_SHOULDERS := &"shoulders"
+const SLOT_TORSO := &"torso"
+const SLOT_ARMS := &"arms"
+const SLOT_LEGS := &"legs"
+const SLOT_FEET := &"feet"
+
+const COVERING_SLOTS: Array[StringName] = [SLOT_TORSO, SLOT_ARMS, SLOT_LEGS, SLOT_FEET]
+
 ## Where the shared Quaternius library lives. Only tools/build_cast_kit.gd reads from
 ## here; nothing at runtime does.
 const LIBRARY_DIR := "res://assets/characters/quaternius_ubc"
@@ -75,118 +94,140 @@ const BEARDS := {
 const OUTFITS := {
 	&"male_peasant": {
 		"sex": &"male",
-		"parts": [
-			"models/outfits/Male_Peasant_Body.glb",
-			"models/outfits/Male_Peasant_Arms.glb",
-			"models/outfits/Male_Peasant_Legs.glb",
-			"models/outfits/Male_Peasant_Feet.glb",
-		],
+		"parts": {
+			SLOT_TORSO: "models/outfits/Male_Peasant_Body.glb",
+			SLOT_ARMS: "models/outfits/Male_Peasant_Arms.glb",
+			SLOT_LEGS: "models/outfits/Male_Peasant_Legs.glb",
+			SLOT_FEET: "models/outfits/Male_Peasant_Feet.glb",
+		},
 		"accessories": [],
 	},
 	&"female_peasant": {
 		"sex": &"female",
-		"parts": [
-			"models/outfits/Female_Peasant_Body.glb",
-			"models/outfits/Female_Peasant_Arms.glb",
-			"models/outfits/Female_Peasant_Legs.glb",
-			"models/outfits/Female_Peasant_Feet.glb",
-		],
+		"parts": {
+			SLOT_TORSO: "models/outfits/Female_Peasant_Body.glb",
+			SLOT_ARMS: "models/outfits/Female_Peasant_Arms.glb",
+			SLOT_LEGS: "models/outfits/Female_Peasant_Legs.glb",
+			SLOT_FEET: "models/outfits/Female_Peasant_Feet.glb",
+		},
 		"accessories": [],
 	},
 	&"male_noble": {
 		"sex": &"male",
-		"parts": [
-			"models/outfits/Male_Noble_Body.glb",
-			"models/outfits/Male_Noble_Arms.glb",
-			"models/outfits/Male_Noble_Legs.glb",
-			"models/outfits/Male_Noble_Feet.glb",
-		],
+		"parts": {
+			SLOT_TORSO: "models/outfits/Male_Noble_Body.glb",
+			SLOT_ARMS: "models/outfits/Male_Noble_Arms.glb",
+			SLOT_LEGS: "models/outfits/Male_Noble_Legs.glb",
+			SLOT_FEET: "models/outfits/Male_Noble_Feet.glb",
+		},
 		"accessories": [
-			"models/outfits/Male_Noble_Acc_Gorget.glb",
-			"models/outfits/Male_Noble_Acc_Pauldron.glb",
+			{"model": "models/outfits/Male_Noble_Acc_Gorget.glb", "slot": SLOT_NECK},
+			{"model": "models/outfits/Male_Noble_Acc_Pauldron.glb", "slot": SLOT_SHOULDERS},
+			{"model": "models/outfits/Male_Noble_Acc_Pauldron_Lion.glb", "slot": SLOT_SHOULDERS},
+			{"model": "models/outfits/Male_Noble_Head_Crown.glb", "slot": SLOT_HEAD,
+				"hides": [SLOT_HAIR]},
 		],
 	},
 	&"female_noble": {
 		"sex": &"female",
-		"parts": [
-			"models/outfits/Female_Noble_Body.glb",
-			"models/outfits/Female_Noble_Arms.glb",
-			"models/outfits/Female_Noble_Legs.glb",
-			"models/outfits/Female_Noble_Feet.glb",
-		],
+		"parts": {
+			SLOT_TORSO: "models/outfits/Female_Noble_Body.glb",
+			SLOT_ARMS: "models/outfits/Female_Noble_Arms.glb",
+			SLOT_LEGS: "models/outfits/Female_Noble_Legs.glb",
+			SLOT_FEET: "models/outfits/Female_Noble_Feet.glb",
+		},
 		"accessories": [
-			"models/outfits/Female_Noble_Acc_Gorget.glb",
-			"models/outfits/Female_Noble_Acc_Pauldron.glb",
+			{"model": "models/outfits/Female_Noble_Acc_Gorget.glb", "slot": SLOT_NECK},
+			{"model": "models/outfits/Female_Noble_Acc_Pauldron.glb", "slot": SLOT_SHOULDERS},
+			{"model": "models/outfits/Female_Noble_Acc_Pauldron_Lion.glb", "slot": SLOT_SHOULDERS},
+			{"model": "models/outfits/Female_Noble_Head_Crown.glb", "slot": SLOT_HEAD,
+				"hides": [SLOT_HAIR]},
 		],
 	},
 	&"male_ranger": {
 		"sex": &"male",
-		"parts": [
-			"models/outfits/Male_Ranger_Body.glb",
-			"models/outfits/Male_Ranger_Arms.glb",
-			"models/outfits/Male_Ranger_Legs.glb",
-			"models/outfits/Male_Ranger_Feet_Boots.glb",
-		],
+		"parts": {
+			SLOT_TORSO: "models/outfits/Male_Ranger_Body.glb",
+			SLOT_ARMS: "models/outfits/Male_Ranger_Arms.glb",
+			SLOT_LEGS: "models/outfits/Male_Ranger_Legs.glb",
+			SLOT_FEET: "models/outfits/Male_Ranger_Feet_Boots.glb",
+		},
 		"accessories": [
-			"models/outfits/Male_Ranger_Acc_Pauldron.glb",
+			{"model": "models/outfits/Male_Ranger_Acc_Pauldron.glb", "slot": SLOT_SHOULDERS},
+			{"model": "models/outfits/Male_Ranger_Head_Hood.glb", "slot": SLOT_HEAD,
+				"hides": [SLOT_HAIR]},
 		],
 	},
 	&"female_ranger": {
 		"sex": &"female",
-		"parts": [
-			"models/outfits/Female_Ranger_Body.glb",
-			"models/outfits/Female_Ranger_Arms.glb",
-			"models/outfits/Female_Ranger_Legs.glb",
-			"models/outfits/Female_Ranger_Feet.glb",
-		],
+		"parts": {
+			SLOT_TORSO: "models/outfits/Female_Ranger_Body.glb",
+			SLOT_ARMS: "models/outfits/Female_Ranger_Arms.glb",
+			SLOT_LEGS: "models/outfits/Female_Ranger_Legs.glb",
+			SLOT_FEET: "models/outfits/Female_Ranger_Feet.glb",
+		},
 		"accessories": [
-			"models/outfits/Female_Ranger_Acc_Pauldrons.glb",
+			{"model": "models/outfits/Female_Ranger_Acc_Pauldrons.glb", "slot": SLOT_SHOULDERS},
+			{"model": "models/outfits/Female_Ranger_Head_Hood.glb", "slot": SLOT_HEAD,
+				"hides": [SLOT_HAIR]},
 		],
 	},
 	&"male_wizard": {
 		"sex": &"male",
-		"parts": [
-			"models/outfits/Male_Wizard_Body.glb",
-			"models/outfits/Male_Wizard_Arms.glb",
-			"models/outfits/Male_Wizard_Legs.glb",
-			"models/outfits/Male_Wizard_Feet.glb",
-		],
+		"crowd": false,
+		"parts": {
+			SLOT_TORSO: "models/outfits/Male_Wizard_Body.glb",
+			SLOT_ARMS: "models/outfits/Male_Wizard_Arms.glb",
+			SLOT_LEGS: "models/outfits/Male_Wizard_Legs.glb",
+			SLOT_FEET: "models/outfits/Male_Wizard_Feet.glb",
+		},
 		"accessories": [],
 	},
 	&"female_wizard": {
 		"sex": &"female",
-		"parts": [
-			"models/outfits/Female_Wizard_Body.glb",
-			"models/outfits/Female_Wizard_Arms.glb",
-			"models/outfits/Female_Wizard_Legs.glb",
-			"models/outfits/Female_Wizard_Feet.glb",
-		],
+		"crowd": false,
+		"parts": {
+			SLOT_TORSO: "models/outfits/Female_Wizard_Body.glb",
+			SLOT_ARMS: "models/outfits/Female_Wizard_Arms.glb",
+			SLOT_LEGS: "models/outfits/Female_Wizard_Legs.glb",
+			SLOT_FEET: "models/outfits/Female_Wizard_Feet.glb",
+		},
 		"accessories": [],
 	},
+	## Plate and cloth are two different torsos of the same suit, not two layers, so
+	## the armoured one is a separate outfit rather than an accessory over the other.
 	&"male_knight": {
 		"sex": &"male",
-		"parts": [
-			"models/outfits/Male_Knight_Body_Cloth.glb",
-			"models/outfits/Male_Knight_Arms.glb",
-			"models/outfits/Male_Knight_Legs_Armor.glb",
-			"models/outfits/Male_Knight_Feet_Armor.glb",
-		],
+		"crowd": false,
+		"parts": {
+			SLOT_TORSO: "models/outfits/Male_Knight_Body_Armor.glb",
+			SLOT_ARMS: "models/outfits/Male_Knight_Arms.glb",
+			SLOT_LEGS: "models/outfits/Male_Knight_Legs_Armor.glb",
+			SLOT_FEET: "models/outfits/Male_Knight_Feet_Armor.glb",
+		},
 		"accessories": [
-			"models/outfits/Male_Knight_Acc_Scarf.glb",
-			"models/outfits/Male_Knight_Acc_Pauldron_Round.glb",
+			{"model": "models/outfits/Male_Knight_Acc_Scarf.glb", "slot": SLOT_NECK},
+			{"model": "models/outfits/Male_Knight_Acc_Pauldron_Round.glb", "slot": SLOT_SHOULDERS},
+			{"model": "models/outfits/Male_Knight_Acc_Pauldron_Spike.glb", "slot": SLOT_SHOULDERS},
+			{"model": "models/outfits/Male_Knight_Head_Armet.glb", "slot": SLOT_HEAD,
+				"hides": [SLOT_HAIR, SLOT_BEARD]},
 		],
 	},
 	&"female_knight": {
 		"sex": &"female",
-		"parts": [
-			"models/outfits/Female_Knight_Body_Cloth.glb",
-			"models/outfits/Female_Knight_Arms.glb",
-			"models/outfits/Female_Knight_Legs.glb",
-			"models/outfits/Female_Knight_Feet.glb",
-		],
+		"crowd": false,
+		"parts": {
+			SLOT_TORSO: "models/outfits/Female_Knight_Body_Armor.glb",
+			SLOT_ARMS: "models/outfits/Female_Knight_Arms.glb",
+			SLOT_LEGS: "models/outfits/Female_Knight_Legs.glb",
+			SLOT_FEET: "models/outfits/Female_Knight_Feet.glb",
+		},
 		"accessories": [
-			"models/outfits/Female_Knight_Acc_Scarf.glb",
-			"models/outfits/Female_Knight_Acc_Pauldrons_Round.glb",
+			{"model": "models/outfits/Female_Knight_Acc_Scarf.glb", "slot": SLOT_NECK},
+			{"model": "models/outfits/Female_Knight_Acc_Pauldrons_Round.glb", "slot": SLOT_SHOULDERS},
+			{"model": "models/outfits/Female_Knight_Acc_Pauldrons_Spike.glb", "slot": SLOT_SHOULDERS},
+			{"model": "models/outfits/Female_Knight_Head_Armet.glb", "slot": SLOT_HEAD,
+				"hides": [SLOT_HAIR]},
 		],
 	},
 }
@@ -196,25 +237,66 @@ const OUTFITS := {
 ## so this is the line where variety is paid for. The catalogue above stays complete
 ## so widening the pool is a one-line edit rather than a research trip.
 ##
-## Wizard and knight are catalogued and not shipped: this is a train in 1912.
+## An outfit marked [code]crowd: false[/code] ships without being rolled. Sworn orders
+## and wizardry are rare enough on this line that meeting one at random would spend the
+## surprise the story is saving.
 const POOL := {
 	"bodies": [&"regular_male", &"regular_female", &"teen_female"],
-	"outfits": [&"male_peasant", &"female_peasant", &"male_noble", &"female_noble"],
+	"outfits": [&"male_peasant", &"female_peasant", &"male_noble", &"female_noble",
+		&"female_knight"],
 	"hair": [&"simple_parted", &"bob", &"long", &"ponytail"],
 	"beards": [&"beard"],
 }
 
-## Multiplied into the cloth albedo, so one outfit reads as several. Kept dull and
-## desaturated: these are travelling clothes under gas lamps, and a saturated tint on
-## a texture that already has colour in it turns to poster paint.
-const CLOTH_TINTS: Array[Color] = [
-	Color(1.00, 1.00, 1.00),
-	Color(0.72, 0.74, 0.82),
-	Color(0.85, 0.76, 0.66),
-	Color(0.62, 0.66, 0.62),
-	Color(0.80, 0.62, 0.60),
-	Color(0.58, 0.56, 0.64),
+## A palette is one person's colours, not a colour: a coat, the trousers under it and
+## the boots beneath those are three different dyes on a real body, and rolling them
+## separately gives a passenger in a green coat and orange trousers.
+##
+## Kept dull and desaturated. These are travelling clothes under gas lamps, and a
+## saturated tint over a texture that already carries colour turns to poster paint.
+const PALETTES: Array[Dictionary] = [
+	{
+		SLOT_TORSO: Color(1.00, 1.00, 1.00),
+		SLOT_LEGS: Color(0.86, 0.86, 0.88),
+		SLOT_FEET: Color(0.72, 0.66, 0.60),
+		"accent": Color(0.78, 0.74, 0.66),
+	},
+	{
+		SLOT_TORSO: Color(0.72, 0.74, 0.82),
+		SLOT_LEGS: Color(0.54, 0.56, 0.64),
+		SLOT_FEET: Color(0.46, 0.42, 0.40),
+		"accent": Color(0.82, 0.80, 0.74),
+	},
+	{
+		SLOT_TORSO: Color(0.85, 0.76, 0.66),
+		SLOT_LEGS: Color(0.62, 0.56, 0.48),
+		SLOT_FEET: Color(0.50, 0.42, 0.34),
+		"accent": Color(0.70, 0.62, 0.46),
+	},
+	{
+		SLOT_TORSO: Color(0.58, 0.64, 0.60),
+		SLOT_LEGS: Color(0.44, 0.48, 0.46),
+		SLOT_FEET: Color(0.40, 0.36, 0.32),
+		"accent": Color(0.76, 0.72, 0.62),
+	},
+	{
+		SLOT_TORSO: Color(0.60, 0.50, 0.50),
+		SLOT_LEGS: Color(0.42, 0.38, 0.40),
+		SLOT_FEET: Color(0.44, 0.36, 0.30),
+		"accent": Color(0.70, 0.66, 0.60),
+	},
+	{
+		SLOT_TORSO: Color(0.34, 0.36, 0.44),
+		SLOT_LEGS: Color(0.30, 0.30, 0.34),
+		SLOT_FEET: Color(0.36, 0.32, 0.30),
+		"accent": Color(0.64, 0.62, 0.58),
+	},
 ]
+
+## The sleeves belong to the coat, and the neck and shoulder pieces to the trim, so
+## neither is rolled: they follow.
+const SLOTS_FOLLOWING_TORSO: Array[StringName] = [SLOT_ARMS]
+const SLOTS_FOLLOWING_ACCENT: Array[StringName] = [SLOT_NECK, SLOT_SHOULDERS, SLOT_HEAD]
 
 ## Only ever darkens. The base colour map is the lightest the skin should read, and a
 ## tint above 1.0 blows the shading out of it.
@@ -225,6 +307,8 @@ const SKIN_TINTS: Array[Color] = [
 	Color(0.62, 0.52, 0.45),
 ]
 
+## The beard follows the hair, because a man with a black beard and blond hair is a
+## disguise rather than a person.
 const HAIR_TINTS: Array[Color] = [
 	Color(1.00, 1.00, 1.00),
 	Color(0.45, 0.34, 0.26),
@@ -233,11 +317,16 @@ const HAIR_TINTS: Array[Color] = [
 	Color(0.70, 0.70, 0.72),
 ]
 
-## The five who are evidence. A named passenger has to be recognisable two carriages
+## The seven who are evidence. A named passenger has to be recognisable two carriages
 ## later, so their clothes are written down rather than rolled, and every piece here is
 ## one [constant POOL] ships.
 ##
-## Anyone not listed rolls off their content id, which is what the crowd will do.
+## [code]palette[/code] takes the same shape as [constant PALETTES]; [code]tints[/code]
+## overrides single slots on top of it. Accessories are named by model and checked
+## against the outfit that owns them, so nobody can be handed a pauldron off a suit
+## they are not wearing.
+##
+## Anyone not listed rolls off their content id, which is what the crowd does.
 const CAST := {
 	&"beaumont": {
 		"stature_metres": 1.61,
@@ -245,7 +334,12 @@ const CAST := {
 		"outfit": &"female_noble",
 		"hair": &"long",
 		"accessories": ["models/outfits/Female_Noble_Acc_Gorget.glb"],
-		"cloth_tint": Color(0.34, 0.32, 0.36),
+		"palette": {
+			SLOT_TORSO: Color(0.30, 0.29, 0.32),
+			SLOT_LEGS: Color(0.26, 0.25, 0.28),
+			SLOT_FEET: Color(0.24, 0.22, 0.22),
+			"accent": Color(0.52, 0.50, 0.54),
+		},
 		"skin_tint": Color(0.96, 0.92, 0.88),
 		"hair_tint": Color(0.72, 0.72, 0.74),
 	},
@@ -254,7 +348,12 @@ const CAST := {
 		"body": &"teen_female",
 		"outfit": &"female_peasant",
 		"hair": &"bob",
-		"cloth_tint": Color(0.62, 0.66, 0.62),
+		"palette": {
+			SLOT_TORSO: Color(0.58, 0.64, 0.60),
+			SLOT_LEGS: Color(0.44, 0.48, 0.46),
+			SLOT_FEET: Color(0.40, 0.36, 0.32),
+			"accent": Color(0.76, 0.72, 0.62),
+		},
 		"skin_tint": Color(0.92, 0.86, 0.80),
 		"hair_tint": Color(0.45, 0.34, 0.26),
 	},
@@ -264,7 +363,12 @@ const CAST := {
 		"outfit": &"male_peasant",
 		"hair": &"simple_parted",
 		"beard": &"beard",
-		"cloth_tint": Color(0.85, 0.76, 0.66),
+		"palette": {
+			SLOT_TORSO: Color(0.85, 0.76, 0.66),
+			SLOT_LEGS: Color(0.62, 0.56, 0.48),
+			SLOT_FEET: Color(0.50, 0.42, 0.34),
+			"accent": Color(0.70, 0.62, 0.46),
+		},
 		"skin_tint": Color(0.78, 0.68, 0.60),
 		"hair_tint": Color(0.28, 0.24, 0.22),
 	},
@@ -273,7 +377,12 @@ const CAST := {
 		"body": &"regular_male",
 		"outfit": &"male_noble",
 		"hair": &"simple_parted",
-		"cloth_tint": Color(0.58, 0.56, 0.64),
+		"palette": {
+			SLOT_TORSO: Color(0.60, 0.50, 0.50),
+			SLOT_LEGS: Color(0.42, 0.38, 0.40),
+			SLOT_FEET: Color(0.44, 0.36, 0.30),
+			"accent": Color(0.70, 0.66, 0.60),
+		},
 		"skin_tint": Color(1.00, 1.00, 1.00),
 		"hair_tint": Color(0.72, 0.62, 0.46),
 	},
@@ -284,9 +393,55 @@ const CAST := {
 		"hair": &"simple_parted",
 		"beard": &"beard",
 		"accessories": ["models/outfits/Male_Noble_Acc_Gorget.glb"],
-		"cloth_tint": Color(0.72, 0.74, 0.82),
+		"palette": {
+			SLOT_TORSO: Color(0.44, 0.46, 0.52),
+			SLOT_LEGS: Color(0.34, 0.35, 0.40),
+			SLOT_FEET: Color(0.32, 0.29, 0.28),
+			"accent": Color(0.80, 0.78, 0.74),
+		},
 		"skin_tint": Color(0.92, 0.86, 0.80),
 		"hair_tint": Color(0.70, 0.70, 0.72),
+	},
+	## The company's dark blue, worn to the shine at the elbows. The gorget stands in
+	## for a uniform collar, which is the only piece in the pack that reads as one.
+	&"moreau": {
+		"stature_metres": 1.74,
+		"body": &"regular_male",
+		"outfit": &"male_noble",
+		"hair": &"simple_parted",
+		"beard": &"beard",
+		"accessories": ["models/outfits/Male_Noble_Acc_Gorget.glb"],
+		"palette": {
+			SLOT_TORSO: Color(0.26, 0.30, 0.44),
+			SLOT_LEGS: Color(0.22, 0.25, 0.36),
+			SLOT_FEET: Color(0.28, 0.25, 0.24),
+			"accent": Color(0.78, 0.70, 0.42),
+		},
+		"tints": {SLOT_NECK: Color(0.86, 0.76, 0.44)},
+		"skin_tint": Color(0.78, 0.68, 0.60),
+		"hair_tint": Color(0.70, 0.70, 0.72),
+	},
+	## Steel left steel, and the cloth under it the grey of a cloak that has been rained
+	## on since Calais. The scarf is the Order's colour and the only thing on her that
+	## is a colour at all.
+	&"marchand": {
+		"stature_metres": 1.73,
+		"body": &"regular_female",
+		"outfit": &"female_knight",
+		"hair": &"ponytail",
+		"accessories": [
+			"models/outfits/Female_Knight_Acc_Scarf.glb",
+			"models/outfits/Female_Knight_Acc_Pauldrons_Round.glb",
+		],
+		"palette": {
+			SLOT_TORSO: Color(0.74, 0.74, 0.76),
+			SLOT_LEGS: Color(0.56, 0.55, 0.58),
+			SLOT_FEET: Color(0.62, 0.62, 0.64),
+			"accent": Color(0.80, 0.80, 0.82),
+		},
+		"tints": {SLOT_NECK: Color(0.62, 0.24, 0.20)},
+		"skin_tint": Color(0.92, 0.86, 0.80),
+		"hair_tint": Color(0.45, 0.34, 0.26),
 	},
 }
 
@@ -320,24 +475,55 @@ static func roll(character_seed: int) -> CAppearance:
 	appearance.body = _pick(rng, POOL["bodies"])
 
 	var sex: StringName = BODIES[appearance.body]["sex"]
-	appearance.outfit = _pick(rng, _matching(POOL["outfits"], OUTFITS, sex))
+	appearance.outfit = _pick(rng, _rollable(POOL["outfits"], OUTFITS, sex))
 	appearance.hair = _pick(rng, _matching(POOL["hair"], HAIR, sex))
 
 	var beards: Array = _matching(POOL["beards"], BEARDS, sex)
 	if not beards.is_empty() and rng.randf() < BEARD_CHANCE:
 		appearance.beard = _pick(rng, beards)
 
-	for accessory: String in OUTFITS[appearance.outfit]["accessories"]:
-		if rng.randf() < ACCESSORY_CHANCE:
-			appearance.accessories.append(accessory)
+	for accessory: Dictionary in OUTFITS[appearance.outfit]["accessories"]:
+		if rng.randf() >= ACCESSORY_CHANCE:
+			continue
+		wear(appearance, accessory)
 
 	var stature: Vector2 = BODIES[appearance.body]["stature_metres"]
 	appearance.stature_metres = rng.randf_range(stature.x, stature.y)
 
-	appearance.cloth_tint = CLOTH_TINTS[rng.randi() % CLOTH_TINTS.size()]
-	appearance.skin_tint = SKIN_TINTS[rng.randi() % SKIN_TINTS.size()]
-	appearance.hair_tint = HAIR_TINTS[rng.randi() % HAIR_TINTS.size()]
+	paint(appearance, PALETTES[rng.randi() % PALETTES.size()])
+	appearance.tints[SLOT_SKIN] = SKIN_TINTS[rng.randi() % SKIN_TINTS.size()]
+	appearance.tints[SLOT_HAIR] = HAIR_TINTS[rng.randi() % HAIR_TINTS.size()]
 	return appearance
+
+
+## Puts one accessory on, and takes off whatever it would be worn through. A helmet
+## hides the hair rather than growing it out through the crown, and a second pauldron
+## replaces the first rather than sharing a shoulder with it.
+##
+## The first one in wins the slot, which is what makes a rolled character stable: the
+## accessory list is walked in catalogue order, so the same seed makes the same choices
+## in the same sequence.
+static func wear(appearance: CAppearance, accessory: Dictionary) -> void:
+	var slot: StringName = accessory["slot"]
+	if appearance.accessories.has(slot):
+		return
+	appearance.accessories[slot] = accessory["model"]
+	for hidden: StringName in accessory.get("hides", []):
+		if hidden == SLOT_HAIR:
+			appearance.hair = &""
+		elif hidden == SLOT_BEARD:
+			appearance.beard = &""
+
+
+## Spreads one palette across everything cloth. The sleeves take the coat's colour and
+## the trim takes the accent, so a palette decides a person rather than a garment.
+static func paint(appearance: CAppearance, palette: Dictionary) -> void:
+	for slot: StringName in [SLOT_TORSO, SLOT_LEGS, SLOT_FEET]:
+		appearance.tints[slot] = palette.get(slot, Color.WHITE)
+	for slot: StringName in SLOTS_FOLLOWING_TORSO:
+		appearance.tints[slot] = palette.get(SLOT_TORSO, Color.WHITE)
+	for slot: StringName in SLOTS_FOLLOWING_ACCENT:
+		appearance.tints[slot] = palette.get("accent", Color.WHITE)
 
 
 ## A seed for [method roll] from an authored id, so unnamed passengers are stable
@@ -359,29 +545,65 @@ static func appearance_of(content_id: StringName) -> CAppearance:
 	appearance.outfit = written.get("outfit", &"male_peasant")
 	appearance.hair = written.get("hair", &"")
 	appearance.beard = written.get("beard", &"")
-	appearance.accessories = PackedStringArray(written.get("accessories", []))
 	appearance.stature_metres = written.get("stature_metres",
 		BODIES[appearance.body]["stature_metres"].y)
-	appearance.cloth_tint = written.get("cloth_tint", Color.WHITE)
-	appearance.skin_tint = written.get("skin_tint", Color.WHITE)
-	appearance.hair_tint = written.get("hair_tint", Color.WHITE)
+
+	# Named by model, resolved to a slot through the outfit that owns it, so a written
+	# character cannot be given a piece from a suit they are not wearing.
+	for model: String in written.get("accessories", []):
+		var accessory := accessory_of(appearance.outfit, model)
+		if accessory.is_empty():
+			push_error("Wardrobe: %s wears %s, which %s does not offer"
+				% [content_id, model, appearance.outfit])
+			continue
+		wear(appearance, accessory)
+
+	paint(appearance, written.get("palette", PALETTES[0]))
+	appearance.tints[SLOT_SKIN] = written.get("skin_tint", Color.WHITE)
+	appearance.tints[SLOT_HAIR] = written.get("hair_tint", Color.WHITE)
+	# Written last, so a character who wants one sleeve a different colour can say so
+	# without restating the palette.
+	for slot: StringName in written.get("tints", {}):
+		appearance.tints[slot] = written["tints"][slot]
 	return appearance
 
 
-## Every glb the rig has to graft onto the body, in the order they go on: hair before
-## the outfit, accessories last, because a pauldron sits over a sleeve.
-static func pieces_of(appearance: CAppearance) -> PackedStringArray:
-	var pieces := PackedStringArray()
+## The catalogue entry for one of [param outfit]'s accessories, or {} when that outfit
+## does not offer it.
+static func accessory_of(outfit: StringName, model: String) -> Dictionary:
+	if not OUTFITS.has(outfit):
+		return {}
+	for accessory: Dictionary in OUTFITS[outfit]["accessories"]:
+		if accessory["model"] == model:
+			return accessory
+	return {}
+
+
+## Every glb the rig grafts onto the body, each with the slot it sits in, in the order
+## they go on: hair first, then the outfit, then whatever is worn over it, because a
+## pauldron belongs over a sleeve and not under one.
+static func pieces_of(appearance: CAppearance) -> Array[Dictionary]:
+	var pieces: Array[Dictionary] = []
 	if HAIR.has(appearance.hair):
-		pieces.append(HAIR[appearance.hair]["model"])
+		pieces.append({"model": HAIR[appearance.hair]["model"], "slot": SLOT_HAIR})
 	if BEARDS.has(appearance.beard):
-		pieces.append(BEARDS[appearance.beard]["model"])
+		pieces.append({"model": BEARDS[appearance.beard]["model"], "slot": SLOT_BEARD})
 	if OUTFITS.has(appearance.outfit):
-		for part: String in OUTFITS[appearance.outfit]["parts"]:
-			pieces.append(part)
-	for accessory: String in appearance.accessories:
-		pieces.append(accessory)
+		for slot: StringName in COVERING_SLOTS:
+			var model: String = OUTFITS[appearance.outfit]["parts"].get(slot, "")
+			if model == "":
+				push_error("Wardrobe: %s has nothing for the %s slot" % [appearance.outfit, slot])
+				continue
+			pieces.append({"model": model, "slot": slot})
+	for slot: StringName in appearance.accessories:
+		pieces.append({"model": appearance.accessories[slot], "slot": slot})
 	return pieces
+
+
+## What [param slot] is dyed on this character. White where nothing says otherwise,
+## which leaves the texture as it was authored.
+static func tint_of(appearance: CAppearance, slot: StringName) -> Color:
+	return appearance.tints.get(slot, Color.WHITE)
 
 
 static func body_model_of(appearance: CAppearance) -> String:
@@ -403,10 +625,10 @@ static func pooled_models() -> PackedStringArray:
 	for key: StringName in POOL["beards"]:
 		_append_once(models, BEARDS[key]["model"])
 	for key: StringName in POOL["outfits"]:
-		for part: String in OUTFITS[key]["parts"]:
-			_append_once(models, part)
-		for accessory: String in OUTFITS[key]["accessories"]:
-			_append_once(models, accessory)
+		for slot: StringName in OUTFITS[key]["parts"]:
+			_append_once(models, OUTFITS[key]["parts"][slot])
+		for accessory: Dictionary in OUTFITS[key]["accessories"]:
+			_append_once(models, accessory["model"])
 	return models
 
 
@@ -418,6 +640,13 @@ static func _matching(keys: Array, catalogue: Dictionary, sex: StringName) -> Ar
 			return false
 		var wearer: StringName = catalogue[key]["sex"]
 		return wearer == sex or wearer == &"any")
+
+
+## What [method roll] may choose from: the shipped list, minus anything the catalogue
+## keeps out of the crowd.
+static func _rollable(keys: Array, catalogue: Dictionary, sex: StringName) -> Array:
+	return _matching(keys, catalogue, sex).filter(func(key: StringName) -> bool:
+		return catalogue[key].get("crowd", true))
 
 
 static func _pick(rng: RandomNumberGenerator, from: Array) -> StringName:

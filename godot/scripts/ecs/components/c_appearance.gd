@@ -14,20 +14,21 @@ var body: StringName = &"regular_male"
 ## Key into [constant Wardrobe.OUTFITS]. Carries all four covering slots at once.
 var outfit: StringName = &"male_peasant"
 
-## Key into [constant Wardrobe.HAIR], or empty for none.
+## Key into [constant Wardrobe.HAIR], or empty for none. Cleared when something worn
+## on the head would grow through it.
 var hair: StringName = &""
 
 ## Key into [constant Wardrobe.BEARDS], or empty for none.
 var beard: StringName = &""
 
-## Library-relative model paths worn over the outfit, from its own accessory list.
-var accessories: PackedStringArray = PackedStringArray()
+## Slot to library-relative model, for whatever is worn over the outfit. Keyed by slot
+## rather than listed, because one shoulder holds one pauldron.
+var accessories: Dictionary = {}
 
-## Multiplied into the albedo of the cloth, the skin and the hair. White leaves the
-## texture as it was authored.
-var cloth_tint := Color.WHITE
-var skin_tint := Color.WHITE
-var hair_tint := Color.WHITE
+## Slot to the colour multiplied into everything in it, [constant Wardrobe.SLOT_SKIN]
+## and [constant Wardrobe.SLOT_HAIR] included. A slot with no entry keeps the texture
+## as it was authored.
+var tints: Dictionary = {}
 
 ## Crown to sole, in metres, handed to [member CharacterRig.stature_metres]. Rolled
 ## within a range the body allows, so a teen is not an adult who came out short.

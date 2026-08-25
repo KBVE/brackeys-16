@@ -168,7 +168,9 @@ func _ready() -> void:
 	lamps.lamp_glass = _consist.glow_material()
 	_scope.add_system(&"carriage_lamps", lamps)
 
-	_frame.get_parent().add_child(Crosshair.new())
+	var crosshair := Crosshair.new()
+	crosshair.aiming = _intent
+	_frame.get_parent().add_child(crosshair)
 
 	# the world owns the camera now, so picking is its viewport's job, not the
 	# window's
@@ -305,6 +307,7 @@ func _cast_body_system() -> SCastBody:
 ## the camera indoors. These are the bounds it is held within.
 func _carriage_camera() -> CCamera:
 	var eye := CCamera.new(_add_boom(), _cam)
+	eye.rest_offset = BOOM_SHOULDER_OFFSET
 	eye.interior_half_z = Consist.INTERIOR_HALF_Z - 0.15
 	eye.lowest_y = Consist.DRAWN_FLOOR_Y + 0.4
 	eye.highest_y = Consist.WALL_HEIGHT - 0.35

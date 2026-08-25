@@ -36,8 +36,8 @@ func _passengers_within(train: Node) -> int:
 
 func _looks_of(train: Node) -> Array:
 	return _rigs_in(train).map(func(rig: CharacterRig) -> Array:
-		return [rig.appearance.outfit, rig.appearance.hair, rig.appearance.cloth_tint,
-			rig.appearance.stature_metres, rig.position])
+		return [rig.appearance.outfit, rig.appearance.hair, rig.appearance.accessories,
+			rig.appearance.tints, rig.appearance.stature_metres, rig.position])
 
 
 func after_test() -> void:
