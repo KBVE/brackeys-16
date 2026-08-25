@@ -4,6 +4,11 @@ class_name SCameraAim
 ## SCameraAim points the head. Yaw rides the body, so this is pitch and the fixed
 ## quarter turn that makes the camera look down the train rather than across it.
 
+## Set by the loop before the containment runs, which needs to know which rest offset to
+## put back but is handed only the camera.
+var _seated := false
+
+
 func _on_update(_delta: float) -> void:
 	for entry: Dictionary in multi_view([CLocomotion, CCamera, CSeating]):
 		var eye: CCamera = entry[&"CCamera"]
@@ -21,6 +26,7 @@ func _on_update(_delta: float) -> void:
 		if arm != null:
 			arm.spring_length = eye.seated_boom_metres if seated \
 				else eye.standing_boom_metres
+		_seated = seated
 		_keep_inside_the_carriage(eye)
 
 
@@ -29,7 +35,7 @@ func _on_update(_delta: float) -> void:
 func _keep_inside_the_carriage(eye: CCamera) -> void:
 	if eye.camera == null:
 		return
-	eye.camera.position = eye.rest_offset
+	eye.camera.position = eye.seated_rest_offset if _seated else eye.rest_offset
 	eye.camera.force_update_transform()
 	var at := eye.camera.global_position
 	var inside := Vector3(at.x,

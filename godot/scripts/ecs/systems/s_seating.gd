@@ -68,7 +68,9 @@ func _sit(locomotion: CLocomotion, seating: CSeating, rig: CharacterRig,
 	seating.seated = true
 	seating.seat = seat
 	seat.taken_by = seating
-	seating.camera_yaw_radians = -PI * 0.5 * signf(seat.at.z)
+	# a sitter has his back to the wall, so there is no room behind him to film from.
+	# The shot swings right round to the aisle in front of him instead.
+	seating.camera_yaw_radians = PI * 0.5
 	locomotion.facing_radians = seat.facing_radians
 	locomotion.eye_height_metres = seat.at.y + seating.seated_eye_above_cushion_metres
 	locomotion.height_above_stance_metres = 0.0

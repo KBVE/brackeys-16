@@ -27,7 +27,7 @@ var seated_eye_above_cushion_metres: float = 0.72
 ## whichever is nearest by then.
 var seat: CSeat = null
 
-## Which way the camera swings to get over the aisle, set on sitting down. It depends on
-## the bench: from the near side the aisle is one way, from the far side the other, and
-## a fixed quarter turn films one of them through the wall.
+## How far the camera swings to get off the bench and over the aisle, set on sitting
+## down. Standing it is nothing: the shot rides behind the shoulder. Seated there is a
+## wall where behind used to be.
 var camera_yaw_radians: float = 0.0

@@ -51,9 +51,9 @@ const FLOOR_Y := 1.2735
 const CUSHION_ABOVE_FLOOR := 0.5891
 const SEAT_CENTRE_Z := 0.95
 
-## Rows every 2.4m out to 7.2 either side of the carriage centre. The seating mesh runs
-## to 8.659, and the last row is held back from that so a seat is never half inside the
-## bulkhead at the end of the car.
+## Rows every 2.4m, offset half a pitch so they fall between the bay dividers rather
+## than on them, out to 8.4 either side of the carriage centre. The seating mesh runs to
+## 8.659, so the last row is still inside it.
 const SEAT_ROW_PITCH := 2.4
 const SEAT_ROWS_EITHER_SIDE := 3
 
@@ -316,13 +316,18 @@ func seat_anchors() -> Array[Dictionary]:
 		if seating_scene == null or undressed_carriages.has(i):
 			continue
 		for row in range(-SEAT_ROWS_EITHER_SIDE, SEAT_ROWS_EITHER_SIDE + 1):
-			var bay := row * SEAT_ROW_PITCH
+			# half a pitch off centre, because the dividers are on the round numbers:
+			# a seat placed on one sits its occupant inside the partition
+			var bay := (row + 0.5) * SEAT_ROW_PITCH
 			for side: float in [1.0, -1.0]:
 				out.append({
 					"at": global_position + Vector3(_offset(i) + bay,
 						FLOOR_Y + CUSHION_ABOVE_FLOOR, side * SEAT_CENTRE_Z),
-					# the rows face down the train, so sitting squares him to it
-					"facing": 0.0,
+					# the benches run along the walls with their backs to them, so a
+					# sitter faces the aisle across the car rather than down it. Which
+					# way across depends on the side he is on: face the wrong one and
+					# he sits with his nose in the cushion.
+					"facing": PI if side > 0.0 else 0.0,
 					"carriage": i,
 				})
 	return out

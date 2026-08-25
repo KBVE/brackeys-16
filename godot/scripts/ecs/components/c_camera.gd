@@ -24,6 +24,11 @@ var rest_offset := Vector3.ZERO
 
 ## Shorter sitting than standing, because the aisle is narrower than the car is long.
 var seated_boom_metres: float = 1.25
+
+## The mount rides high behind a standing shoulder. Seated, that same lift puts it above
+## his head looking over him, so the shot drops to meet a head that is now at 2.44
+## rather than 3.0.
+var seated_rest_offset := Vector3(0.12, -0.12, 0.0)
 var standing_boom_metres: float = 0.95
 var lowest_pitch_radians: float = -1.25
 var highest_pitch_radians: float = 0.9
