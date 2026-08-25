@@ -15,6 +15,24 @@ var turn_radians_per_unit: float = 2.4
 var pitch_recentre_radians_per_second: float = 2.5
 var walk_metres_per_unit: float = 4.0
 
+## How high a standing jump carries him. Metres, so it is a number anyone can argue
+## with rather than an impulse nobody can picture.
+var jump_rise_metres: float = 0.45
+
+var gravity_metres_per_second_squared: float = 9.8
+
+## How far above his stance he currently is, and how fast that is changing. He is
+## carried rather than dropped: the walk pins Y to the eye height, because the drawn
+## deck is a metre and a quarter above the collision floor and anything that fell would
+## fall to the wrong one. A jump is an offset on top of that pin, so it lands him back
+## on the deck he can see instead of the one the physics knows about.
+var height_above_stance_metres: float = 0.0
+var rise_metres_per_second: float = 0.0
+
+func airborne() -> bool:
+	return height_above_stance_metres > 0.0
+
+
 ## Signed along the walking direction, so backing up reads negative. Written by
 ## [SLocomotion] from distance actually covered, which is zero against a wall.
 var forward_metres_per_second: float = 0.0

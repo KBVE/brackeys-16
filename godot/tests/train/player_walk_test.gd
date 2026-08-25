@@ -387,3 +387,53 @@ func test_a_drag_raises_the_look_the_crosshair_watches() -> void:
 	assert_bool(train._intent.holding_look).override_failure_message(
 		"dragging a finger did not count as looking, so the crosshair stays hidden on touch"
 	).is_true()
+
+
+## He is carried rather than dropped: the walk pins Y to the deck he can see, which sits
+## a metre and a quarter above the collision floor. A jump has to be an offset on that
+## pin, or landing puts him through the floorboards and onto the underframe.
+func test_a_jump_leaves_the_deck_and_comes_back_to_it() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(10)
+	var train: Node = runner.scene()
+	var player: CharacterBody3D = train.get_node("Screen/Frame/World/Player")
+	var locomotion := _locomotion_of(train)
+	train._control.set_update(false)
+	var stood_at := locomotion.eye_height_metres
+
+	train._intent.jump_requested = true
+	await runner.simulate_frames(1)
+	train._intent.jump_requested = false
+	await runner.simulate_frames(8)
+
+	assert_float(locomotion.height_above_stance_metres).override_failure_message(
+		"pressing jump did not take him off the deck"
+	).is_greater(0.05)
+	assert_bool(locomotion.airborne()).is_true()
+
+	await runner.simulate_frames(90)
+	assert_float(locomotion.height_above_stance_metres).override_failure_message(
+		"he never came down, so the jump has no gravity on it"
+	).is_equal_approx(0.0, 0.001)
+	assert_float(player.position.y).override_failure_message(
+		"he landed somewhere other than the deck he left"
+	).is_equal_approx(stood_at, 0.01)
+
+
+## Holding the key down is not a request to keep jumping, and a second press in the air
+## is not a second jump.
+func test_he_cannot_jump_again_while_he_is_still_up() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(10)
+	var train: Node = runner.scene()
+	var locomotion := _locomotion_of(train)
+	train._control.set_update(false)
+
+	train._intent.jump_requested = true
+	await runner.simulate_frames(6)
+	var rising := locomotion.rise_metres_per_second
+	await runner.simulate_frames(2)
+
+	assert_float(locomotion.rise_metres_per_second).override_failure_message(
+		"the jump was re-fired in mid air, so holding space floats him"
+	).is_less(rising)

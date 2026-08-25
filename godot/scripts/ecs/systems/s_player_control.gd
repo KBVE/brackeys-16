@@ -47,6 +47,7 @@ func _on_update(delta: float) -> void:
 		or not _drag_units.is_zero_approx()
 	# the middle button, because left picks up evidence and right is already the look
 	var recentring_view := Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)
+	var jump_requested := Input.is_action_just_pressed(&"jump")
 	_drag_units = Vector2.ZERO
 	_look_units = Vector2.ZERO
 	for intent: CInput in view(&"CInput"):
@@ -56,3 +57,4 @@ func _on_update(delta: float) -> void:
 		intent.pitch_units = pitch_units
 		intent.holding_look = holding_look
 		intent.recentring_view = recentring_view
+		intent.jump_requested = jump_requested

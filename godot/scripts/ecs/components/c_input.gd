@@ -22,3 +22,8 @@ var holding_look: bool = false
 ## because taking it away the moment they let go of the button reads as the camera
 ## fighting them; this is the way back, and it is theirs to ask for.
 var recentring_view: bool = false
+
+
+## True on the frame the player asked to leave the ground. An edge rather than a level,
+## because holding the key down is not a request to keep jumping.
+var jump_requested: bool = false

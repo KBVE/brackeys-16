@@ -21,7 +21,8 @@ func _step(intent: CInput, locomotion: CLocomotion, body: CharacterBody3D, delta
 		locomotion.pitch_radians = move_toward(locomotion.pitch_radians, 0.0,
 			locomotion.pitch_recentre_radians_per_second * delta)
 	body.rotation.y = locomotion.facing_radians
-	body.position.y = locomotion.eye_height_metres
+	_rise(intent, locomotion, delta)
+	body.position.y = locomotion.eye_height_metres + locomotion.height_above_stance_metres
 
 	var forward := forward_of(locomotion)
 	var right := right_of(locomotion)
@@ -48,3 +49,21 @@ static func forward_of(locomotion: CLocomotion) -> Vector3:
 static func right_of(locomotion: CLocomotion) -> Vector3:
 	var yaw := locomotion.facing_radians + locomotion.forward_yaw_offset_radians
 	return Vector3(cos(yaw), 0.0, -sin(yaw))
+
+
+## A jump is height above the stance, not a fall onto a floor. Nothing here touches the
+## collision capsule: it is pinned to the deck the player can see, and letting gravity
+## own it would drop him to the collision floor a metre and a quarter below.
+static func _rise(intent: CInput, locomotion: CLocomotion, delta: float) -> void:
+	if intent.jump_requested and not locomotion.airborne():
+		locomotion.rise_metres_per_second = sqrt(2.0
+			* locomotion.gravity_metres_per_second_squared
+			* maxf(locomotion.jump_rise_metres, 0.0))
+	if locomotion.rise_metres_per_second == 0.0 and not locomotion.airborne():
+		return
+	locomotion.rise_metres_per_second -= \
+		locomotion.gravity_metres_per_second_squared * delta
+	locomotion.height_above_stance_metres += locomotion.rise_metres_per_second * delta
+	if locomotion.height_above_stance_metres <= 0.0:
+		locomotion.height_above_stance_metres = 0.0
+		locomotion.rise_metres_per_second = 0.0
