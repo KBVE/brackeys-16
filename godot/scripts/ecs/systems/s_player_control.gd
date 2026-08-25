@@ -16,6 +16,13 @@ class_name SPlayerControl
 var drag_screens_per_unit: float = 2.6
 var mouse_screens_per_unit: float = 2.6
 
+## Whether devices are being read at all. A debug run steals the window focus the
+## moment it launches, and a game that is already driving the character eats the
+## keystrokes meant for the editor behind it. So a run with a real window starts inert
+## and waits to be clicked into; a headless one never had focus to steal and starts
+## live, which is what keeps the tests driving real actions.
+var engaged: bool = true
+
 var _drag_units := Vector2.ZERO
 var _look_units := Vector2.ZERO
 
@@ -32,7 +39,30 @@ func accumulate_look(relative_pixels: Vector2, window_height: float) -> void:
 		_look_units += relative_pixels / window_height * mouse_screens_per_unit
 
 
+## Clicking inside the window is what takes control, and Escape is what gives it back.
+## Both are read while inert, because they are the only way out of it.
+func _read_engagement() -> void:
+	if Input.is_action_just_pressed(&"ui_cancel"):
+		engaged = false
+	elif Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		engaged = true
+
+
 func _on_update(delta: float) -> void:
+	_read_engagement()
+	if not engaged:
+		_drag_units = Vector2.ZERO
+		_look_units = Vector2.ZERO
+		for idle: CInput in view(&"CInput"):
+			idle.walk_units = 0.0
+			idle.strafe_units = 0.0
+			idle.turn_units = 0.0
+			idle.pitch_units = 0.0
+			idle.jump_requested = false
+			idle.holding_look = false
+			idle.recentring_view = false
+		return
+
 	# a held key is a rate, so it scales with frame time; a gesture is already a
 	# distance, so it must not. Swap either sign to invert that axis.
 	var walk_units := Input.get_axis(&"move_down", &"move_up") * delta + _drag_units.y

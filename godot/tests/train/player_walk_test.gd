@@ -437,3 +437,31 @@ func test_he_cannot_jump_again_while_he_is_still_up() -> void:
 	assert_float(locomotion.rise_metres_per_second).override_failure_message(
 		"the jump was re-fired in mid air, so holding space floats him"
 	).is_less(rising)
+
+
+## A debug run takes the window focus the moment it launches. Reading devices straight
+## away meant the keys meant for the editor behind it went into walking the character
+## around instead.
+func test_an_inert_run_ignores_the_keyboard_until_it_is_clicked_into() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(6)
+	var train: Node = runner.scene()
+	var player: CharacterBody3D = train.get_node("Screen/Frame/World/Player")
+	train._control.engaged = false
+
+	var stood_at := player.position.x
+	runner.simulate_action_press("move_up")
+	await runner.simulate_frames(8)
+	runner.simulate_action_release("move_up")
+
+	assert_float(player.position.x).override_failure_message(
+		"an inert run walked the character anyway, so it is still eating the keyboard"
+	).is_equal_approx(stood_at, 0.001)
+
+	train._control.engaged = true
+	runner.simulate_action_press("move_up")
+	await runner.simulate_frames(8)
+	runner.simulate_action_release("move_up")
+	assert_float(absf(player.position.x - stood_at)).override_failure_message(
+		"clicking into the run did not hand the keyboard back"
+	).is_greater(0.01)

@@ -149,6 +149,8 @@ func _ready() -> void:
 		.add(CCharacterRig.new(body)).add(CGait.new()) \
 		.add(ECSViewComponent.new(_player))
 	_control = SPlayerControl.new()
+	# a headless run has no window to steal focus from, and its tests press real actions
+	_control.engaged = DisplayServer.get_name() == "headless"
 	_control.drag_screens_per_unit = DRAG_SCREENS_PER_UNIT
 	_scope.add_system(&"player_control", _control)
 	_scope.add_system(&"locomotion", SLocomotion.new())
