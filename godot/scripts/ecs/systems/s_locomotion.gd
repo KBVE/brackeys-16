@@ -2,11 +2,25 @@ extends ECSSystem
 class_name SLocomotion
 
 func _on_update(delta: float) -> void:
-	for entry: Dictionary in multi_view([CInput, CLocomotion, ECSViewComponent]):
+	for entry: Dictionary in multi_view([CInput, CLocomotion, CSeating, ECSViewComponent]):
 		var body: CharacterBody3D = entry[&"ECSViewComponent"].view as CharacterBody3D
 		if body == null:
 			continue
+		if entry[&"CSeating"].seated:
+			_sit_still(entry[&"CLocomotion"], body)
+			continue
 		_step(entry[&"CInput"], entry[&"CLocomotion"], body, delta)
+
+
+## A seated body is parked, and parking it is not a move. Calling move_and_slide on it
+## would be: the capsule is a standing man's, so dropping the eye to cushion height
+## pushes its base through the deck and the floor shoves him back up by a foot.
+static func _sit_still(locomotion: CLocomotion, body: CharacterBody3D) -> void:
+	body.velocity = Vector3.ZERO
+	body.rotation.y = locomotion.facing_radians
+	body.position.y = locomotion.eye_height_metres
+	locomotion.forward_metres_per_second = 0.0
+	locomotion.strafe_metres_per_second = 0.0
 
 
 func _step(intent: CInput, locomotion: CLocomotion, body: CharacterBody3D, delta: float) -> void:

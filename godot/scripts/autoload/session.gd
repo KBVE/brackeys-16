@@ -17,6 +17,16 @@ const ESCORT := [
 	{"seed": 0x5eed_0002, "outfit": &"female_knight"},
 ]
 
+## How far along the van each of them paces. Short: they are guarding a crate, not
+## walking a beat, and two knights crossing each other in a corridor this narrow is a
+## comedy rather than a watch.
+const ESCORT_PATROL_METRES := 3.0
+
+## The quarter turn every rig aboard is built with, the player's included. Held here
+## rather than read off the train, because the cast are spawned before a train exists
+## and outlive the one they were spawned for.
+const WALKING_YAW_OFFSET := -PI * 0.5
+
 ## Departure, in minutes past midnight. Earliest authored timeline is Dupont boarding at Paris.
 const DEPARTURE_MINUTES := 16 * 60 + 5
 
@@ -46,13 +56,17 @@ func _ready() -> void:
 		var identity := CIdentity.new()
 		identity.content_id = passenger.get("id", "")
 		_scope.spawn().add(CPassenger.new()).add(identity).add(CLocation.new()) \
-			.add(Wardrobe.appearance_of(identity.content_id)).add(CCharacterRig.new())
+			.add(Wardrobe.appearance_of(identity.content_id)).add(CCharacterRig.new()) \
+			.add(CErrand.new()).add(_walking_locomotion()).add(CGait.new())
 
 	for sworn: Dictionary in ESCORT:
 		var post := CLocation.new()
 		post.location_id = ESCORT_LOCATION
+		var watch := CErrand.new()
+		watch.patrol_metres = ESCORT_PATROL_METRES
 		_scope.spawn().add(post).add(CCharacterRig.new()) \
-			.add(Wardrobe.roll(sworn["seed"], sworn["outfit"]))
+			.add(Wardrobe.roll(sworn["seed"], sworn["outfit"])) \
+			.add(watch).add(_walking_locomotion()).add(CGait.new())
 
 	begin()
 
@@ -69,3 +83,11 @@ func begin() -> void:
 
 func _exit_tree() -> void:
 	_scope.dispose()
+
+
+## The turned-round facing every rig in this project carries, and nothing else the
+## player's own locomotion holds: a passenger has no input, no jump and no capsule.
+func _walking_locomotion() -> CLocomotion:
+	var locomotion := CLocomotion.new()
+	locomotion.forward_yaw_offset_radians = WALKING_YAW_OFFSET
+	return locomotion

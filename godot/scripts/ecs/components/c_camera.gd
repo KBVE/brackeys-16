@@ -17,6 +17,14 @@ var camera: Camera3D
 ## pitch, the camera stayed shoved once the view came back level, and every glance
 ## downward walked it further into the back of the player's head.
 var rest_offset := Vector3.ZERO
+
+## A seated body is against the wall and a boom directly behind it is inside the bench,
+## so the shot swings a quarter turn to put the camera over the aisle -- the only place
+## in a carriage with room to film from. Which way it swings is [CSeating]'s to say.
+
+## Shorter sitting than standing, because the aisle is narrower than the car is long.
+var seated_boom_metres: float = 1.25
+var standing_boom_metres: float = 0.95
 var lowest_pitch_radians: float = -1.25
 var highest_pitch_radians: float = 0.9
 

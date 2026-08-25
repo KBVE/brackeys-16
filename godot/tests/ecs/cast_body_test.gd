@@ -36,10 +36,14 @@ func _cast_within(train: Node) -> int:
 	return count
 
 
+## What a passenger looks like, without where they are standing. The escort paces their
+## post, so a position compared across a rebuild is a test of the clock rather than of
+## anybody's identity; where a rebuilt character stands is
+## [method test_a_rebuilt_passenger_is_met_where_they_walked_to].
 func _looks_of(train: Node) -> Array:
 	return _rigs_in(train).map(func(rig: CharacterRig) -> Array:
 		return [rig.appearance.outfit, rig.appearance.hair, rig.appearance.accessories,
-			rig.appearance.tints, rig.appearance.stature_metres, rig.position])
+			rig.appearance.tints, rig.appearance.stature_metres])
 
 
 func after_test() -> void:
@@ -146,3 +150,29 @@ func _escort() -> Array:
 	return Ecs.world.multi_view([CLocation, CAppearance]).filter(
 		func(entry: Dictionary) -> bool:
 			return not entry["entity"].has(CPassenger))
+
+
+## A rig is thrown away when its carriage stops being drawn and built again when it
+## comes back, but the character does not stop existing in between: [CErrand] keeps
+## walking them. Coming back into view has to find them where the walk got to, not
+## where the rig was left.
+func test_a_rebuilt_passenger_is_met_where_they_walked_to() -> void:
+	var runner := scene_runner(SCENE)
+	_clock_to(ABOARD_MINUTES)
+	await runner.simulate_frames(30)
+	var train: Node = runner.scene()
+	var bodies: SCastBody = Ecs.runner.get_system(&"cast_body")
+
+	var window := bodies.carriage_window
+	bodies.carriage_window = -1
+	await runner.simulate_frames(2)
+	bodies.carriage_window = window
+	await runner.simulate_frames(30)
+
+	for entry: Dictionary in Ecs.world.multi_view([CErrand, CCharacterRig]):
+		var rig: CharacterRig = entry[&"CCharacterRig"].live()
+		if rig == null:
+			continue
+		assert_float(rig.global_position.distance_to(entry[&"CErrand"].at)) \
+			.override_failure_message("a rebuilt rig stands somewhere its character is not") \
+			.is_less(0.5)

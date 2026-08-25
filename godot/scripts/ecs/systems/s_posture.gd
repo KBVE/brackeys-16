@@ -9,15 +9,24 @@ class_name SPosture
 ## passenger and the player run the same rig off different locomotion.
 
 func _on_update(delta: float) -> void:
-	for entry: Dictionary in multi_view([CLocomotion, CPosture, CCharacterRig]):
+	for entry: Dictionary in multi_view([CLocomotion, CPosture, CSeating, CCharacterRig]):
 		var rig: CharacterRig = entry[&"CCharacterRig"].rig
 		if rig == null:
 			continue
-		_step(entry[&"CLocomotion"], entry[&"CPosture"], rig, delta)
+		_step(entry[&"CLocomotion"], entry[&"CPosture"], entry[&"CSeating"], rig, delta)
 
 
-func _step(locomotion: CLocomotion, posture: CPosture, rig: CharacterRig,
-		delta: float) -> void:
+func _step(locomotion: CLocomotion, posture: CPosture, seating: CSeating,
+		rig: CharacterRig, delta: float) -> void:
+	if seating.seated:
+		# outranks the rest of it: he is not walking, falling or landing, he is sitting
+		posture.state = CPosture.SEATED
+		posture.was_airborne = false
+		posture.landing_seconds_left = 0.0
+		if posture.state != posture.requested:
+			posture.requested = posture.state
+			rig.set_posture(posture.state)
+		return
 	var airborne := locomotion.airborne()
 	if airborne:
 		# rising is the launch and falling is the fall, which is the whole state machine

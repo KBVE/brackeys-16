@@ -10,7 +10,7 @@ class_name SCharacterAnimation
 
 func _on_update(delta: float) -> void:
 	for entry: Dictionary in multi_view([CLocomotion, CGait, CCharacterRig]):
-		var rig: CharacterRig = entry[&"CCharacterRig"].rig
+		var rig: CharacterRig = entry[&"CCharacterRig"].live()
 		if rig == null:
 			continue
 		_step(entry[&"CLocomotion"], entry[&"CGait"], rig, delta)

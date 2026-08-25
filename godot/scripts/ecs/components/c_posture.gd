@@ -12,6 +12,7 @@ const AFOOT := &"afoot"
 const LAUNCHING := &"launching"
 const AIRBORNE := &"airborne"
 const LANDING := &"landing"
+const SEATED := &"seated"
 
 var state: StringName = AFOOT
 

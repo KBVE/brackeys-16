@@ -5,7 +5,9 @@ const SCENE := "res://scenes/train/train.scn"
 const TRIS_PER_CARRIAGE := 32274
 ## The bench seating, split out of the shell so a carriage can be dressed as
 ## something other than a seating saloon.
-const TRIS_IN_SEATING := 2974
+const TRIS_IN_SEATING := 2966
+## Both end-wall door leaves, glass included, split out so they can swing.
+const TRIS_IN_DOORS := 108
 ## Everything 3D now lives under the SubViewport, so the world renders at its own
 ## resolution while the HUD stays sharp.
 const WORLD := "Screen/Frame/World"
@@ -78,19 +80,25 @@ func test_the_carriage_is_packed_once_not_twice() -> void:
 	var carriage: Node = auto_free(carriage_scene.instantiate())
 	assert_int(_triangles(carriage)).override_failure_message(
 		"the bare shell should be %d triangles, double that means the builder packed "
-		% (TRIS_PER_CARRIAGE - TRIS_IN_SEATING)
+		% (TRIS_PER_CARRIAGE - TRIS_IN_SEATING - TRIS_IN_DOORS)
 		+ "the glTF instance's children as well as the instance."
-	).is_equal(TRIS_PER_CARRIAGE - TRIS_IN_SEATING)
+	).is_equal(TRIS_PER_CARRIAGE - TRIS_IN_SEATING - TRIS_IN_DOORS)
 
 	var seating_scene: PackedScene = root.get_node(WORLD + "/Consist").seating_scene
 	assert_object(seating_scene).override_failure_message(
 		"Consist.seating_scene is unset, so every carriage would be a bare box."
 	).is_not_null()
 	var seating: Node = auto_free(seating_scene.instantiate())
-	assert_int(_triangles(carriage) + _triangles(seating)).override_failure_message(
-		"the shell and the seating no longer add up to the carriage they were split "
-		+ "from, so the split dropped or duplicated geometry."
-	).is_equal(TRIS_PER_CARRIAGE)
+	var doors_scene: PackedScene = root.get_node(WORLD + "/Consist").doors_scene
+	assert_object(doors_scene).override_failure_message(
+		"Consist.doors_scene is unset, so every doorway would be an open hole."
+	).is_not_null()
+	var doors: Node = auto_free(doors_scene.instantiate())
+	assert_int(_triangles(carriage) + _triangles(seating) + _triangles(doors)) \
+		.override_failure_message(
+			"the shell, the seating and the doors no longer add up to the carriage "
+			+ "they were split from, so the split dropped or duplicated geometry."
+		).is_equal(TRIS_PER_CARRIAGE)
 
 
 func _triangles(node: Node) -> int:

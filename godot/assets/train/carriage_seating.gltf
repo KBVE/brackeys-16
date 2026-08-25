@@ -90,7 +90,7 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":3476,
+			"count":3464,
 			"max":[
 				8.659049034118652,
 				1.418165683746338,
@@ -106,45 +106,45 @@
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":3476,
+			"count":3464,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":3476,
+			"count":3464,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
 			"componentType":5123,
-			"count":8922,
+			"count":8898,
 			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":41712,
+			"byteLength":41568,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":41712,
-			"byteOffset":41712,
+			"byteLength":41568,
+			"byteOffset":41568,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":27808,
-			"byteOffset":83424,
+			"byteLength":27712,
+			"byteOffset":83136,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":17844,
-			"byteOffset":111232,
+			"byteLength":17796,
+			"byteOffset":110848,
 			"target":34963
 		}
 	],
@@ -156,7 +156,7 @@
 	],
 	"buffers":[
 		{
-			"byteLength":129076,
+			"byteLength":128644,
 			"uri":"carriage_seating.bin"
 		}
 	]

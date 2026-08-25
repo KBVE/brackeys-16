@@ -27,3 +27,10 @@ var recentring_view: bool = false
 ## True on the frame the player asked to leave the ground. An edge rather than a level,
 ## because holding the key down is not a request to keep jumping.
 var jump_requested: bool = false
+
+
+## True on the frame the player asked to use whatever they are standing next to.
+## An edge for the same reason the jump is: holding [F] against a door is one
+## request, not a door that flaps while the key is down.
+var interact_requested: bool = false
+

@@ -32,6 +32,7 @@ const WALK_BACKWARD_RIGHT_CLIP := "Walk_Bwd_R"
 const JUMP_LAUNCH_CLIP := "Jump_Start"
 const JUMP_AIR_CLIP := "Jump"
 const JUMP_LAND_CLIP := "Jump_Land"
+const SEATED_CLIP := "Sitting_Idle"
 
 const BLEND_POSITION_PARAMETER := "parameters/gait/blend_position"
 const TIME_SCALE_PARAMETER := "parameters/pace/scale"
@@ -283,11 +284,12 @@ func _build_animation() -> void:
 	# the blend space has no say in.
 	var posture := AnimationNodeTransition.new()
 	posture.xfade_time = POSTURE_CROSSFADE_SECONDS
-	posture.input_count = 4
+	posture.input_count = 5
 	posture.set_input_name(0, CPosture.AFOOT)
 	posture.set_input_name(1, CPosture.LAUNCHING)
 	posture.set_input_name(2, CPosture.AIRBORNE)
 	posture.set_input_name(3, CPosture.LANDING)
+	posture.set_input_name(4, CPosture.SEATED)
 
 	var blend_tree := AnimationNodeBlendTree.new()
 	blend_tree.add_node(&"gait", gait)
@@ -296,11 +298,13 @@ func _build_animation() -> void:
 	blend_tree.add_node(&"launch", _clip(JUMP_LAUNCH_CLIP))
 	blend_tree.add_node(&"air", _clip(JUMP_AIR_CLIP))
 	blend_tree.add_node(&"land", _clip(JUMP_LAND_CLIP))
+	blend_tree.add_node(&"seated", _clip(SEATED_CLIP))
 	blend_tree.connect_node(&"pace", 0, &"gait")
 	blend_tree.connect_node(&"posture", 0, &"pace")
 	blend_tree.connect_node(&"posture", 1, &"launch")
 	blend_tree.connect_node(&"posture", 2, &"air")
 	blend_tree.connect_node(&"posture", 3, &"land")
+	blend_tree.connect_node(&"posture", 4, &"seated")
 	blend_tree.connect_node(&"output", 0, &"posture")
 
 	animation_tree = AnimationTree.new()
@@ -335,6 +339,19 @@ func _build_foot_planting() -> void:
 func _rest_ankle_height() -> float:
 	var foot := skeleton.find_bone(&"LeftFoot")
 	return skeleton.get_bone_global_rest(foot).origin.y if foot >= 0 else 0.075
+
+
+## How far below this node the floor is. Standing, that is the eye height and nothing
+## has to say so. Sitting, the eye drops to the cushion while the body keeps its length,
+## so the two stop agreeing and the rig has to be told which of them the floor follows.
+func set_ground_drop(metres: float) -> void:
+	if _rig != null:
+		_rig.position.y = -metres
+
+
+## The drop the rig was built with, which is where standing puts it back.
+func rest_ground_drop() -> float:
+	return _eyes_above_the_floor()
 
 
 ## How hard the feet are held to the deck. Decided by [SFootPlanting].

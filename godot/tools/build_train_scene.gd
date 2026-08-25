@@ -122,6 +122,7 @@ func _initialize() -> void:
 	consist.set_script(load("res://scripts/train/consist.gd"))
 	consist.set("carriage_scene", load("res://assets/train/carriage_empty.gltf"))
 	consist.set("seating_scene", load("res://assets/train/carriage_seating.gltf"))
+	consist.set("doors_scene", load("res://assets/train/carriage_doors.gltf"))
 	# shared/data/locations furnishes the guard's van with crates and a cold stove,
 	# so the bench seating in there was always contradicting its own description
 	var guard_van := GameContent.carriage_locations().find(&"guard_van")

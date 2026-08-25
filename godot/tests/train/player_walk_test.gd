@@ -550,3 +550,68 @@ func test_the_feet_stop_being_planted_in_the_air() -> void:
 	assert_float(planting.weight).override_failure_message(
 		"the feet never went back to being planted after landing"
 	).is_equal_approx(1.0, 0.01)
+
+
+## One key answers whatever is in reach, and a bench answers it by being sat on.
+func test_pressing_use_beside_a_bench_sits_him_on_it() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(10)
+	var train: Node = runner.scene()
+	var player: CharacterBody3D = train.get_node("Screen/Frame/World/Player")
+	train._control.set_update(false)
+	var seating: CSeating = train._seating
+	var stood_eye: float = train._locomotion.eye_height_metres
+
+	train._intent.interact_requested = true
+	await runner.simulate_frames(2)
+	train._intent.interact_requested = false
+
+	assert_bool(seating.seated).override_failure_message(
+		"pressing use beside a bench did not sit him down"
+	).is_true()
+	assert_object(seating.seat).is_not_null()
+	assert_object(seating.seat.taken_by).override_failure_message(
+		"he sat down without the seat knowing about it"
+	).is_same(seating)
+	assert_float(train._locomotion.eye_height_metres).override_failure_message(
+		"his eye did not drop, so he is standing at seat height rather than sitting"
+	).is_less(stood_eye - 0.2)
+	assert_str(train._posture.state).is_equal(CPosture.SEATED)
+
+	train._intent.interact_requested = true
+	await runner.simulate_frames(2)
+	train._intent.interact_requested = false
+	assert_bool(seating.seated).override_failure_message(
+		"the same key should have got him up again"
+	).is_false()
+	assert_float(train._locomotion.eye_height_metres).override_failure_message(
+		"standing up left his eye where he had been sitting"
+	).is_equal_approx(stood_eye, 0.001)
+
+
+## A bench with somebody already on it is not somewhere to sit, however close it is.
+func test_a_taken_seat_is_not_offered_twice() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(10)
+	var train: Node = runner.scene()
+	var player: CharacterBody3D = train.get_node("Screen/Frame/World/Player")
+	train._control.set_update(false)
+
+	var somebody_else := CSeating.new()
+	var taken := 0
+	for seat: CSeat in Ecs.world.view(&"CSeat"):
+		if Vector2(player.global_position.x - seat.at.x,
+				player.global_position.z - seat.at.z).length() < train._seating.reach_metres:
+			seat.taken_by = somebody_else
+			taken += 1
+	assert_int(taken).override_failure_message(
+		"no seat was within reach to begin with, so this proves nothing"
+	).is_greater(0)
+
+	train._intent.interact_requested = true
+	await runner.simulate_frames(2)
+	train._intent.interact_requested = false
+
+	assert_bool(train._seating.seated).override_failure_message(
+		"he sat in a seat that somebody else was already in"
+	).is_false()

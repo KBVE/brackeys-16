@@ -5,15 +5,22 @@ class_name SCameraAim
 ## quarter turn that makes the camera look down the train rather than across it.
 
 func _on_update(_delta: float) -> void:
-	for entry: Dictionary in multi_view([CLocomotion, CCamera]):
+	for entry: Dictionary in multi_view([CLocomotion, CCamera, CSeating]):
 		var eye: CCamera = entry[&"CCamera"]
 		if eye.pivot == null:
 			continue
 		var locomotion: CLocomotion = entry[&"CLocomotion"]
+		var seating: CSeating = entry[&"CSeating"]
+		var seated: bool = seating.seated
 		locomotion.pitch_radians = clampf(locomotion.pitch_radians,
 			eye.lowest_pitch_radians, eye.highest_pitch_radians)
 		eye.pivot.rotation = Vector3(locomotion.pitch_radians,
-			locomotion.forward_yaw_offset_radians, 0.0)
+			locomotion.forward_yaw_offset_radians
+				+ (seating.camera_yaw_radians if seated else 0.0), 0.0)
+		var arm := eye.pivot as SpringArm3D
+		if arm != null:
+			arm.spring_length = eye.seated_boom_metres if seated \
+				else eye.standing_boom_metres
 		_keep_inside_the_carriage(eye)
 
 

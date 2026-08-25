@@ -83,6 +83,7 @@ var _locomotion: CLocomotion
 var _intent: CInput
 var _posture: CPosture
 var _foot_planting: CFootPlanting
+var _seating: CSeating
 var _control: SPlayerControl
 var _occupant: COccupant
 var _here: CLocation
@@ -148,15 +149,18 @@ func _ready() -> void:
 	_intent = CInput.new()
 	_posture = CPosture.new()
 	_foot_planting = CFootPlanting.new()
+	_seating = CSeating.new()
 	_scope.spawn().add(_viewer).add(_occupant).add(_here).add(_intent) \
 		.add(_locomotion).add(_carriage_camera()) \
-		.add(CCharacterRig.new(body)).add(CGait.new()).add(_posture).add(_foot_planting) \
+		.add(CCharacterRig.new(body)).add(CGait.new()).add(_posture).add(_foot_planting).add(_seating) \
 		.add(ECSViewComponent.new(_player))
 	_control = SPlayerControl.new()
 	# a headless run has no window to steal focus from, and its tests press real actions
 	_control.engaged = DisplayServer.get_name() == "headless"
 	_control.drag_screens_per_unit = DRAG_SCREENS_PER_UNIT
 	_scope.add_system(&"player_control", _control)
+	_spawn_the_seats()
+	_scope.add_system(&"seating", SSeating.new())
 	_scope.add_system(&"locomotion", SLocomotion.new())
 	_scope.add_system(&"camera_aim", SCameraAim.new())
 	_scope.add_system(&"character_animation", SCharacterAnimation.new())
@@ -168,12 +172,21 @@ func _ready() -> void:
 	occupancy.carriage_count = _consist.carriage_count
 	_scope.add_system(&"occupancy", occupancy)
 	_scope.add_system(&"cast_body", _cast_body_system())
+	_scope.add_system(&"cast_walk", SCastWalk.new())
+	_scope.add_system(&"door_traffic", SDoorTraffic.new())
 	_scope.spawn().add(CParallax.new()).add(ECSViewComponent.new(_forest))
 	_scope.add_system(&"parallax", SParallax.new())
 	_scope.spawn().add(CWorldLighting.new()).add(ECSViewComponent.new($Screen/Frame/World/Lighting))
 	_scope.add_system(&"world_lighting", SWorldLighting.new())
 	var lamps := SCarriageLamps.new()
 	lamps.lamp_glass = _consist.glow_material()
+	for leaf: Node3D in _consist.door_leaves():
+		var door := CDoor.new()
+		# the fore door is hinged on the opposite side to the aft one, so both swing
+		# clear of the doorway rather than one of them sweeping through it
+		door.swing_sign = 1.0 if leaf.position.x > 0.0 else -1.0
+		_scope.spawn().add(door).add(ECSViewComponent.new(leaf))
+	_scope.add_system(&"door", SDoor.new())
 	_scope.add_system(&"carriage_lamps", lamps)
 
 	var crosshair := Crosshair.new()
@@ -316,6 +329,7 @@ func _cast_body_system() -> SCastBody:
 func _carriage_camera() -> CCamera:
 	var eye := CCamera.new(_add_boom(), _cam)
 	eye.rest_offset = BOOM_SHOULDER_OFFSET
+	eye.standing_boom_metres = BOOM_LENGTH
 	eye.interior_half_z = Consist.INTERIOR_HALF_Z - 0.15
 	eye.lowest_y = Consist.FLOOR_Y + 0.4
 	eye.highest_y = Consist.WALL_HEIGHT - 0.35
@@ -405,3 +419,15 @@ func _read_clock_keys() -> void:
 		_time_of_day.phase = fposmod(_time_of_day.phase + 0.08, 1.0)
 	if Input.is_action_just_pressed(&"ui_page_down"):
 		_time_of_day.phase = fposmod(_time_of_day.phase - 0.08, 1.0)
+
+
+## One entity per cushion. They carry no view of their own: the bench is already drawn
+## by the carriage, and what the entity adds is the only thing the mesh cannot say,
+## which is whether anybody is in it.
+func _spawn_the_seats() -> void:
+	for anchor: Dictionary in _consist.seat_anchors():
+		var seat := CSeat.new()
+		seat.at = anchor["at"]
+		seat.facing_radians = anchor["facing"]
+		seat.carriage_index = anchor["carriage"]
+		_scope.spawn().add(seat)
