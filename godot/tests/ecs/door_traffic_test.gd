@@ -31,10 +31,16 @@ func test_a_door_opens_for_somebody_walking_through_it() -> void:
 	var runner := scene_runner(SCENE)
 	_clock_to(ABOARD_MINUTES)
 	await runner.simulate_frames(30)
+	# Not "a settled cast holds nothing open" any more: passengers cross their room for
+	# a bench now, and one of them doing that at a doorway is a door that should open.
+	# What holds either way is that a door being held has somebody at it.
 	for entry: Dictionary in _doors():
-		assert_int(entry[&"CDoor"].held_open_by).override_failure_message(
-			"a standing cast should not be holding any door open"
-		).is_equal(0)
+		if entry[&"CDoor"].held_open_by == 0:
+			continue
+		var leaf: Node3D = entry[&"ECSViewComponent"].view as Node3D
+		assert_bool(_anybody_walking_at(leaf.global_position)).override_failure_message(
+			"a door is being held open with nobody near it"
+		).is_true()
 
 	_clock_to(SHE_RETIRES_MINUTES)
 	var opened := false
@@ -100,5 +106,15 @@ func _someone_else_is_at(door_at: Vector3) -> bool:
 		if entry["entity"].has(CWatch) or not errand.stationed:
 			continue
 		if absf(errand.at.x - door_at.x) < SDoorTraffic.HOLD_METRES + 2.0:
+			return true
+	return false
+
+
+## Whether anybody who is walking is close enough to the door to be the one holding it.
+func _anybody_walking_at(door_at: Vector3) -> bool:
+	for entry: Dictionary in Ecs.world.multi_view([CErrand, CLocomotion]):
+		if absf(entry[&"CLocomotion"].forward_metres_per_second) < 0.05:
+			continue
+		if entry[&"CErrand"].at.distance_to(door_at) <= SDoorTraffic.HOLD_METRES + 0.5:
 			return true
 	return false

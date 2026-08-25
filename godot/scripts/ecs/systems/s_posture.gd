@@ -20,6 +20,18 @@ func _on_update(delta: float) -> void:
 
 func _step(locomotion: CLocomotion, posture: CPosture, seating: CSeating,
 		idle: CSeatedIdle, rig: CharacterRig, delta: float) -> void:
+	if seating.moving():
+		# the sit-down and the stand-up outrank even the sitting: they are one-shots
+		# that have to be allowed to run, and [SSeating] holds the body for exactly as
+		# long as they do.
+		posture.state = CPosture.SEATING if seating.settling_seconds_left > 0.0 \
+			else CPosture.RISING
+		posture.was_airborne = false
+		posture.landing_seconds_left = 0.0
+		if posture.state != posture.requested:
+			posture.requested = posture.state
+			rig.set_posture(posture.state)
+		return
 	if seating.seated:
 		# outranks the rest of it: he is not walking, falling or landing, he is sitting.
 		# Which sitting is [SSeatedIdle]'s to say.

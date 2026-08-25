@@ -3,6 +3,10 @@ extends GdUnitTestSuite
 
 const SCENE := "res://scenes/train/train.scn"
 
+## Frame length to hand simulate_frames where a test is waiting on somebody to walk
+## somewhere, so the wait is a number of seconds rather than a number of frames.
+const SIMULATED_MILLISECONDS := 20
+
 
 func _conductor() -> Dictionary:
 	for entry: Dictionary in Ecs.world.multi_view([CIdentity, CErrand, CLocation]):
@@ -34,8 +38,12 @@ func test_the_conductor_crosses_carriages() -> void:
 	await runner.simulate_frames(20)
 	var conductor := _conductor()
 	var seen := {}
-	for step in range(24):
-		await runner.simulate_frames(120)
+	# with a delta, because he walks in metres per second and simulate_frames without
+	# one advances by however long a headless frame happens to take. Twenty-four
+	# hundred bare frames is nine seconds of him on this machine and a fraction of that
+	# on a busy runner, and a carriage is eighteen metres at one metre a second.
+	for step in range(20):
+		await runner.simulate_frames(50, SIMULATED_MILLISECONDS)
 		seen[conductor[&"CLocation"].location_id] = true
 	assert_int(seen.size()).override_failure_message(
 		"the conductor spent the whole night in %s" % seen.keys()).is_greater(1)
@@ -51,7 +59,7 @@ func test_his_room_is_the_one_he_is_standing_in() -> void:
 	var aboard := GameContent.carriage_locations()
 
 	for step in range(12):
-		await runner.simulate_frames(90)
+		await runner.simulate_frames(50, SIMULATED_MILLISECONDS)
 		var standing_in: StringName = aboard[consist.carriage_index_at(conductor[&"CErrand"].at.x)]
 		assert_str(String(conductor[&"CLocation"].location_id)).override_failure_message(
 			"he is at x %.1f, which is %s, and claims %s"

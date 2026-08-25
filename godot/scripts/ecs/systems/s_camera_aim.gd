@@ -4,9 +4,9 @@ class_name SCameraAim
 ## SCameraAim points the head. Yaw rides the body, so this is pitch and the fixed
 ## quarter turn that makes the camera look down the train rather than across it.
 
-## Set by the loop before the containment runs, which needs to know which rest offset to
-## put back but is handed only the camera.
-var _seated := false
+## Set by the loop before the containment runs, which needs to know how far toward the
+## seated rest offset to put the camera back but is handed only the camera.
+var _seated_weight := 0.0
 
 
 func _on_update(_delta: float) -> void:
@@ -16,17 +16,17 @@ func _on_update(_delta: float) -> void:
 			continue
 		var locomotion: CLocomotion = entry[&"CLocomotion"]
 		var seating: CSeating = entry[&"CSeating"]
-		var seated: bool = seating.seated
+		var seated := seating.seated_weight()
 		locomotion.pitch_radians = clampf(locomotion.pitch_radians,
 			eye.lowest_pitch_radians, eye.highest_pitch_radians)
 		eye.pivot.rotation = Vector3(locomotion.pitch_radians,
 			locomotion.forward_yaw_offset_radians
-				+ (seating.camera_yaw_radians if seated else 0.0), 0.0)
+				+ seating.camera_yaw_radians * seated, 0.0)
 		var arm := eye.pivot as SpringArm3D
 		if arm != null:
-			arm.spring_length = eye.seated_boom_metres if seated \
-				else eye.standing_boom_metres
-		_seated = seated
+			arm.spring_length = lerpf(eye.standing_boom_metres,
+				eye.seated_boom_metres, seated)
+		_seated_weight = seated
 		_keep_inside_the_carriage(eye)
 
 
@@ -35,7 +35,7 @@ func _on_update(_delta: float) -> void:
 func _keep_inside_the_carriage(eye: CCamera) -> void:
 	if eye.camera == null:
 		return
-	eye.camera.position = eye.seated_rest_offset if _seated else eye.rest_offset
+	eye.camera.position = eye.rest_offset.lerp(eye.seated_rest_offset, _seated_weight)
 	eye.camera.force_update_transform()
 	var at := eye.camera.global_position
 	var inside := Vector3(at.x,

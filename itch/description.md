@@ -6,9 +6,7 @@
 
 ![A body before the border](article-teaser.png)
 
-The 8:40 out of Aldermoor runs north through the passes and reaches the border at
-dawn. A full carriage. Four knights of the Order in the forward car. One body before
-the night is over.
+The 8:40 train out of Aldermoor runs north through the forest and reaches the border at dawn. With a full carriage and four knights of the Order in the forward car. Before the train crosses the border, at least one soul aboard will cross another.
 
 You walk the aisle. You read the paper. You decide who is lying.
 

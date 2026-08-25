@@ -28,6 +28,7 @@ const CLIPS_BY_SOURCE := {
 	"animations/UAL1.glb": [
 		"Idle", "Jump_Start", "Jump", "Jump_Land",
 		"Sitting_Idle", "Sitting_Idle02", "Sitting_Idle03", "Sitting_Nodding",
+		"Sitting_Talking", "Sitting_Enter", "Sitting_Exit",
 	],
 	"animations/UAL2.glb": [
 		"Walk_Fwd", "Walk_Bwd", "Walk_L", "Walk_R",

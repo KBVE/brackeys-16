@@ -185,6 +185,7 @@ func _ready() -> void:
 	_scope.add_system(&"cast_walk", _cast_walk_system())
 	_scope.add_system(&"door_traffic", SDoorTraffic.new())
 	_scope.add_system(&"guard_watch", _guard_watch_system())
+	_scope.add_system(&"pastime", SPastime.new())
 	_scope.spawn().add(CParallax.new()).add(ECSViewComponent.new(_forest))
 	_scope.add_system(&"parallax", SParallax.new())
 	_scope.spawn().add(CWorldLighting.new()).add(ECSViewComponent.new($Screen/Frame/World/Lighting))

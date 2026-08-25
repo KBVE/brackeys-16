@@ -36,6 +36,9 @@ const SEATED_CLIP := "Sitting_Idle"
 const SEATED_SHIFTING_CLIP := "Sitting_Idle02"
 const SEATED_SETTLED_CLIP := "Sitting_Idle03"
 const SEATED_NODDING_CLIP := "Sitting_Nodding"
+const SEATED_TALKING_CLIP := "Sitting_Talking"
+const SEATING_CLIP := "Sitting_Enter"
+const RISING_CLIP := "Sitting_Exit"
 
 const BLEND_POSITION_PARAMETER := "parameters/gait/blend_position"
 const TIME_SCALE_PARAMETER := "parameters/pace/scale"
@@ -109,6 +112,11 @@ var animation_tree: AnimationTree
 var foot_planter: FootPlanter
 
 var _rig: Node3D
+
+## Clip length for the postures that are played once and waited out, filled from the
+## library once the tree is up.
+var _one_shot_seconds: Dictionary = {}
+
 ## How much the rig was scaled to reach [member stature_metres]. Read by [SCharacterAnimation],
 ## which needs it to know how fast the clips were authored relative to this body.
 var model_scale := 1.0
@@ -287,7 +295,7 @@ func _build_animation() -> void:
 	# the blend space has no say in.
 	var posture := AnimationNodeTransition.new()
 	posture.xfade_time = POSTURE_CROSSFADE_SECONDS
-	posture.input_count = 8
+	posture.input_count = 11
 	posture.set_input_name(0, CPosture.AFOOT)
 	posture.set_input_name(1, CPosture.LAUNCHING)
 	posture.set_input_name(2, CPosture.AIRBORNE)
@@ -296,6 +304,9 @@ func _build_animation() -> void:
 	posture.set_input_name(5, CPosture.SEATED_SHIFTING)
 	posture.set_input_name(6, CPosture.SEATED_SETTLED)
 	posture.set_input_name(7, CPosture.SEATED_NODDING)
+	posture.set_input_name(8, CPosture.SEATED_TALKING)
+	posture.set_input_name(9, CPosture.SEATING)
+	posture.set_input_name(10, CPosture.RISING)
 
 	var blend_tree := AnimationNodeBlendTree.new()
 	blend_tree.add_node(&"gait", gait)
@@ -308,6 +319,9 @@ func _build_animation() -> void:
 	blend_tree.add_node(&"seated_shifting", _clip(SEATED_SHIFTING_CLIP))
 	blend_tree.add_node(&"seated_settled", _clip(SEATED_SETTLED_CLIP))
 	blend_tree.add_node(&"seated_nodding", _clip(SEATED_NODDING_CLIP))
+	blend_tree.add_node(&"seated_talking", _clip(SEATED_TALKING_CLIP))
+	blend_tree.add_node(&"seating", _clip(SEATING_CLIP))
+	blend_tree.add_node(&"rising", _clip(RISING_CLIP))
 	blend_tree.connect_node(&"pace", 0, &"gait")
 	blend_tree.connect_node(&"posture", 0, &"pace")
 	blend_tree.connect_node(&"posture", 1, &"launch")
@@ -317,6 +331,9 @@ func _build_animation() -> void:
 	blend_tree.connect_node(&"posture", 5, &"seated_shifting")
 	blend_tree.connect_node(&"posture", 6, &"seated_settled")
 	blend_tree.connect_node(&"posture", 7, &"seated_nodding")
+	blend_tree.connect_node(&"posture", 8, &"seated_talking")
+	blend_tree.connect_node(&"posture", 9, &"seating")
+	blend_tree.connect_node(&"posture", 10, &"rising")
 	blend_tree.connect_node(&"output", 0, &"posture")
 
 	animation_tree = AnimationTree.new()
@@ -324,6 +341,24 @@ func _build_animation() -> void:
 	_rig.add_child(animation_tree)
 	animation_tree.anim_player = animation_tree.get_path_to(animation_player)
 	animation_tree.active = true
+	_one_shot_seconds = {
+		CPosture.SEATING: _clip_seconds(SEATING_CLIP),
+		CPosture.RISING: _clip_seconds(RISING_CLIP),
+	}
+
+
+## How long the sit-down and the stand-up run for, which is how long [SSeating] holds
+## the body between the aisle and the cushion. Read off the library rather than written
+## down here, because a pack with a slower sit would leave the two disagreeing and the
+## clip would be cut off mid-fold.
+func posture_clip_seconds(state: StringName) -> float:
+	return _one_shot_seconds.get(state, 0.0)
+
+
+func _clip_seconds(clip_name: String) -> float:
+	var qualified := "%s/%s" % [animation_library_name, clip_name]
+	return animation_player.get_animation(qualified).length \
+		if animation_player.has_animation(qualified) else 0.0
 
 
 func _clip(clip_name: String) -> AnimationNodeAnimation:

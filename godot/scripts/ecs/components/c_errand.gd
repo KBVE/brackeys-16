@@ -64,6 +64,16 @@ var beat_pause_seconds: float = 6.0
 ## than both on the seeded spot their appearance would give them.
 var station_offset_metres: float = 0.0
 
+## A place somebody else has decided this character belongs, which overrides the spot in
+## the room they would otherwise be given. [SPastime] writes a bench into it; the seeded
+## station is where a passenger stands when nobody has an opinion.
+##
+## Not folded into [member station] directly, because [SCastBody] rewrites that every
+## tick out of the room they are in, and would have the last word.
+var assigned: bool = false
+var assigned_station := Vector3.ZERO
+var assigned_facing: float = 0.0
+
 ## How far either side of [member station] a patrol walks. Zero stands still, which is
 ## what a passenger in a seat does between the hours their timeline moves them.
 var patrol_metres: float = 0.0

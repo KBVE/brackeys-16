@@ -53,6 +53,10 @@ func test_a_walk_stays_in_the_aisle() -> void:
 		for entry: Dictionary in Ecs.world.multi_view([CErrand, CLocomotion]):
 			if absf(entry[&"CLocomotion"].forward_metres_per_second) < 0.05:
 				continue
+			# Somebody walking at a bench is leaving the aisle on purpose, which is what
+			# taking a seat is. The rule is about crossing a room, not about arriving.
+			if entry[&"CErrand"].assigned:
+				continue
 			walked += 1
 			assert_float(absf(entry[&"CErrand"].at.z)).override_failure_message(
 				"somebody is walking at z %.2f, and the benches start at %.2f"

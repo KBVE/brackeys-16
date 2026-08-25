@@ -148,6 +148,13 @@ func _build(appearance: CAppearance, errand: CErrand) -> CharacterRig:
 func _station(errand: CErrand, appearance: CAppearance, carriage: int) -> void:
 	if carriage < 0:
 		return
+	if errand.assigned:
+		# Somebody has decided where this one belongs: a bench, in [SPastime]'s case.
+		# The seeded spot is what a passenger gets when nobody has.
+		errand.station = errand.assigned_station
+		errand.resting_facing_radians = errand.assigned_facing
+		errand.stationed = true
+		return
 	var rng := RandomNumberGenerator.new()
 	rng.seed = appearance.character_seed
 	var along := (carriage - (carriage_count - 1) / 2.0) * carriage_pitch \

@@ -67,9 +67,14 @@ func _ready() -> void:
 		var errand := CErrand.new()
 		if identity.content_id == ROUNDS_OF_THE_TRAIN:
 			errand.beat = the_length_of_the_train()
-		_scope.spawn().add(CPassenger.new()).add(identity).add(CLocation.new()) \
-			.add(Wardrobe.appearance_of(identity.content_id)).add(CCharacterRig.new()) \
-			.add(errand).add(_walking_locomotion()).add(CGait.new())
+		var entity := _scope.spawn().add(CPassenger.new()).add(identity) \
+			.add(CLocation.new()).add(Wardrobe.appearance_of(identity.content_id)) \
+			.add(CCharacterRig.new()).add(errand).add(_walking_locomotion()).add(CGait.new()) \
+			.add(CPosture.new()).add(CSeating.new()).add(_seated_idle(identity.content_id))
+		# The conductor is on his rounds all night and never sits down, which is the one
+		# thing everybody who has ever taken this train agrees about him.
+		if identity.content_id != ROUNDS_OF_THE_TRAIN:
+			entity.add(_pastime(identity.content_id))
 
 	for sworn: Dictionary in ESCORT:
 		var post := CLocation.new()
@@ -117,3 +122,18 @@ func the_length_of_the_train() -> Array[StringName]:
 	for i in range(down.size() - 2, 0, -1):
 		rounds.append(down[i])
 	return rounds
+
+
+## Seeded off who they are, so a carriage of passengers do not shift their weight in
+## unison and are the same person on every run.
+func _seated_idle(content_id: StringName) -> CSeatedIdle:
+	var idle := CSeatedIdle.new()
+	idle.rng.seed = Wardrobe.seed_of(content_id)
+	return idle
+
+
+func _pastime(content_id: StringName) -> CPastime:
+	var pastime := CPastime.new()
+	pastime.rng.seed = Wardrobe.seed_of(content_id) ^ 0x9e37
+	pastime.wanders_before_settling = pastime.rng.randi_range(0, 2)
+	return pastime

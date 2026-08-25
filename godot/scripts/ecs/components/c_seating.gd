@@ -10,6 +10,25 @@ class_name CSeating
 
 var seated: bool = false
 
+## Seconds still owed to the sit-down and the stand-up clips. While either is running
+## the body is between the aisle and the cushion: it is being carried along
+## [member moving_from] to [member moving_to] rather than standing at either.
+##
+## Set from the clip's own length, so the fold finishes exactly as the body arrives
+## and the last frame of the sit is the first frame of the sitting.
+var settling_seconds_left: float = 0.0
+var rising_seconds_left: float = 0.0
+var moving_from := Vector3.ZERO
+var moving_to := Vector3.ZERO
+var facing_from: float = 0.0
+var facing_to: float = 0.0
+var eye_from: float = 0.0
+var eye_to: float = 0.0
+
+## What the clip that is carrying them runs for, whole. The seconds left are counted
+## against this to get how far along the move is.
+var moving_seconds: float = 0.0
+
 ## Where the eye sat and which way the body faced before it took a seat.
 var stood_eye_height_metres: float = 0.0
 var stood_facing_radians: float = 0.0
@@ -37,3 +56,28 @@ var seat: CSeat = null
 ## down. Standing it is nothing: the shot rides behind the shoulder. Seated there is a
 ## wall where behind used to be.
 var camera_yaw_radians: float = 0.0
+
+
+## Between the aisle and the cushion, in either direction. Neither standing nor sitting:
+## the walk is off, the seat is held, and nothing may interrupt it.
+func moving() -> bool:
+	return settling_seconds_left > 0.0 or rising_seconds_left > 0.0
+
+
+## How far along the sit-down or the stand-up, nought at the aisle and one at the seat.
+func moved_fraction() -> float:
+	if moving_seconds <= 0.0:
+		return 1.0
+	var left := maxf(settling_seconds_left, rising_seconds_left)
+	return clampf(1.0 - left / moving_seconds, 0.0, 1.0)
+
+
+## How seated the shot is, which is not how seated the body is: the camera swings off
+## the bench and the boom draws in across the sit-down rather than on the frame it was
+## asked for.
+func seated_weight() -> float:
+	if settling_seconds_left > 0.0:
+		return moved_fraction()
+	if rising_seconds_left > 0.0:
+		return 1.0 - moved_fraction()
+	return 1.0 if seated else 0.0

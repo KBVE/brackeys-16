@@ -20,6 +20,15 @@ const SEATED_SHIFTING := &"seated_shifting"
 const SEATED_SETTLED := &"seated_settled"
 const SEATED_NODDING := &"seated_nodding"
 
+## Sat with somebody opposite. Kept out of [constant SEATED_STATES] and asked for only
+## when there is company: a man gesturing at an empty bench reads as a bug.
+const SEATED_TALKING := &"seated_talking"
+
+## Getting down onto the cushion and back off it. Played once and waited out rather
+## than crossfaded into, which is what stops a sit being a teleport.
+const SEATING := &"seating"
+const RISING := &"rising"
+
 const SEATED_STATES: Array[StringName] = [
 	SEATED, SEATED_SHIFTING, SEATED_SETTLED, SEATED_NODDING,
 ]

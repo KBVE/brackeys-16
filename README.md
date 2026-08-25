@@ -34,3 +34,4 @@ Public Domain [Book Covers](https://publicdomainreview.org/collection/the-art-of
 #### SVGS
 
 Goblin by parkjisun from Noun Project (CC BY 3.0)
+magic fire by Cahya Kurniawan from Noun Project (CC BY 3.0)

@@ -565,6 +565,7 @@ func test_pressing_use_beside_a_bench_sits_him_on_it() -> void:
 	train._intent.interact_requested = true
 	await runner.simulate_frames(2)
 	train._intent.interact_requested = false
+	await _fold_over(runner, seating)
 
 	assert_bool(seating.seated).override_failure_message(
 		"pressing use beside a bench did not sit him down"
@@ -583,12 +584,92 @@ func test_pressing_use_beside_a_bench_sits_him_on_it() -> void:
 	train._intent.interact_requested = true
 	await runner.simulate_frames(2)
 	train._intent.interact_requested = false
+	await _fold_over(runner, seating)
 	assert_bool(seating.seated).override_failure_message(
 		"the same key should have got him up again"
 	).is_false()
 	assert_float(train._locomotion.eye_height_metres).override_failure_message(
 		"standing up left his eye where he had been sitting"
 	).is_equal_approx(stood_eye, 0.001)
+
+
+## Waits out the sit-down or the stand-up. Polled rather than counted in frames: the
+## clip is a second and a bit of real time, and how many frames that is depends on what
+## else the machine is doing.
+func _fold_over(runner: GdUnitSceneRunner, seating: CSeating) -> void:
+	for _i in 400:
+		if not seating.moving():
+			return
+		await runner.simulate_frames(1)
+
+
+## Sitting down is a second of clip, and for that second he is neither in the aisle nor
+## on the cushion. Before there was a sit-down clip he was on the bench on the frame he
+## asked, which read as a teleport with an animation played after it.
+func test_sitting_down_is_carried_rather_than_snapped() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(10)
+	var train: Node = runner.scene()
+	var player: CharacterBody3D = train.get_node("Screen/Frame/World/Player")
+	train._control.set_update(false)
+	var seating: CSeating = train._seating
+	var stood_at: Vector3 = player.global_position
+
+	train._intent.interact_requested = true
+	await runner.simulate_frames(2)
+	train._intent.interact_requested = false
+
+	assert_bool(seating.moving()).override_failure_message(
+		"he should be on his way onto the cushion, not already on it"
+	).is_true()
+	assert_str(String(train._posture.state)).override_failure_message(
+		"the sit-down clip should be playing while he folds"
+	).is_equal(String(CPosture.SEATING))
+	assert_float(player.global_position.distance_to(stood_at)).override_failure_message(
+		"he arrived at the seat on the frame he asked for it"
+	).is_less(seating.moving_to.distance_to(stood_at))
+
+	await _fold_over(runner, seating)
+	assert_bool(seating.seated).is_true()
+	assert_float(Vector2(player.global_position.x, player.global_position.z).distance_to(
+		Vector2(seating.moving_to.x, seating.moving_to.z))
+	).override_failure_message(
+		"the fold finished somewhere other than the seat it was aimed at"
+	).is_less(0.02)
+
+
+## The bench is not free the moment he asks to get up: there is a second of stand-up
+## still to play, and a seat handed back at the start of it is one somebody else can
+## take while a body is still coming out of it.
+func test_the_seat_is_held_until_the_stand_up_finishes() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(10)
+	var train: Node = runner.scene()
+	train._control.set_update(false)
+	var seating: CSeating = train._seating
+
+	train._intent.interact_requested = true
+	await runner.simulate_frames(2)
+	train._intent.interact_requested = false
+	await _fold_over(runner, seating)
+	var bench: CSeat = seating.seat
+	assert_object(bench).is_not_null()
+
+	train._intent.interact_requested = true
+	await runner.simulate_frames(2)
+	train._intent.interact_requested = false
+	assert_bool(seating.rising_seconds_left > 0.0).override_failure_message(
+		"the stand-up clip should be playing before he is up"
+	).is_true()
+	assert_str(String(train._posture.state)).is_equal(String(CPosture.RISING))
+	assert_object(bench.taken_by).override_failure_message(
+		"the bench was given away with a body still getting off it"
+	).is_same(seating)
+
+	await _fold_over(runner, seating)
+	assert_bool(bench.free_to_take()).override_failure_message(
+		"the bench was never handed back once he was up"
+	).is_true()
 
 
 ## A bench with somebody already on it is not somewhere to sit, however close it is.
@@ -629,6 +710,7 @@ func test_a_seated_character_moves_between_the_sitting_clips() -> void:
 
 	train._intent.interact_requested = true
 	await runner.simulate_frames(2)
+	await _fold_over(runner, train._seating)
 	assert_bool(train._seating.seated).is_true()
 
 	var idle: CSeatedIdle = train._seated_idle
@@ -668,6 +750,7 @@ func test_standing_up_resets_the_sitting_clip() -> void:
 
 	train._intent.interact_requested = true
 	await runner.simulate_frames(2)
+	await _fold_over(runner, train._seating)
 	idle.state = CPosture.SEATED_NODDING
 	train._intent.interact_requested = true
 	await runner.simulate_frames(4)

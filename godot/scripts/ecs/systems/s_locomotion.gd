@@ -6,15 +6,19 @@ func _on_update(delta: float) -> void:
 		var body: CharacterBody3D = entry[&"ECSViewComponent"].view as CharacterBody3D
 		if body == null:
 			continue
-		if entry[&"CSeating"].seated:
+		if entry[&"CSeating"].seated or entry[&"CSeating"].moving():
 			_sit_still(entry[&"CLocomotion"], body)
 			continue
 		_step(entry[&"CInput"], entry[&"CLocomotion"], body, delta)
 
 
-## A seated body is parked, and parking it is not a move. Calling move_and_slide on it
-## would be: the capsule is a standing man's, so dropping the eye to cushion height
-## pushes its base through the deck and the floor shoves him back up by a foot.
+## A seated body is parked, and so is one on its way onto a cushion or off it: while
+## the sit-down runs it is [SSeating] that says where the body is, a share of the way
+## along, and a move_and_slide between those writes is a body fighting itself.
+##
+## Parking is not a move. Calling move_and_slide on it would be: the capsule is a
+## standing man's, so dropping the eye to cushion height pushes its base through the
+## deck and the floor shoves him back up by a foot.
 static func _sit_still(locomotion: CLocomotion, body: CharacterBody3D) -> void:
 	body.velocity = Vector3.ZERO
 	body.rotation.y = locomotion.facing_radians

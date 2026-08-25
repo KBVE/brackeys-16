@@ -17,6 +17,11 @@ var seconds_until_change: float = 0.0
 var shortest_seconds: float = 5.0
 var longest_seconds: float = 14.0
 
+## How near another seated character has to be before talking is one of the things this
+## one might do. A bench pair faces across a table's width; anything past that is a man
+## gesturing at nobody.
+var talking_reach_metres: float = 1.8
+
 ## Rolled per character so two passengers on the same bench do not shift their weight
 ## in unison, which is worse than both of them holding still.
 var rng := RandomNumberGenerator.new()
