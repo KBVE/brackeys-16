@@ -535,15 +535,18 @@ func test_the_feet_stop_being_planted_in_the_air() -> void:
 	train._intent.jump_requested = true
 	await runner.simulate_frames(2)
 	train._intent.jump_requested = false
-	await runner.simulate_frames(20)
-	assert_float(planting.weight).override_failure_message(
-		"the feet were still being pulled to the deck while he was off it"
-	).is_less(0.2)
 
+	# the lightest it gets over the whole flight, rather than its value at some frame
+	# count that assumes sixty of them a second: under load the jump is over by then
+	var lightest := 1.0
 	for i in 240:
 		await runner.simulate_frames(1)
-		if planting.weight > 0.99:
+		lightest = minf(lightest, planting.weight)
+		if planting.weight > 0.99 and train._posture.state == CPosture.AFOOT and i > 4:
 			break
+	assert_float(lightest).override_failure_message(
+		"the feet were still being pulled to the deck while he was off it"
+	).is_less(0.2)
 	assert_float(planting.weight).override_failure_message(
 		"the feet never went back to being planted after landing"
 	).is_equal_approx(1.0, 0.01)
