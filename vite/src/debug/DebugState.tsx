@@ -10,6 +10,7 @@ import {
   usePlayer,
   useViewer,
   useRenderBudget,
+  useDoor,
   useLevel,
 } from '../state/gameStore';
 import { useClock } from '../state/paperStore';
@@ -33,6 +34,7 @@ export function DebugState() {
   const player = usePlayer();
   const viewer = useViewer();
   const renderBudget = useRenderBudget();
+  const door = useDoor();
   const level = useLevel();
   const clock = useClock();
   const fps = useFrameRate();
@@ -62,6 +64,14 @@ export function DebugState() {
       <Row
         label="where"
         value={viewer ? `carriage ${viewer.carriage} — ${viewer.location || 'nowhere'}` : 'unknown'}
+      />
+      <Row
+        label="door"
+        value={
+          door
+            ? `${door.locked ? 'locked' : door.open ? 'open' : 'shut'} at ${door.distance}m`
+            : 'untouched'
+        }
       />
       <Row label="clock" value={clockText(clock)} />
       <Row

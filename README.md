@@ -27,7 +27,10 @@ Created by Jotrain – www.jotrain.com.au
 
 Parallax Forest Background by [DigitalMoonStudio](https://digitalmoons.itch.io/parallax-forest-background)
 
-
 #### Books
 
 Public Domain [Book Covers](https://publicdomainreview.org/collection/the-art-of-book-covers-1820-1914/)
+
+#### SVGS
+
+Goblin by parkjisun from Noun Project (CC BY 3.0)

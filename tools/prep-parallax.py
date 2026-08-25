@@ -2,9 +2,8 @@
 """Downscale the Parallax Forest layers into godot/assets/backdrop/.
 
 Source: Digital Moon Studio, "Parallax Forest Background (Seamless)".
-Seen through carriage windows and behind the train, so full 1920x1080 per layer
-is wasted: ten layers at that size is ~20MB VRAM. Halving costs ~5.6MB instead.
-Width stays a power of two so horizontal tiling stays exact.
+
+This script is to reduce the VRAM usage of the source material.
 
     python3 tools/prep-parallax.py "~/Downloads/Parallax Forest Background (Seamless)-2"
 """

@@ -2,7 +2,7 @@
   "$generated": "GENERATED FILE - DO NOT EDIT. Source: shared/data/gazette.json + shared/data/*/*.mdx. Regenerate: npm run gen (from vite/). Runs automatically on dev and build.",
   "gazette": {
     "masthead": {
-      "title": "The Evening Gazette",
+      "title": "The Gilded Gazette",
       "issue": "No. 4,182",
       "dateline": "Sunday, October 14, 1906",
       "price": "Price Two Pence"
@@ -81,6 +81,7 @@
       "id": "cabin",
       "name": "The Sleeping Cabins",
       "carriage": 3,
+      "furnishings": [],
       "lede": "Berths one to eight, each with a door that locks from inside and a key that opens it from without.",
       "body": [],
       "sections": {
@@ -105,6 +106,7 @@
       "id": "corridor",
       "name": "The Corridor",
       "carriage": 2,
+      "furnishings": [],
       "lede": "Feels about a yard wide, just enough room to avoid a leg cramp but it is a full length of the train. And the only way from any berth to any other.",
       "body": [],
       "sections": {
@@ -129,6 +131,208 @@
       "id": "dining",
       "name": "The Dining Car",
       "carriage": 1,
+      "furnishings": [
+        {
+          "prop": "dining_table",
+          "along": -5.4,
+          "across": 1.1,
+          "above": 0,
+          "facing": 0
+        },
+        {
+          "prop": "dining_chair",
+          "along": -4.74,
+          "across": 1.1,
+          "above": 0,
+          "facing": 1.5708,
+          "seats": true,
+          "cushionHeight": 0.48
+        },
+        {
+          "prop": "dining_chair",
+          "along": -6.06,
+          "across": 1.1,
+          "above": 0,
+          "facing": -1.5708,
+          "seats": true,
+          "cushionHeight": 0.48
+        },
+        {
+          "prop": "dining_table",
+          "along": -1.8,
+          "across": 1.1,
+          "above": 0,
+          "facing": 0
+        },
+        {
+          "prop": "dining_chair",
+          "along": -1.14,
+          "across": 1.1,
+          "above": 0,
+          "facing": 1.5708,
+          "seats": true,
+          "cushionHeight": 0.48
+        },
+        {
+          "prop": "dining_chair",
+          "along": -2.46,
+          "across": 1.1,
+          "above": 0,
+          "facing": -1.5708,
+          "seats": true,
+          "cushionHeight": 0.48
+        },
+        {
+          "prop": "dining_table",
+          "along": 1.8,
+          "across": 1.1,
+          "above": 0,
+          "facing": 0
+        },
+        {
+          "prop": "dining_chair",
+          "along": 2.46,
+          "across": 1.1,
+          "above": 0,
+          "facing": 1.5708,
+          "seats": true,
+          "cushionHeight": 0.48
+        },
+        {
+          "prop": "dining_chair",
+          "along": 1.14,
+          "across": 1.1,
+          "above": 0,
+          "facing": -1.5708,
+          "seats": true,
+          "cushionHeight": 0.48
+        },
+        {
+          "prop": "dining_table",
+          "along": 5.4,
+          "across": 1.1,
+          "above": 0,
+          "facing": 0
+        },
+        {
+          "prop": "dining_chair",
+          "along": 6.06,
+          "across": 1.1,
+          "above": 0,
+          "facing": 1.5708,
+          "seats": true,
+          "cushionHeight": 0.48
+        },
+        {
+          "prop": "dining_chair",
+          "along": 4.74,
+          "across": 1.1,
+          "above": 0,
+          "facing": -1.5708,
+          "seats": true,
+          "cushionHeight": 0.48
+        },
+        {
+          "prop": "dining_table",
+          "along": -5.4,
+          "across": -1.1,
+          "above": 0,
+          "facing": 0
+        },
+        {
+          "prop": "dining_chair",
+          "along": -4.74,
+          "across": -1.1,
+          "above": 0,
+          "facing": 1.5708,
+          "seats": true,
+          "cushionHeight": 0.48
+        },
+        {
+          "prop": "dining_chair",
+          "along": -6.06,
+          "across": -1.1,
+          "above": 0,
+          "facing": -1.5708,
+          "seats": true,
+          "cushionHeight": 0.48
+        },
+        {
+          "prop": "dining_table",
+          "along": -1.8,
+          "across": -1.1,
+          "above": 0,
+          "facing": 0
+        },
+        {
+          "prop": "dining_chair",
+          "along": -1.14,
+          "across": -1.1,
+          "above": 0,
+          "facing": 1.5708,
+          "seats": true,
+          "cushionHeight": 0.48
+        },
+        {
+          "prop": "dining_chair",
+          "along": -2.46,
+          "across": -1.1,
+          "above": 0,
+          "facing": -1.5708,
+          "seats": true,
+          "cushionHeight": 0.48
+        },
+        {
+          "prop": "dining_table",
+          "along": 1.8,
+          "across": -1.1,
+          "above": 0,
+          "facing": 0
+        },
+        {
+          "prop": "dining_chair",
+          "along": 2.46,
+          "across": -1.1,
+          "above": 0,
+          "facing": 1.5708,
+          "seats": true,
+          "cushionHeight": 0.48
+        },
+        {
+          "prop": "dining_chair",
+          "along": 1.14,
+          "across": -1.1,
+          "above": 0,
+          "facing": -1.5708,
+          "seats": true,
+          "cushionHeight": 0.48
+        },
+        {
+          "prop": "dining_table",
+          "along": 5.4,
+          "across": -1.1,
+          "above": 0,
+          "facing": 0
+        },
+        {
+          "prop": "dining_chair",
+          "along": 6.06,
+          "across": -1.1,
+          "above": 0,
+          "facing": 1.5708,
+          "seats": true,
+          "cushionHeight": 0.48
+        },
+        {
+          "prop": "dining_chair",
+          "along": 4.74,
+          "across": -1.1,
+          "above": 0,
+          "facing": -1.5708,
+          "seats": true,
+          "cushionHeight": 0.48
+        }
+      ],
       "lede": "Eight tables, six of them laid, and a steward who remembers what everyone drinks without being told.",
       "body": [],
       "sections": {
@@ -153,6 +357,36 @@
       "id": "guard_van",
       "name": "The Guard's Van",
       "carriage": 0,
+      "furnishings": [
+        {
+          "prop": "crate",
+          "along": -6.4,
+          "across": 1.15,
+          "above": 0,
+          "facing": 0
+        },
+        {
+          "prop": "crate",
+          "along": -5.6,
+          "across": 1.15,
+          "above": 0,
+          "facing": 0.35
+        },
+        {
+          "prop": "crate",
+          "along": 6.6,
+          "across": -1.15,
+          "above": 0,
+          "facing": 0
+        },
+        {
+          "prop": "lockbox",
+          "along": 6.9,
+          "across": 1.05,
+          "above": 0,
+          "facing": 1.5708
+        }
+      ],
       "lede": "Last car of the consist, and the only one with a door that opens onto nothing but weather.",
       "body": [],
       "sections": {
@@ -176,6 +410,7 @@
     {
       "id": "platform",
       "name": "The Platform",
+      "furnishings": [],
       "lede": "Not aboard at all. Where the passengers were before they were passengers, and the only place the enquiry cannot follow them.",
       "body": [],
       "sections": {
@@ -200,6 +435,7 @@
       "id": "vestibule",
       "name": "The Vestibule",
       "carriage": 4,
+      "furnishings": [],
       "lede": "The joint between cars, where the floor moves under you and conversation is impossible.",
       "body": [],
       "sections": {

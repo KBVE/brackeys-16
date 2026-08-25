@@ -223,6 +223,51 @@ aboard.forEach((l, i) => {
   }
 });
 
+/**
+ * Furnishings name a prop out of the compiled prop library, so a prop renamed in
+ * its spec breaks the build at the room that still asks for the old one rather
+ * than leaving a hole in the floor where a crate should be.
+ *
+ * The manifest is the compiler's own output, so this checks against what was
+ * actually built rather than against a list of names kept alongside it.
+ */
+const PROP_MANIFEST = join(root, 'godot/assets/props/props_manifest.json');
+const props = existsSync(PROP_MANIFEST)
+  ? JSON.parse(readFileSync(PROP_MANIFEST, 'utf8'))
+  : null;
+const propNames = props === null ? null : new Set(Object.keys(props));
+for (const l of content.locations) {
+  if (!l.furnishings?.length) continue;
+  if (typeof l.carriage !== 'number') {
+    throw new Error(
+      `${l.source}: "${l.id}" has furnishings but no carriage index, so there is`
+      + ' no room in the consist for them to stand in',
+    );
+  }
+  if (propNames === null) {
+    throw new Error(
+      `${l.source}: furnishings need godot/assets/props/props_manifest.json;`
+      + ' build the prop library before authoring against it',
+    );
+  }
+  for (const f of l.furnishings) {
+    if (!propNames.has(f.prop)) {
+      throw new Error(
+        `${l.source}: prop "${f.prop}" is not in the prop library`
+        + ` (have: ${[...propNames].join(', ')})`,
+      );
+    }
+    // whether a prop is somewhere to sit is a fact about the prop, authored once
+    // in its spec, so it is stamped on here rather than repeated on every chair
+    // in every room and rather than read back out of the manifest at runtime
+    const built = props[f.prop];
+    if (built.seats) {
+      f.seats = true;
+      f.cushionHeight = built.cushion_height;
+    }
+  }
+}
+
 const frame = JSON.parse(readFileSync(FRAME, 'utf8'));
 for (const key of Object.keys(frame)) if (key.startsWith('$')) delete frame[key];
 
