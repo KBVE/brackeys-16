@@ -354,7 +354,8 @@ jobs:
             }
             fs.writeFileSync(file, source.replace(/^config\/version=".*"$/m, `config/version="${process.env.NEXT}"`))
 
-      - uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
+      - id: bump_pr
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1
         with:
           token: ${{ secrets.UNITY_PAT || secrets.GITHUB_TOKEN }}
           base: ${{ env.DEV_BRANCH }}
@@ -366,3 +367,10 @@ jobs:
             v${{ needs.check.outputs.version }} is live on itch.
 
             Bumps `config/version` to `${{ needs.check.outputs.next }}` for the next build.
+
+      - name: Merge the bump PR
+        if: steps.bump_pr.outputs.pull-request-number
+        env:
+          GH_TOKEN: ${{ secrets.UNITY_PAT || secrets.GITHUB_TOKEN }}
+          PR: ${{ steps.bump_pr.outputs.pull-request-number }}
+        run: gh pr merge --auto --squash "$PR" --repo "$GITHUB_REPOSITORY"
