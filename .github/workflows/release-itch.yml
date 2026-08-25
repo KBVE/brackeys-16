@@ -67,13 +67,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          # Pointers only. The blobs live on Forgejo, which this action cannot
-          # authenticate against, and smudging here would 401 mid-checkout.
           lfs: false
 
-      # 113 pointers resolve to 260MB off a self-hosted Forgejo box, and four jobs
-      # in this repo each want the same bytes. Keyed on the pointer files, so it
-      # only misses when the art actually changes.
       - name: Cache LFS objects
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
@@ -88,9 +83,6 @@ jobs:
           set -euo pipefail
           command -v git-lfs >/dev/null 2>&1 || sudo apt-get install -y -qq git-lfs
           git lfs install --local
-          # Listed into a file rather than piped: `ls-files | grep -q` exits on
-          # first match, git-lfs takes SIGPIPE part way through, and pipefail
-          # reports that as "nothing tracked" for a repo that has plenty.
           git lfs ls-files -n > /tmp/lfs-files.txt
           if [ ! -s /tmp/lfs-files.txt ]; then
             echo "::notice::No LFS-tracked files - skipping"
@@ -113,14 +105,6 @@ jobs:
             exit 1
           fi
 
-      # Importing the characters is ~100s of CPU that produces byte-identical
-      # output until an asset or its .import settings change. Measured cold: 2.8s
-      # for this project without them, 47.2s with, on a machine with more cores
-      # than a runner has.
-      #
-      # Only .godot/imported is cached. The uid and script-class caches next to it
-      # are derived from scripts rather than assets, they rebuild in the 2.8s the
-      # baseline already costs, and a stale one of those is a debugging afternoon.
       - name: Cache Godot imports
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
@@ -162,13 +146,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          # Pointers only. The blobs live on Forgejo, which this action cannot
-          # authenticate against, and smudging here would 401 mid-checkout.
           lfs: false
 
-      # 113 pointers resolve to 260MB off a self-hosted Forgejo box, and four jobs
-      # in this repo each want the same bytes. Keyed on the pointer files, so it
-      # only misses when the art actually changes.
       - name: Cache LFS objects
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
@@ -183,9 +162,6 @@ jobs:
           set -euo pipefail
           command -v git-lfs >/dev/null 2>&1 || sudo apt-get install -y -qq git-lfs
           git lfs install --local
-          # Listed into a file rather than piped: `ls-files | grep -q` exits on
-          # first match, git-lfs takes SIGPIPE part way through, and pipefail
-          # reports that as "nothing tracked" for a repo that has plenty.
           git lfs ls-files -n > /tmp/lfs-files.txt
           if [ ! -s /tmp/lfs-files.txt ]; then
             echo "::notice::No LFS-tracked files - skipping"
@@ -208,14 +184,6 @@ jobs:
             exit 1
           fi
 
-      # Importing the characters is ~100s of CPU that produces byte-identical
-      # output until an asset or its .import settings change. Measured cold: 2.8s
-      # for this project without them, 47.2s with, on a machine with more cores
-      # than a runner has.
-      #
-      # Only .godot/imported is cached. The uid and script-class caches next to it
-      # are derived from scripts rather than assets, they rebuild in the 2.8s the
-      # baseline already costs, and a stale one of those is a debugging afternoon.
       - name: Cache Godot imports
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
@@ -373,4 +341,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.UNITY_PAT || secrets.GITHUB_TOKEN }}
           PR: ${{ steps.bump_pr.outputs.pull-request-number }}
-        run: gh pr merge --auto --squash "$PR" --repo "$GITHUB_REPOSITORY"
+        run: |
+          gh pr merge --auto --squash "$PR" --repo "$GITHUB_REPOSITORY" \
+            || gh pr merge --squash "$PR" --repo "$GITHUB_REPOSITORY"
