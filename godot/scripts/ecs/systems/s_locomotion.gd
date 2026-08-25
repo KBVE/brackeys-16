@@ -17,6 +17,9 @@ func _step(intent: CInput, locomotion: CLocomotion, body: CharacterBody3D, delta
 		-PI, PI)
 	# clamped by [SCameraAim], which owns the bounds along with the head
 	locomotion.pitch_radians += intent.pitch_units * locomotion.turn_radians_per_unit
+	if not intent.holding_look:
+		locomotion.pitch_radians = move_toward(locomotion.pitch_radians, 0.0,
+			locomotion.pitch_recentre_radians_per_second * delta)
 	body.rotation.y = locomotion.facing_radians
 	body.position.y = locomotion.eye_height_metres
 

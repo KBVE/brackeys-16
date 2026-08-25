@@ -280,3 +280,43 @@ func test_the_capsule_is_the_size_of_the_man_inside_it() -> void:
 	assert_float(bottom).override_failure_message(
 		"the bottom of the capsule is below the floor it stands on"
 	).is_greater(Consist.FLOOR_Y - 0.05)
+
+
+## A right-drag is a glance, not a setting. Left to stand, a look at the floor stayed a
+## look at the floor, and nothing in the game brought the horizon back.
+func test_the_view_returns_to_level_once_the_look_ends() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(4)
+	var train: Node = runner.scene()
+	var locomotion := _locomotion_of(train)
+
+	train._control.accumulate_look(Vector2(0.0, 200.0), 720.0)
+	await runner.simulate_frames(2)
+	assert_float(locomotion.pitch_radians).override_failure_message(
+		"the look never pitched the view down, so there is nothing to recover from"
+	).is_less(-0.2)
+
+	await runner.simulate_frames(90)
+	assert_float(locomotion.pitch_radians).override_failure_message(
+		"the view never came back level, so a glance at the floor is permanent"
+	).is_equal_approx(0.0, 0.05)
+
+
+## The recentre must not fight the player while they are still aiming, or the view
+## crawls back to level under the mouse.
+func test_a_held_look_keeps_the_pitch_it_was_given() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(4)
+	var train: Node = runner.scene()
+	var locomotion := _locomotion_of(train)
+	train._control.set_update(false)
+
+	var intent: CInput = train._intent
+	intent.holding_look = true
+	intent.pitch_units = 0.0
+	locomotion.pitch_radians = -0.6
+	await runner.simulate_frames(20)
+
+	assert_float(locomotion.pitch_radians).override_failure_message(
+		"the view drifted back to level while the player was still holding the look"
+	).is_equal_approx(-0.6, 0.01)

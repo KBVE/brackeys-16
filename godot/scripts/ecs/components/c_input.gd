@@ -10,3 +10,10 @@ var walk_units: float = 0.0
 var strafe_units: float = 0.0
 var turn_units: float = 0.0
 var pitch_units: float = 0.0
+
+
+## True while the player is actively aiming the view. The pitch holds where it was put
+## for as long as this is true and eases back to level once it is not, so a look is a
+## gesture rather than a setting; without it a glance at the floor stays a glance at
+## the floor and nothing brings the horizon back.
+var holding_look: bool = false

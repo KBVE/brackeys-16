@@ -80,6 +80,7 @@ var _yaw_override := INF
 var _eye_override := INF
 var _viewer: CViewer
 var _locomotion: CLocomotion
+var _intent: CInput
 var _control: SPlayerControl
 var _occupant: COccupant
 var _here: CLocation
@@ -142,7 +143,8 @@ func _ready() -> void:
 		_eye_override if is_finite(_eye_override) else body.eye_height_metres()
 	_locomotion.turn_radians_per_unit = TURN_RADIANS_PER_UNIT
 	_locomotion.walk_metres_per_unit = WALK_METRES_PER_UNIT
-	_scope.spawn().add(_viewer).add(_occupant).add(_here).add(CInput.new()) \
+	_intent = CInput.new()
+	_scope.spawn().add(_viewer).add(_occupant).add(_here).add(_intent) \
 		.add(_locomotion).add(_carriage_camera()) \
 		.add(CCharacterRig.new(body)) \
 		.add(ECSViewComponent.new(_player))
