@@ -334,11 +334,11 @@ func seat_anchors() -> Array[Dictionary]:
 					out.append({
 						"at": global_position + Vector3(_offset(i) + bay,
 							FLOOR_Y + CUSHION_ABOVE_FLOOR, side * SEAT_CENTRE_Z),
-						# the benches run along the walls with their backs to them, so a
-						# sitter faces the aisle across the car rather than down it.
-						# Which way across depends on the side he is on: face the wrong
-						# one and he sits with his nose in the cushion.
-						"facing": PI if side > 0.0 else 0.0,
+						# back to back means facing apart: the cushion before the back
+						# looks one way down the car and the one behind it looks the
+						# other. One rule for the whole bench sits every second
+						# passenger staring into the upholstery.
+						"facing": 0.0 if facing_pair > 0.0 else PI,
 						"carriage": i,
 					})
 	return out

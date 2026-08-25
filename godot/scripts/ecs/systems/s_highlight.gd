@@ -33,9 +33,22 @@ func _mark(pointer: CPointer, marker: SelectionHighlight) -> void:
 ## and there is rarely only one of them.
 func _meshes_of(leaf: Node3D) -> Array[MeshInstance3D]:
 	var found: Array[MeshInstance3D] = []
-	if leaf is MeshInstance3D and (leaf as MeshInstance3D).mesh != null:
+	if leaf is MeshInstance3D and (leaf as MeshInstance3D).mesh != null \
+			and not _is_glazing(leaf as MeshInstance3D):
 		found.append(leaf as MeshInstance3D)
 	for child: Node in leaf.get_children():
 		if child is Node3D:
 			found.append_array(_meshes_of(child as Node3D))
 	return found
+
+
+## Whether this part is the window rather than the door. A hull around glass is a hull
+## filled with glass: the pane is transparent, so nothing is drawn over the shell to
+## hide its middle and the whole thing comes back as a tinted sheet.
+func _is_glazing(part: MeshInstance3D) -> bool:
+	for surface in range(part.mesh.get_surface_count()):
+		var material := part.mesh.surface_get_material(surface) as BaseMaterial3D
+		if material != null \
+				and material.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED:
+			return true
+	return false

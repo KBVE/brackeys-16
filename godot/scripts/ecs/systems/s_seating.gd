@@ -75,9 +75,13 @@ func _sit(locomotion: CLocomotion, seating: CSeating, rig: CharacterRig,
 	seating.seated = true
 	seating.seat = seat
 	seat.taken_by = seating
-	# a sitter has his back to the wall, so there is no room behind him to film from.
-	# The shot swings right round to the aisle in front of him instead.
-	seating.camera_yaw_radians = PI * 0.5
+	# directly behind a seated body is the back of the seat behind it, which the spring
+	# arm collides with and pulls the camera to nothing. The only clear line is across
+	# the aisle, and where that is depends on both the bench he is on and which of the
+	# two directions his half of the pair faces.
+	var toward_the_aisle := PI if seat.at.z > 0.0 else 0.0
+	seating.camera_yaw_radians = toward_the_aisle - seat.facing_radians \
+		- locomotion.forward_yaw_offset_radians
 	locomotion.facing_radians = seat.facing_radians
 	locomotion.eye_height_metres = seat.at.y + seating.seated_eye_above_cushion_metres
 	locomotion.height_above_stance_metres = 0.0

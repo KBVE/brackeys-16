@@ -43,6 +43,21 @@ var turn_radians_per_second: float = 4.0
 ## Close enough to have arrived. Smaller than a stride, or they shuffle on the spot.
 var arrive_metres: float = 0.2
 
+## The rooms this character walks, in order, over and over. The conductor's rounds are
+## the length of the train and back; an empty beat is somebody who stays where their
+## timeline puts them, which is everybody else.
+##
+## A beat and a timeline are two different claims about where somebody is, so whoever
+## has one of these owns their own [CLocation] and [SPassengerPlace] leaves them alone.
+var beat: Array[StringName] = []
+
+## Which room of the beat they are walking to now.
+var beat_index: int = 0
+
+## Seconds spent in each room before setting off for the next. A guard who arrived and
+## turned straight round would read as a man who had forgotten something.
+var beat_pause_seconds: float = 6.0
+
 ## How far either side of [member station] a patrol walks. Zero stands still, which is
 ## what a passenger in a seat does between the hours their timeline moves them.
 var patrol_metres: float = 0.0

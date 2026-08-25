@@ -33,7 +33,7 @@ func _ready() -> void:
 	_wire.mesh = _box_edges()
 	var ink := StandardMaterial3D.new()
 	ink.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	ink.albedo_color = Color(0.05, 0.04, 0.035, 0.9)
+	ink.albedo_color = Color(1.0, 0.86, 0.55)
 	ink.no_depth_test = true
 	ink.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_wire.material_override = ink

@@ -10,14 +10,12 @@ shader_type spatial;
 // outlined one. The seat box wants the opposite and uses its own material to get it.
 render_mode unshaded, cull_front, depth_draw_never, shadows_disabled;
 
-// Ink rather than gold. The carriage is lit warm and everything in it is some shade of
-// brown, so a bright line reads as a light source; a dark one reads as a drawn edge.
-uniform vec4 edge_colour : source_color = vec4(0.05, 0.04, 0.035, 0.9);
+uniform vec4 edge_colour : source_color = vec4(1.0, 0.86, 0.55, 1.0);
 
 // Metres at one metre away. Scaled by view distance below so a seat down the carriage
 // keeps the same weight of line as the one being stood next to; an outline in fixed
 // world units thins to nothing across a room.
-uniform float edge_metres : hint_range(0.002, 0.08) = 0.007;
+uniform float edge_metres : hint_range(0.002, 0.08) = 0.012;
 
 void vertex() {
 	vec4 in_view = MODELVIEW_MATRIX * vec4(VERTEX, 1.0);

@@ -71,8 +71,17 @@ func _on_update(_delta: float) -> void:
 	var built := 0
 	for entry: Dictionary in multi_view([CLocation, CAppearance, CCharacterRig, CErrand]):
 		var rig_slot: CCharacterRig = entry[&"CCharacterRig"]
+		var errand: CErrand = entry[&"CErrand"]
+		# A character on rounds says where they are; everybody else is told. It is where
+		# they have walked to that counts, not where they set off for: a conductor who
+		# announced the dining car as he left the guard's van would be an alibi for a
+		# room he had not reached.
+		if not errand.beat.is_empty():
+			entry[&"CLocation"].location_id = _room_at(errand.at.x)
 		var carriage: int = _carriage_of.get(entry[&"CLocation"].location_id, -1)
-		_station(entry[&"CErrand"], entry[&"CAppearance"], carriage)
+		if not errand.beat.is_empty():
+			carriage = _carriage_of.get(errand.beat[errand.beat_index], carriage)
+		_station(errand, entry[&"CAppearance"], carriage)
 		var within_the_drawn_window := carriage >= 0 and here >= 0 \
 			and absi(carriage - here) <= carriage_window
 
@@ -86,7 +95,7 @@ func _on_update(_delta: float) -> void:
 			continue
 		if built >= BUILDS_PER_TICK:
 			continue
-		rig_slot.rig = _build(entry[&"CAppearance"], entry[&"CErrand"])
+		rig_slot.rig = _build(entry[&"CAppearance"], errand)
 		built += 1
 
 
@@ -94,6 +103,18 @@ func _on_update(_delta: float) -> void:
 func _viewer_carriage() -> int:
 	var occupants: Array = view(&"COccupant")
 	return occupants[0].carriage_index if not occupants.is_empty() else -1
+
+
+## The room whoever stands at [param world_x] is standing in. Mirrors the arithmetic in
+## [method Consist.carriage_index_at], which is the same reason [SOccupancy] carries a
+## copy: the spacing is handed over rather than the consist.
+func _room_at(world_x: float) -> StringName:
+	var aboard := GameContent.carriage_locations()
+	if aboard.is_empty():
+		return &""
+	var index := clampi(int(round(world_x / carriage_pitch + (carriage_count - 1) / 2.0)),
+		0, aboard.size() - 1)
+	return aboard[index]
 
 
 func _map_carriages() -> void:

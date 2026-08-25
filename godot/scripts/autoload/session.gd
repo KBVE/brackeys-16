@@ -27,6 +27,13 @@ const ESCORT_PATROL_METRES := 3.0
 ## and outlive the one they were spawned for.
 const WALKING_YAW_OFFSET := -PI * 0.5
 
+## The conductor's rounds: the length of the train and back, over and over, all night.
+##
+## His timeline in the content is what he tells an enquiry, and it is still what the
+## register says. Where he actually is, is this: thirty years of walking the same
+## corridor, which is the one thing about him nobody disputes.
+const ROUNDS_OF_THE_TRAIN := &"moreau"
+
 ## Departure, in minutes past midnight. Earliest authored timeline is Dupont boarding at Paris.
 const DEPARTURE_MINUTES := 16 * 60 + 5
 
@@ -55,9 +62,12 @@ func _ready() -> void:
 	for passenger: Dictionary in GameContent.passengers():
 		var identity := CIdentity.new()
 		identity.content_id = passenger.get("id", "")
+		var errand := CErrand.new()
+		if identity.content_id == ROUNDS_OF_THE_TRAIN:
+			errand.beat = _the_length_of_the_train()
 		_scope.spawn().add(CPassenger.new()).add(identity).add(CLocation.new()) \
 			.add(Wardrobe.appearance_of(identity.content_id)).add(CCharacterRig.new()) \
-			.add(CErrand.new()).add(_walking_locomotion()).add(CGait.new())
+			.add(errand).add(_walking_locomotion()).add(CGait.new())
 
 	for sworn: Dictionary in ESCORT:
 		var post := CLocation.new()
@@ -91,3 +101,16 @@ func _walking_locomotion() -> CLocomotion:
 	var locomotion := CLocomotion.new()
 	locomotion.forward_yaw_offset_radians = WALKING_YAW_OFFSET
 	return locomotion
+
+
+## Every room aboard, down the train and back again. The turn at each end is the return
+## leg rather than a jump: without it the conductor walks the length of the carriages
+## and then appears at the far end to do it again.
+func _the_length_of_the_train() -> Array[StringName]:
+	var down := GameContent.carriage_locations()
+	var rounds: Array[StringName] = []
+	for room: StringName in down:
+		rounds.append(room)
+	for i in range(down.size() - 2, 0, -1):
+		rounds.append(down[i])
+	return rounds

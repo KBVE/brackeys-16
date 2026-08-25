@@ -128,6 +128,9 @@ static func room_for_oncoming(at: Vector3, target: Vector3, right_z: float,
 ## Everyone else is going where their room is, which [SCastBody] has already written
 ## into the station.
 func _choose_target(errand: CErrand, delta: float) -> void:
+	if not errand.beat.is_empty():
+		_walk_the_beat(errand, delta)
+		return
 	if errand.patrol_metres <= 0.0:
 		errand.target = errand.station
 		return
@@ -142,6 +145,21 @@ func _choose_target(errand: CErrand, delta: float) -> void:
 	errand.target = end
 	if errand.pausing_seconds <= 0.0:
 		errand.patrol_outbound = not errand.patrol_outbound
+
+
+## Rounds: arrive in a room, stand in it a moment, then set off for the next. The room
+## itself is [SCastBody]'s business -- it is what turns a room into somewhere to stand --
+## so all that happens here is the counting.
+func _walk_the_beat(errand: CErrand, delta: float) -> void:
+	errand.target = errand.station
+	if errand.at.distance_to(errand.station) > errand.arrive_metres:
+		errand.pausing_seconds = errand.beat_pause_seconds
+		return
+	errand.pausing_seconds -= delta
+	if errand.pausing_seconds > 0.0:
+		return
+	errand.pausing_seconds = errand.beat_pause_seconds
+	errand.beat_index = (errand.beat_index + 1) % errand.beat.size()
 
 
 ## The yaw that puts a character's front along [param direction], in the same measure
