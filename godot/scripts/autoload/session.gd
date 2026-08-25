@@ -2,25 +2,27 @@ extends Node
 
 ## Session : ECS state that outlives a scene swap.
 
-## Where the Order's escort stands, and who stands there. Two sworn knights on a crate
-## nobody is permitted to open, from the hour it is loaded to the hour it is unloaded.
+## The Order's escort, and the watch they came aboard with. Four knights and three
+## duties: two over the crate, one walking the train, one off the watch entirely. The
+## fourth is what makes it a watch rather than a tableau -- there is somebody to hand a
+## duty to. [SGuardWatch] turns the ring.
 ##
 ## They are not passengers: no berth, no timeline, no alibi, and nothing in the content
 ## about them, because they are the image the guard's van is selling rather than anybody
 ## the mystery turns on. Dame Marchand is the one with a name, and she is content.
 ##
-## The seeds are written down rather than derived so the two of them stay the two of
+## The seeds are written down rather than derived so the four of them stay the four of
 ## them; the faces under the helmets are rolled, the plate is not.
 const ESCORT_LOCATION := &"guard_van"
+## The duties are written as the bare names [CWatch] uses rather than through it: a
+## const cannot be built out of another class's const, and a rota that could not be a
+## const would be a rota anybody could edit at runtime.
 const ESCORT := [
-	{"seed": 0x5eed_0001, "outfit": &"male_knight"},
-	{"seed": 0x5eed_0002, "outfit": &"female_knight"},
+	{"seed": 0x5eed_0001, "outfit": &"male_knight", "duty": &"post", "post": 0},
+	{"seed": 0x5eed_0002, "outfit": &"female_knight", "duty": &"post", "post": 1},
+	{"seed": 0x5eed_0003, "outfit": &"male_knight", "duty": &"patrol", "post": 0},
+	{"seed": 0x5eed_0004, "outfit": &"female_knight", "duty": &"relief", "post": 0},
 ]
-
-## How far along the van each of them paces. Short: they are guarding a crate, not
-## walking a beat, and two knights crossing each other in a corridor this narrow is a
-## comedy rather than a watch.
-const ESCORT_PATROL_METRES := 3.0
 
 ## The quarter turn every rig aboard is built with, the player's included. Held here
 ## rather than read off the train, because the cast are spawned before a train exists
@@ -64,7 +66,7 @@ func _ready() -> void:
 		identity.content_id = passenger.get("id", "")
 		var errand := CErrand.new()
 		if identity.content_id == ROUNDS_OF_THE_TRAIN:
-			errand.beat = _the_length_of_the_train()
+			errand.beat = the_length_of_the_train()
 		_scope.spawn().add(CPassenger.new()).add(identity).add(CLocation.new()) \
 			.add(Wardrobe.appearance_of(identity.content_id)).add(CCharacterRig.new()) \
 			.add(errand).add(_walking_locomotion()).add(CGait.new())
@@ -72,11 +74,12 @@ func _ready() -> void:
 	for sworn: Dictionary in ESCORT:
 		var post := CLocation.new()
 		post.location_id = ESCORT_LOCATION
-		var watch := CErrand.new()
-		watch.patrol_metres = ESCORT_PATROL_METRES
+		var duty := CWatch.new()
+		duty.duty = sworn["duty"]
+		duty.post_index = sworn["post"]
 		_scope.spawn().add(post).add(CCharacterRig.new()) \
 			.add(Wardrobe.roll(sworn["seed"], sworn["outfit"])) \
-			.add(watch).add(_walking_locomotion()).add(CGait.new())
+			.add(duty).add(CErrand.new()).add(_walking_locomotion()).add(CGait.new())
 
 	begin()
 
@@ -106,7 +109,7 @@ func _walking_locomotion() -> CLocomotion:
 ## Every room aboard, down the train and back again. The turn at each end is the return
 ## leg rather than a jump: without it the conductor walks the length of the carriages
 ## and then appears at the far end to do it again.
-func _the_length_of_the_train() -> Array[StringName]:
+func the_length_of_the_train() -> Array[StringName]:
 	var down := GameContent.carriage_locations()
 	var rounds: Array[StringName] = []
 	for room: StringName in down:

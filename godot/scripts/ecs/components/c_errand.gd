@@ -58,6 +58,12 @@ var beat_index: int = 0
 ## turned straight round would read as a man who had forgotten something.
 var beat_pause_seconds: float = 6.0
 
+## Metres along the carriage the station is shifted from wherever it would otherwise
+## fall. Written by whatever has an opinion about where in a room somebody belongs:
+## [SGuardWatch] uses it to put the two knights on post either side of the crate rather
+## than both on the seeded spot their appearance would give them.
+var station_offset_metres: float = 0.0
+
 ## How far either side of [member station] a patrol walks. Zero stands still, which is
 ## what a passenger in a seat does between the hours their timeline moves them.
 var patrol_metres: float = 0.0

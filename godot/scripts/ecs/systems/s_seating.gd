@@ -87,7 +87,10 @@ func _sit(locomotion: CLocomotion, seating: CSeating, rig: CharacterRig,
 	locomotion.height_above_stance_metres = 0.0
 	locomotion.rise_metres_per_second = 0.0
 	body.velocity = Vector3.ZERO
-	body.global_position = Vector3(seat.at.x, locomotion.eye_height_metres, seat.at.z)
+	var sat_forward := SLocomotion.forward_of(locomotion) \
+		* seating.seated_forward_offset_metres
+	body.global_position = Vector3(seat.at.x + sat_forward.x,
+		locomotion.eye_height_metres, seat.at.z + sat_forward.z)
 	# the clip sits him on a floor, so the rig hangs from the deck rather than the eye
 	if rig != null:
 		rig.set_ground_drop(locomotion.eye_height_metres - Consist.FLOOR_Y)

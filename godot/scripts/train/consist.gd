@@ -22,6 +22,11 @@ class_name Consist
 ## The two end-wall door leaves, hinged at their own origins. Split out of the shell
 ## so they can swing; every carriage gets them.
 @export var doors_scene: PackedScene
+## The prop library: one scene of loose meshes sharing one atlas material, built
+## by the prop compiler. Nothing instances the scene itself; carriages take the
+## meshes out of it and share them, so a hundred crates cost one mesh and one
+## material bind between them.
+@export var props_scene: PackedScene
 @export var detail_normal: Texture2D
 @export_range(1, 32) var carriage_count: int = 5
 ## Car centre spacing. Mesh bounds are 20.88m, so 21.0 butts the end platforms.
@@ -85,6 +90,7 @@ const SHELL_THICKNESS := 0.4
 var _carriages: Array[Node3D] = []
 var _lampsets: Array[Node3D] = []
 var _shared: Dictionary = {}
+var _prop_meshes: Dictionary = {}
 
 func _ready() -> void:
 	if carriage_scene == null:
@@ -99,6 +105,9 @@ func _ready() -> void:
 		# after the seating goes in, so its surfaces take the same shared materials
 		# as the shell instead of keeping the ones the glb shipped with
 		_reskin(carriage)
+		# and after the reskin, because props carry the atlas material the prop
+		# compiler gave them and the carriage shader would paint over it
+		_furnish(carriage, i)
 		var lamps := Node3D.new()
 		lamps.name = "Lamps"
 		for j in range(lamps_per_car):
@@ -163,21 +172,23 @@ func _hang_doors(carriage: Node3D) -> void:
 	carriage.add_child(doors)
 	for leaf: Node in doors.get_children():
 		if leaf is VisualInstance3D:
-			_add_door_collision(leaf)
+			_fit_box_collision(leaf)
 
 
-## A box the shape of the leaf, parented to it. Being a child is the whole trick:
-## the collider turns with the door, so a shut leaf blocks the doorway and an open
-## one has taken its collision out of the way along with its geometry.
+## A box the shape of the mesh, parented to it. Being a child is the whole trick:
+## the collider moves with whatever it is on, so a shut leaf blocks the doorway,
+## an open one has taken its collision out of the way along with its geometry, and
+## a prop turned by its authored facing is solid where it is drawn rather than
+## where it was modelled.
 ##
-## Measured off the mesh rather than written down, so a door reshaped in Blender
-## does not need a number changed here to match.
-func _add_door_collision(leaf: VisualInstance3D) -> void:
-	var box := leaf.get_aabb()
+## Measured off the mesh rather than written down, so a door or a prop reshaped in
+## Blender does not need a number changed here to match.
+func _fit_box_collision(visual: VisualInstance3D) -> void:
+	var box := visual.get_aabb()
 	var body := StaticBody3D.new()
 	body.name = "Collision"
 	_add_box(body, box.size, box.position + box.size * 0.5)
-	leaf.add_child(body)
+	visual.add_child(body)
 
 
 ## Every door leaf in the consist, in the order the carriages were built.
@@ -191,6 +202,67 @@ func door_leaves() -> Array[Node3D]:
 			if leaf is Node3D:
 				out.append(leaf)
 	return out
+
+
+## Stands the room's props on the floor of carriage [param index].
+##
+## Placement is authored in shared/data/locations as carriage-local metres, never
+## world ones. Consist centres itself on its own origin, so inserting a carriage
+## anywhere moves every world X in the train by half a pitch; a prop placed in
+## world space would slide half a car the first time the consist changed length,
+## and a prop placed locally does not notice. That is what makes the train
+## expandable without every room being re-measured.
+##
+## Children of the carriage, like the seating and the lamps, so they cull and hide
+## with it and cost nothing while the player is elsewhere.
+func _furnish(carriage: Node3D, index: int) -> void:
+	var placements: Array = GameContent.furnishings_at(index)
+	if placements.is_empty():
+		return
+	var library := _prop_library()
+	var room := Node3D.new()
+	room.name = "Furnishings"
+	carriage.add_child(room)
+	for placement: Dictionary in placements:
+		var prop := StringName(placement.get("prop", ""))
+		var mesh: Mesh = library.get(prop)
+		if mesh == null:
+			push_error("Consist: props_scene has no mesh named %s" % prop)
+			continue
+		var instance := MeshInstance3D.new()
+		instance.name = String(prop)
+		instance.mesh = mesh
+		instance.position = _furnishing_offset(placement)
+		instance.rotation.y = float(placement.get("facing", 0.0))
+		room.add_child(instance)
+		_fit_box_collision(instance)
+
+
+## Where a placement stands in its own carriage. The prop compiler puts every
+## prop's origin on the ground under it, so the deck is the default height and
+## nothing needs a fudge factor per prop. Anything standing on a surface rather
+## than on the floor -- a plate on a table, a book on a shelf -- carries the
+## height of that surface as its own [code]above[/code].
+func _furnishing_offset(placement: Dictionary) -> Vector3:
+	return Vector3(float(placement.get("along", 0.0)),
+		FLOOR_Y + float(placement.get("above", 0.0)),
+		float(placement.get("across", 0.0)))
+
+
+## Prop name to mesh, harvested once out of [member props_scene].
+##
+## The library scene is instanced and thrown away rather than kept: what is wanted
+## out of it is the meshes, and holding the scene as well would keep a second copy
+## of every one of them alive for nothing.
+func _prop_library() -> Dictionary:
+	if not _prop_meshes.is_empty() or props_scene == null:
+		return _prop_meshes
+	var library := props_scene.instantiate()
+	for mesh: MeshInstance3D in _mesh_instances(library):
+		if mesh.mesh != null:
+			_prop_meshes[StringName(mesh.name)] = mesh.mesh
+	library.free()
+	return _prop_meshes
 
 
 ## Floor and side walls, so the player is inside something rather than beside it.
@@ -323,6 +395,9 @@ func _mesh_instances(n: Node) -> Array[MeshInstance3D]:
 func seat_anchors() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for i in range(carriage_count):
+		# before the bench guard below, not after it: a room with no benches is
+		# exactly the room whose chairs are the only seats in it
+		out.append_array(_prop_seats(i))
 		if seating_scene == null or undressed_carriages.has(i):
 			continue
 		for row in range(-SEAT_ROWS_EITHER_SIDE, SEAT_ROWS_EITHER_SIDE + 1):
@@ -341,4 +416,48 @@ func seat_anchors() -> Array[Dictionary]:
 						"facing": 0.0 if facing_pair > 0.0 else PI,
 						"carriage": i,
 					})
+	return out
+
+
+## The chairs in a carriage, as seats, in the same shape the benches use.
+##
+## A room furnished with tables and chairs has no benches at all, so without this
+## the dining car is a room nobody can sit down in. Which props are seats is a fact
+## about the prop, stamped onto the placement by gen-content out of the library
+## manifest, so a new chair is a spec that says [code]seats = true[/code] and
+## nothing here changes.
+##
+## [CLocomotion] carries a forward offset of -PI/2, so a facing of zero walks a body
+## along +X while a mesh rotation of zero points it at -Z. The quarter turn between
+## them is why a chair's own facing is not its passenger's.
+func _prop_seats(index: int) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for placement: Dictionary in GameContent.furnishings_at(index):
+		if not bool(placement.get("seats", false)):
+			continue
+		var stands := _furnishing_offset(placement)
+		out.append({
+			"at": global_position + Vector3(_offset(index), 0.0, 0.0) + stands
+				+ Vector3(0.0, float(placement.get("cushionHeight", 0.0)), 0.0),
+			"facing": float(placement.get("facing", 0.0)) + PI * 0.5,
+			"carriage": index,
+		})
+	return out
+
+
+## Every prop in the consist, in world space, in the order the carriages were built.
+##
+## The mirror of [method seat_anchors]: authored locally, resolved through the same
+## [method _offset], so both survive the train changing length for the same reason.
+func prop_anchors() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for i in range(carriage_count):
+		for placement: Dictionary in GameContent.furnishings_at(i):
+			out.append({
+				"at": global_position + Vector3(_offset(i), 0.0, 0.0)
+					+ _furnishing_offset(placement),
+				"facing": float(placement.get("facing", 0.0)),
+				"prop": StringName(placement.get("prop", "")),
+				"carriage": i,
+			})
 	return out

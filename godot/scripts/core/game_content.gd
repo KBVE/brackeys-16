@@ -42,6 +42,16 @@ static func carriage_locations() -> Array:
 	aboard.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["carriage"]) < int(b["carriage"]))
 	return aboard.map(func(l: Dictionary) -> StringName: return StringName(l.get("id", "")))
 
+## What stands in the room at [param carriage], in carriage-local metres.
+##
+## Keyed by position along the train rather than by room id, because [Consist]
+## builds carriages by index and the mdx is what ties the two together.
+static func furnishings_at(carriage: int) -> Array:
+	for room: Dictionary in locations():
+		if room.has("carriage") and int(room["carriage"]) == carriage:
+			return room.get("furnishings", [])
+	return []
+
 static func gazette() -> Dictionary:
 	return data().get("gazette", {})
 

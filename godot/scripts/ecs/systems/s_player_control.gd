@@ -42,13 +42,18 @@ func accumulate_look(relative_pixels: Vector2, window_height: float) -> void:
 		_look_units += relative_pixels / window_height * mouse_screens_per_unit
 
 
-## Clicking inside the window is what takes control, and Escape is what gives it back.
-## Both are read while inert, because they are the only way out of it.
+## Tab takes control and gives it back. Read while inert, because it is the only way out
+## of it.
+##
+## Deliberately not the mouse. Clicking used to engage, which sounds right and is not:
+## clicking into the window is exactly what you do to look at a debug run, so the run
+## took the keyboard on the first click every time and the inert state was worth
+## nothing. It has to be a gesture nobody makes by accident.
 func _read_engagement() -> void:
-	if Input.is_action_just_pressed(&"ui_cancel"):
+	if Input.is_action_just_pressed(&"take_control"):
+		engaged = not engaged
+	elif Input.is_action_just_pressed(&"ui_cancel"):
 		engaged = false
-	elif Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		engaged = true
 
 
 func _on_update(delta: float) -> void:

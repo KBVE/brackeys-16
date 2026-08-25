@@ -60,11 +60,11 @@ func test_pacing_beside_a_door_does_not_work_it() -> void:
 	await runner.simulate_frames(20)
 
 	var posted: Array[Vector3] = []
-	for entry: Dictionary in Ecs.world.multi_view([CErrand, CAppearance]):
-		if entry[&"CErrand"].patrol_metres > 0.0:
+	for entry: Dictionary in Ecs.world.multi_view([CWatch, CErrand]):
+		if entry[&"CWatch"].duty == CWatch.POST:
 			posted.append(entry[&"CErrand"].station)
 	assert_array(posted).override_failure_message(
-		"the guard's van should hold an escort with a beat to walk").is_not_empty()
+		"the guard's van should hold knights on post over the crate").is_not_empty()
 
 	var theirs: Array = _doors().filter(func(entry: Dictionary) -> bool:
 		var leaf: Node3D = entry[&"ECSViewComponent"].view as Node3D
@@ -95,7 +95,9 @@ func test_pacing_beside_a_door_does_not_work_it() -> void:
 func _someone_else_is_at(door_at: Vector3) -> bool:
 	for entry: Dictionary in Ecs.world.multi_view([CErrand, CLocomotion]):
 		var errand: CErrand = entry[&"CErrand"]
-		if errand.patrol_metres > 0.0 or not errand.stationed:
+		# Anybody on the watch is the escort, whichever duty they are holding: the one
+		# out on patrol works doors the length of the train, and rightly.
+		if entry["entity"].has(CWatch) or not errand.stationed:
 			continue
 		if absf(errand.at.x - door_at.x) < SDoorTraffic.HOLD_METRES + 2.0:
 			return true

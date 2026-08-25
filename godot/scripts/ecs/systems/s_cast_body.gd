@@ -151,7 +151,7 @@ func _station(errand: CErrand, appearance: CAppearance, carriage: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = appearance.character_seed
 	var along := (carriage - (carriage_count - 1) / 2.0) * carriage_pitch \
-		+ rng.randf_range(-PLACEMENT_SPREAD, PLACEMENT_SPREAD)
+		+ rng.randf_range(-PLACEMENT_SPREAD, PLACEMENT_SPREAD) + errand.station_offset_metres
 	# In the aisle, never in a bench. Which side of the centre line they favour is theirs
 	# and stays theirs, so two passengers in one carriage are not standing in each other.
 	var side := rng.randf_range(0.35, 1.0) * (1.0 if rng.randf() < 0.5 else -1.0)

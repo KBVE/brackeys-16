@@ -23,6 +23,12 @@ var reach_metres: float = 1.4
 ## than what they are sitting on.
 var seated_eye_above_cushion_metres: float = 0.72
 
+## How far forward of the anchor to park him. The sitting clip is authored with the
+## pelvis a third of a metre behind the rig's own origin, so dropping the root on the
+## cushion puts his backside inside the seat back and his thighs come out of the
+## upholstery. Measured off the clip: hips at -6.931 for a root at -6.600.
+var seated_forward_offset_metres: float = 0.33
+
 ## The seat currently occupied, so standing releases the one that was taken rather than
 ## whichever is nearest by then.
 var seat: CSeat = null

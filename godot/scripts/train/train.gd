@@ -157,8 +157,11 @@ func _ready() -> void:
 		.add(CCharacterRig.new(body)).add(CGait.new()).add(_posture).add(_foot_planting).add(_seating).add(_pointer).add(_the_highlight()) \
 		.add(ECSViewComponent.new(_player))
 	_control = SPlayerControl.new()
-	# a headless run has no window to steal focus from, and its tests press real actions
-	_control.engaged = DisplayServer.get_name() == "headless"
+	# an exported build is somebody playing and starts live. A debug run is somebody
+	# working, with an editor behind the window it just stole focus from, and starts
+	# inert until [Tab] says otherwise. Headless is the tests, which press real actions.
+	_control.engaged = DisplayServer.get_name() == "headless" \
+		or not OS.has_feature("editor")
 	_control.drag_screens_per_unit = DRAG_SCREENS_PER_UNIT
 	_scope.add_system(&"player_control", _control)
 	_spawn_the_seats()
@@ -178,6 +181,7 @@ func _ready() -> void:
 	_scope.add_system(&"cast_body", _cast_body_system())
 	_scope.add_system(&"cast_walk", _cast_walk_system())
 	_scope.add_system(&"door_traffic", SDoorTraffic.new())
+	_scope.add_system(&"guard_watch", _guard_watch_system())
 	_scope.spawn().add(CParallax.new()).add(ECSViewComponent.new(_forest))
 	_scope.add_system(&"parallax", SParallax.new())
 	_scope.spawn().add(CWorldLighting.new()).add(ECSViewComponent.new($Screen/Frame/World/Lighting))
@@ -317,6 +321,14 @@ func _add_player_body() -> PlayerBody:
 ## down twice.
 func _aisle_half_width() -> float:
 	return maxf(Consist.SEAT_EDGE_Z - SCastWalk.SHOULDER_METRES, 0.05)
+
+
+## The Order keeps its own watch, and the rota is a ring of duties rather than a
+## schedule. What the train has to tell it is the length of the train.
+func _guard_watch_system() -> SGuardWatch:
+	var watch := SGuardWatch.new()
+	watch.rounds = Session.the_length_of_the_train()
+	return watch
 
 
 func _cast_walk_system() -> SCastWalk:

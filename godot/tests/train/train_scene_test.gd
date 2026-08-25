@@ -121,17 +121,26 @@ func test_the_consist_is_as_long_as_the_content_says() -> void:
 	).is_equal(GameContent.carriage_locations().size())
 
 
-## The guard's van is described in shared/data/locations as crates and a cold
-## stove. It shipped full of bench seating anyway, because the seating was part
-## of the carriage mesh and there was no way to leave it out.
-func test_the_guard_van_is_the_one_carriage_without_seating() -> void:
+## Two rooms carry no bench seating, and both are deliberate. The guard's van is
+## described in shared/data/locations as crates and a cold stove and shipped full
+## of benches anyway, because the seating was part of the carriage mesh and there
+## was no way to leave it out. The dining car is bare because the stock seating is
+## back to back, which seats every second diner facing away from the table it is
+## meant to be laid on; it gets tables and chairs as props instead.
+##
+## Anything else turning up bare is a room that has quietly lost its furniture.
+func test_only_the_rooms_that_ask_to_be_bare_are_bare() -> void:
 	var runner := scene_runner(SCENE)
 	await runner.simulate_frames(2)
 	var consist: Node = runner.scene().get_node(WORLD + "/Consist")
-	var guard_van: int = GameContent.carriage_locations().find(&"guard_van")
-	assert_int(guard_van).override_failure_message(
-		"no guard_van in shared/data/locations"
-	).is_greater_equal(0)
+	var aboard: Array = GameContent.carriage_locations()
+	var expected: Array[int] = []
+	for room: StringName in [&"guard_van", &"dining"]:
+		var at: int = aboard.find(room)
+		assert_int(at).override_failure_message(
+			"no %s in shared/data/locations" % room).is_greater_equal(0)
+		expected.append(at)
+	expected.sort()
 
 	var bare: Array[int] = []
 	for i in range(consist.carriage_count):
@@ -139,5 +148,5 @@ func test_the_guard_van_is_the_one_carriage_without_seating() -> void:
 		if carriage.get_node_or_null("Seating") == null:
 			bare.append(i)
 	assert_array(bare).override_failure_message(
-		"only the guard's van should be bare, found %s" % [bare]
-	).is_equal([guard_van])
+		"expected %s to be the bare rooms, found %s" % [expected, bare]
+	).is_equal(expected)
