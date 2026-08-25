@@ -13,10 +13,14 @@ const PLAYER_EYE := 2.60
 const PLAYER_HEIGHT := 2.75
 const PLAYER_RADIUS := 0.38
 
-## Divides the world's render resolution. Measured at 2560x1440: 1 costs 1.68ms
-## a frame and 3 costs 1.55ms, so nine times the pixels are worth 8% of the
-## frame. The scene is bound by draw calls and script, not by fragments, so this
-## stays at 1 until something proves otherwise on a real phone.
+## Where the world's resolution starts. [RenderBudget] owns it from the first
+## frame onward, so this is only what a scene opened in the editor shows.
+##
+## An earlier version of this comment argued for 1 on the strength of a 2560x1440
+## desktop measurement, where 1 cost 1.68ms and 3 cost 1.55ms. That number is real
+## and it is irrelevant: a desktop GPU is not fill-rate bound at 3.7M fragments
+## and a phone at three device pixels per CSS pixel very much is. Measure on the
+## device you are arguing about.
 const RENDER_SHRINK := 1
 
 ## &instance -> never set owner inside an instanced scene. doing so packs the

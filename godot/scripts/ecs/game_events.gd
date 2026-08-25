@@ -89,6 +89,17 @@ const WORLD_CLOCK := &"world_clock"
 ## Payload: {"carriage": number, "location": string}. Reaches JS as "viewer:state".
 const VIEWER_STATE := &"viewer_state"
 
+## How far the world's render resolution is currently divided, and the antialiasing that
+## goes with it.
+##
+## The engine picks this from measured frame time, not from a device name, so it changes
+## during a run on hardware that cannot hold the frame rate. Emitted only when it
+## changes. Without it a soft-looking phone gives no way to tell whether the scaler
+## decided that or something else went wrong.
+##
+## Payload: {"shrink": number, "detail": string}. Reaches JS as "render:budget".
+const RENDER_BUDGET := &"render_budget"
+
 ## One fact the run has produced: a conversation, an item used, a room entered.
 ##
 ## `id` is a ULID, so entries sort by creation without comparing any other field. `kind`
@@ -144,6 +155,7 @@ const OUTBOUND_WIRE: Dictionary[StringName, String] = {
 	RUN_OVER: "game:run_over",
 	WORLD_CLOCK: "world:clock",
 	VIEWER_STATE: "viewer:state",
+	RENDER_BUDGET: "render:budget",
 	JOURNAL_ENTRY: "journal:entry",
 }
 
@@ -159,6 +171,7 @@ const WIRE_FIELDS: Dictionary[String, Array] = {
 	"level:changed": ["level", "index", "total", "outcome"],
 	"world:clock": ["hour", "minute"],
 	"viewer:state": ["carriage", "location"],
+	"render:budget": ["shrink", "detail"],
 	"journal:entry": ["id", "kind", "actor", "target", "place", "at"],
 }
 

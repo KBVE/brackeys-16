@@ -39,6 +39,7 @@ interface GameStore {
   player: GodotToJs['player:state'] | null;
   level: GodotToJs['level:changed'] | null;
   viewer: GodotToJs['viewer:state'] | null;
+  renderBudget: GodotToJs['render:budget'] | null;
   loading: GodotToJs['scene:loading'] | null;
   journal: GodotToJs['journal:entry'][];
   send<C extends keyof JsToGodot>(cmd: C, payload: JsToGodot[C]): void;
@@ -60,6 +61,7 @@ export const useGameStore = create<GameStore>()(() => ({
   player: null,
   level: null,
   viewer: null,
+  renderBudget: null,
   loading: null,
   journal: [],
   send: (cmd, payload) => bridge.send(cmd, payload),
@@ -102,6 +104,7 @@ tracked('journal:entry', (entry) =>
 );
 tracked('level:changed', (level) => set({ level }));
 tracked('viewer:state', (viewer) => set({ viewer }));
+tracked('render:budget', (renderBudget) => set({ renderBudget }));
 tracked('game:score');
 tracked('game:run_over');
 
@@ -145,6 +148,7 @@ export const useBridgeReady = () => useGameStore((s) => s.bridgeReady);
 export const usePlayer = () => useGameStore((s) => s.player);
 export const useLevel = () => useGameStore((s) => s.level);
 export const useViewer = () => useGameStore((s) => s.viewer);
+export const useRenderBudget = () => useGameStore((s) => s.renderBudget);
 export const useLoading = () => useGameStore((s) => s.loading);
 export const useJournal = () => useGameStore((s) => s.journal);
 export const useSend = () => useGameStore((s) => s.send);

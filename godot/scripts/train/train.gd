@@ -47,6 +47,7 @@ const AISLE_EYE := 2.60
 ## the same arc on any display.
 const DRAG_SCREENS_PER_UNIT := 2.6
 
+@onready var _frame: SubViewportContainer = $Screen/Frame
 @onready var _world: SubViewport = $Screen/Frame/World
 @onready var _player: CharacterBody3D = $Screen/Frame/World/Player
 @onready var _cam: Camera3D = $Screen/Frame/World/Player/Camera3D
@@ -75,6 +76,11 @@ var _scope := ECSScope.new()
 
 ## Which way the player faces, in radians. The body carries it; this is the input.
 var _facing := 0.0
+
+## Holds the world's resolution against the frame clock. Built here rather than
+## in the scene so a device that changes speed mid-run can be answered mid-run.
+var _render_budget := RenderBudget.new()
+var _published_shrink := 0
 
 func _ready() -> void:
 	for a: String in OS.get_cmdline_user_args():
@@ -127,6 +133,9 @@ func _ready() -> void:
 	# the world owns the camera now, so picking is its viewport's job, not the
 	# window's
 	_world.physics_object_picking = true
+	_render_budget.begin(DisplayServer.is_touchscreen_available(),
+		DisplayServer.screen_get_scale())
+	_apply_render_budget()
 	# React's ui:restart and an in-world loss take the same path
 	Ecs.world.add_callable(GameEvents.UI_RESTART, _on_ui_restart)
 
@@ -159,6 +168,31 @@ func _process(delta: float) -> void:
 
 	# only the cars near the viewer draw; cost is O(1) in train length
 	_consist.cull_around(_viewer.world_x)
+	_adapt_render_scale(delta)
+
+
+## Hands the frame clock to [RenderBudget] and applies whatever it decides.
+##
+## Runs every frame because the sampling and the hysteresis belong to the budget,
+## not to its caller.
+func _adapt_render_scale(delta: float) -> void:
+	var before := _render_budget.shrink
+	if _render_budget.sample(Engine.get_frames_per_second(), delta) != before:
+		_apply_render_budget()
+
+
+## Resizing the SubViewport reallocates its render target, so this is only ever
+## called on an actual change.
+func _apply_render_budget() -> void:
+	_frame.stretch_shrink = _render_budget.shrink
+	_world.msaa_3d = _render_budget.msaa()
+	if _render_budget.shrink == _published_shrink:
+		return
+	_published_shrink = _render_budget.shrink
+	Ecs.notify(GameEvents.RENDER_BUDGET, {
+		"shrink": _render_budget.shrink,
+		"detail": _render_budget.describe(),
+	})
 
 ## Walks [param metres] along whatever the camera is pointing at, flattened so
 ## looking is not a way to climb.
