@@ -34,3 +34,14 @@ var jump_requested: bool = false
 ## request, not a door that flaps while the key is down.
 var interact_requested: bool = false
 
+
+## True on the frame the player asked for the other thing. Reach is crowded in a
+## carriage -- the last bench in a row stands within arm's length of the end door -- and
+## with one key the nearer answer always wins and the further one is unreachable. This
+## is how you say "not that one".
+var secondary_requested: bool = false
+
+## True on the frame the pointer was clicked on something. Pointing is the unambiguous
+## way to choose between things standing close together, so it carries no primary or
+## secondary: what was clicked is what was meant.
+var pointer_clicked: bool = false

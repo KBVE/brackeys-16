@@ -23,6 +23,9 @@ var mouse_screens_per_unit: float = 2.6
 ## live, which is what keeps the tests driving real actions.
 var engaged: bool = true
 
+var _was_engaged := false
+var _was_clicking := false
+
 var _drag_units := Vector2.ZERO
 var _look_units := Vector2.ZERO
 
@@ -60,6 +63,8 @@ func _on_update(delta: float) -> void:
 			idle.pitch_units = 0.0
 			idle.jump_requested = false
 			idle.interact_requested = false
+			idle.secondary_requested = false
+			idle.pointer_clicked = false
 			idle.holding_look = false
 			idle.recentring_view = false
 		return
@@ -80,6 +85,13 @@ func _on_update(delta: float) -> void:
 	var recentring_view := Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)
 	var jump_requested := Input.is_action_just_pressed(&"jump")
 	var interact_requested := Input.is_action_just_pressed(&"interact")
+	var secondary_requested := Input.is_action_just_pressed(&"interact_secondary")
+	# a click that woke an inert run is spent doing exactly that, or the first thing the
+	# player clicks to take control of the window is also the first thing they open
+	var pointer_clicked := _was_engaged and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) \
+		and not _was_clicking
+	_was_clicking = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	_was_engaged = engaged
 	_drag_units = Vector2.ZERO
 	_look_units = Vector2.ZERO
 	for intent: CInput in view(&"CInput"):
@@ -91,3 +103,5 @@ func _on_update(delta: float) -> void:
 		intent.recentring_view = recentring_view
 		intent.jump_requested = jump_requested
 		intent.interact_requested = interact_requested
+		intent.secondary_requested = secondary_requested
+		intent.pointer_clicked = pointer_clicked

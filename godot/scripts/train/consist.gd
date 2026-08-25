@@ -44,18 +44,28 @@ class_name Consist
 ## They are one now, so a ray cast at the floor hits the floor the player can see, and
 ## the capsule stands on the deck rather than a plane a metre and a quarter beneath it.
 const FLOOR_Y := 1.2735
-## Where the cushions are, measured by dropping rays over the benches: the seating tops
-## out 0.589 above the deck from z 0.55 to the wall, and the bays repeat every 2.4m,
-## five to a car. Anchors rather than geometry, because what sits in them is an entity
-## and entities need a place to be told about, not a surface to discover.
-const CUSHION_ABOVE_FLOOR := 0.5891
+## Where the cushions are, found by dropping rays every 15cm down the length of a bench
+## and reading the profile: floor at 0.00, cushions at 0.52, seat backs at 1.33.
+##
+## The seats are back to back in pairs. A back stands every 2.35m and carries a cushion
+## on either side of it, so the anchors are not on the pitch -- they straddle it. Putting
+## them on the round numbers puts every one of them either inside a seat back or in the
+## gap between two pairs, which is the empty floor a passenger would be sitting on.
+const CUSHION_ABOVE_FLOOR := 0.52
 const SEAT_CENTRE_Z := 0.95
 
-## Rows every 2.4m, offset half a pitch so they fall between the bay dividers rather
-## than on them, out to 8.4 either side of the carriage centre. The seating mesh runs to
-## 8.659, so the last row is still inside it.
-const SEAT_ROW_PITCH := 2.4
+## Where the bench starts, measured across the car: the cushions run from here out to
+## the wall. What the aisle has left over is what anybody can walk down.
+const SEAT_EDGE_Z := 0.55
+
+## Between the pitch and the pair: a back every 2.35m, a cushion 0.45 either side of it.
+const SEAT_ROW_PITCH := 2.35
+const SEAT_PAIR_REACH := 0.45
 const SEAT_ROWS_EITHER_SIDE := 3
+
+## The last back stands at 7.05 and has floor beyond it rather than a second cushion, so
+## anchors past this are seats nobody built.
+const SEAT_FURTHEST_X := 7.0
 
 const INTERIOR_HALF_Z := 1.5
 
@@ -316,18 +326,19 @@ func seat_anchors() -> Array[Dictionary]:
 		if seating_scene == null or undressed_carriages.has(i):
 			continue
 		for row in range(-SEAT_ROWS_EITHER_SIDE, SEAT_ROWS_EITHER_SIDE + 1):
-			# half a pitch off centre, because the dividers are on the round numbers:
-			# a seat placed on one sits its occupant inside the partition
-			var bay := (row + 0.5) * SEAT_ROW_PITCH
-			for side: float in [1.0, -1.0]:
-				out.append({
-					"at": global_position + Vector3(_offset(i) + bay,
-						FLOOR_Y + CUSHION_ABOVE_FLOOR, side * SEAT_CENTRE_Z),
-					# the benches run along the walls with their backs to them, so a
-					# sitter faces the aisle across the car rather than down it. Which
-					# way across depends on the side he is on: face the wrong one and
-					# he sits with his nose in the cushion.
-					"facing": PI if side > 0.0 else 0.0,
-					"carriage": i,
-				})
+			for facing_pair: float in [-1.0, 1.0]:
+				var bay := row * SEAT_ROW_PITCH + facing_pair * SEAT_PAIR_REACH
+				if absf(bay) > SEAT_FURTHEST_X:
+					continue
+				for side: float in [1.0, -1.0]:
+					out.append({
+						"at": global_position + Vector3(_offset(i) + bay,
+							FLOOR_Y + CUSHION_ABOVE_FLOOR, side * SEAT_CENTRE_Z),
+						# the benches run along the walls with their backs to them, so a
+						# sitter faces the aisle across the car rather than down it.
+						# Which way across depends on the side he is on: face the wrong
+						# one and he sits with his nose in the cushion.
+						"facing": PI if side > 0.0 else 0.0,
+						"carriage": i,
+					})
 	return out

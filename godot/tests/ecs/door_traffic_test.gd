@@ -50,17 +50,22 @@ func test_a_door_opens_for_somebody_walking_through_it() -> void:
 
 ## The escort pace a few metres of the guard's van all night. On distance alone the end
 ## door flapped every time one of them turned round at that end of their beat.
+##
+## Measured against whoever else is aboard rather than on a still train: the cast walk
+## their timelines the whole time, and waiting for them to settle takes twenty seconds
+## of walking. What is asserted is narrower and truer for it -- a van door standing open
+## with nobody but the escort near it is the escort having opened it.
 func test_pacing_beside_a_door_does_not_work_it() -> void:
 	var runner := scene_runner(SCENE)
 	await runner.simulate_frames(20)
 
 	var posted: Array[Vector3] = []
 	for entry: Dictionary in Ecs.world.multi_view([CErrand, CAppearance]):
-		if not entry["entity"].has(CPassenger):
+		if entry[&"CErrand"].patrol_metres > 0.0:
 			posted.append(entry[&"CErrand"].station)
-	assert_array(posted).is_not_empty()
+	assert_array(posted).override_failure_message(
+		"the guard's van should hold an escort with a beat to walk").is_not_empty()
 
-	# The doors of the van they are posted in, which are the only ones they come near.
 	var theirs: Array = _doors().filter(func(entry: Dictionary) -> bool:
 		var leaf: Node3D = entry[&"ECSViewComponent"].view as Node3D
 		for station: Vector3 in posted:
@@ -69,12 +74,29 @@ func test_pacing_beside_a_door_does_not_work_it() -> void:
 		return false)
 	assert_array(theirs).is_not_empty()
 
-	var worked := 0
-	for step in range(10):
+	var sampled := 0
+	for step in range(12):
 		await runner.simulate_frames(45)
 		for entry: Dictionary in theirs:
-			if entry[&"CDoor"].swing > 0.5:
-				worked += 1
-	assert_int(worked).override_failure_message(
-		"the escort turning round at the end of their beat should leave the door alone"
-	).is_equal(0)
+			var leaf: Node3D = entry[&"ECSViewComponent"].view as Node3D
+			if _someone_else_is_at(leaf.global_position):
+				continue
+			sampled += 1
+			assert_int(entry[&"CDoor"].held_open_by).override_failure_message(
+				"the escort turning round at the end of their beat worked the door"
+			).is_equal(0)
+	assert_int(sampled).override_failure_message(
+		"never once was the van door left to the escort alone").is_greater(0)
+
+
+## Whether anybody who is not on a beat is close enough to a door to be the one using
+## it. Generous on purpose: what this rules out is crediting the escort with a door
+## somebody else opened.
+func _someone_else_is_at(door_at: Vector3) -> bool:
+	for entry: Dictionary in Ecs.world.multi_view([CErrand, CLocomotion]):
+		var errand: CErrand = entry[&"CErrand"]
+		if errand.patrol_metres > 0.0 or not errand.stationed:
+			continue
+		if absf(errand.at.x - door_at.x) < SDoorTraffic.HOLD_METRES + 2.0:
+			return true
+	return false

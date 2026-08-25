@@ -185,3 +185,46 @@ func test_the_doorway_is_blocked_shut_and_clear_open() -> void:
 	assert_int(space.intersect_shape(query, 8).size()).override_failure_message(
 		"the doorway is still blocked with the leaf fully open, so it is in the way"
 	).is_equal(0)
+
+
+## A door that opens into the player sweeps them down the aisle and wedges them in
+## the corner between the end wall and the side wall, where the leaf is still
+## overlapping them and depenetration will not let go.
+##
+## Standing on both sides in turn, because the answer has to be right from either.
+func test_the_leaf_never_opens_into_the_player() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(2)
+	var train := _train(runner)
+	var player: Node3D = train.get_node(WORLD + "/Player")
+	train._control.set_update(false)
+
+	for side: float in [1.0, -1.0]:
+		var leaf := _leaves(train)[0]
+		leaf.rotation.y = 0.0
+		await runner.simulate_frames(1)
+		# a stride back from the leaf, on one side of it then the other
+		var stand := leaf.global_position + Vector3(side * 1.1, 1.2, -0.5)
+		player.global_position = stand
+		train._intent.interact_requested = true
+		await runner.simulate_frames(1)
+		train._intent.interact_requested = false
+		await runner.simulate_frames(90)
+
+		var swept := leaf.get_node("Collision").get_child(0) as CollisionShape3D
+		var box := (swept.shape as BoxShape3D).size
+		var query := PhysicsShapeQueryParameters3D.new()
+		var capsule := CapsuleShape3D.new()
+		capsule.radius = 0.38
+		capsule.height = 1.6
+		query.shape = capsule
+		query.transform = Transform3D(Basis(), stand)
+		query.exclude = [player.get_rid()]
+		var hits := player.get_world_3d().direct_space_state.intersect_shape(query, 8)
+		var swept_into := hits.any(func(h: Dictionary) -> bool:
+			return (h["collider"] as Node).get_parent() == leaf)
+		assert_bool(swept_into).override_failure_message(
+			"the leaf opened into where the player was standing on side %.0f, "
+			% side + "which is what wedges them in the corner (leaf %.2fm wide)"
+			% box.z
+		).is_false()

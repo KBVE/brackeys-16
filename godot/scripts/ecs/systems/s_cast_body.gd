@@ -25,10 +25,6 @@ const BUILDS_PER_TICK := 1
 ## in one carriage do not stand in a heap.
 const PLACEMENT_SPREAD := 7.0
 
-## How far off the middle of the aisle they stand. The player walks the centre line and
-## the seats are against the walls.
-const AISLE_HALF_WIDTH := 0.95
-
 ## Where the eyes sit up a body, as a share of its height. Measured off the pack's own
 ## rigs, which put them in the same place in every body it ships: 1.70 of an unscaled
 ## 1.8141. Used rather than the rig's own measurement because a station is wanted for
@@ -48,6 +44,11 @@ var carriage_window: int = 2
 ## authored carries their own height, so this is only ever a fallback.
 var stature_metres: float = 1.75
 var floor_height_metres: float = 0.0
+
+## How far off the middle of the aisle anybody may stand, shoulders included. Set from
+## the carriage: the benches begin at [constant Consist.SEAT_EDGE_Z], and a station
+## outside this is a passenger standing inside the seating.
+var aisle_half_width: float = 0.3
 
 ## The rig's yaw offset, the same quarter turn the player's takes.
 var forward_yaw_offset_radians: float = -PI * 0.5
@@ -130,11 +131,16 @@ func _station(errand: CErrand, appearance: CAppearance, carriage: int) -> void:
 	rng.seed = appearance.character_seed
 	var along := (carriage - (carriage_count - 1) / 2.0) * carriage_pitch \
 		+ rng.randf_range(-PLACEMENT_SPREAD, PLACEMENT_SPREAD)
-	var side := AISLE_HALF_WIDTH if rng.randf() < 0.5 else -AISLE_HALF_WIDTH
+	# In the aisle, never in a bench. Which side of the centre line they favour is theirs
+	# and stays theirs, so two passengers in one carriage are not standing in each other.
+	var side := rng.randf_range(0.35, 1.0) * (1.0 if rng.randf() < 0.5 else -1.0)
+	var off_centre := side * aisle_half_width
 	errand.station = Vector3(along,
-		floor_height_metres + appearance.stature_metres * EYE_FRACTION_OF_STATURE, side)
+		floor_height_metres + appearance.stature_metres * EYE_FRACTION_OF_STATURE, off_centre)
+	# Turned to the seats they are standing beside rather than down the train, which is
+	# what makes somebody waiting look like somebody waiting.
 	errand.resting_facing_radians = SCastWalk.facing_for(
-		Vector3(0.0, 0.0, -side), forward_yaw_offset_radians)
+		Vector3(0.0, 0.0, -signf(off_centre)), forward_yaw_offset_radians)
 	if errand.stationed:
 		return
 	# First time only. Everybody starts standing where they belong; after that they

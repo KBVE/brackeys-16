@@ -43,6 +43,12 @@ func _on_update(_delta: float) -> void:
 		var errand: CErrand = entry[&"CErrand"]
 		if not errand.stationed:
 			continue
+		# A patrol is not going anywhere. Their beat ends a stride or two short of the
+		# van door and the geometry alone cannot tell that from a passenger whose walk
+		# ends at the doorway, so what settles it is that one of them has a destination
+		# beyond the door and the other is walking back and forth in front of it.
+		if errand.patrol_metres > 0.0:
+			continue
 		var locomotion: CLocomotion = entry[&"CLocomotion"]
 		var speed := Vector2(locomotion.forward_metres_per_second,
 			locomotion.strafe_metres_per_second).length()

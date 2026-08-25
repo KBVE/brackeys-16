@@ -11,15 +11,28 @@ class_name SDoor
 ## Only the nearest door in reach answers, so standing in a vestibule between two
 ## cars opens the one being looked at rather than both.
 
+## Half a person, near enough. What the leaf has to clear to swing past somebody
+## rather than into them.
+const SHOULDER_METRES := 0.45
+
 func _on_update(delta: float) -> void:
 	var asked := false
 	var standing_at := Vector3.ZERO
-	for entry: Dictionary in multi_view([CInput, CLocomotion, ECSViewComponent]):
+	var pointed_at: CDoor = null
+	for entry: Dictionary in multi_view([CInput, CLocomotion, CPointer, ECSViewComponent]):
 		var body: Node3D = entry[&"ECSViewComponent"].view as Node3D
 		if body == null:
 			continue
+		var intent: CInput = entry[&"CInput"]
+		var pointer: CPointer = entry[&"CPointer"]
 		standing_at = body.global_position
-		asked = entry[&"CInput"].interact_requested
+		# [G] as well as [F], because the last bench in a row stands within arm's reach
+		# of the end door and [F] is answered by the bench first. With one key the door
+		# is simply unreachable from there.
+		asked = intent.interact_requested or intent.secondary_requested
+		if intent.pointer_clicked and pointer.door != null:
+			pointed_at = pointer.door
+			intent.pointer_clicked = false
 		break
 
 	var nearest: Dictionary = {}
@@ -30,6 +43,12 @@ func _on_update(delta: float) -> void:
 			continue
 		var door: CDoor = entry[&"CDoor"]
 		_swing(door, leaf, delta)
+		# a clicked door answers wherever it is standing: pointing at it is already
+		# the unambiguous half of this, and making it also be within arm's reach would
+		# throw that away
+		if door == pointed_at:
+			_answer(door, leaf, standing_at, 0.0)
+			continue
 		if not asked:
 			continue
 		var distance := leaf.global_position.distance_to(standing_at)
@@ -39,14 +58,19 @@ func _on_update(delta: float) -> void:
 
 	if nearest.is_empty():
 		return
-	_answer(nearest[&"CDoor"], nearest_distance)
+	_answer(nearest[&"CDoor"], nearest[&"ECSViewComponent"].view as Node3D,
+		standing_at, nearest_distance)
 
 
 ## Reports the attempt either way. A locked door that says nothing is
 ## indistinguishable from one the player failed to reach.
-func _answer(door: CDoor, distance: float) -> void:
+func _answer(door: CDoor, leaf: Node3D, standing_at: Vector3, distance: float) -> void:
 	if not door.is_locked:
-		door.is_open = not door.is_open
+		if not door.is_open:
+			door.swing_sign = _away_from(leaf, standing_at)
+			door.is_open = true
+		elif not _standing_in_the_doorway(leaf, standing_at):
+			door.is_open = false
 	notify(GameEvents.DOOR_STATE, {
 		"open": door.is_open,
 		"locked": door.is_locked,
@@ -66,3 +90,34 @@ func _swing(door: CDoor, leaf: Node3D, delta: float) -> void:
 	# and halting on the frame it lands
 	var eased: float = door.swing * door.swing * (3.0 - 2.0 * door.swing)
 	leaf.rotation.y = eased * door.open_radians * door.swing_sign
+
+
+## Which way the leaf has to turn to move away from [param standing_at].
+##
+## A door that opens into the person opening it shoves them down the aisle, because
+## the leaf is a static body sweeping through where they are standing. Real carriage
+## doors pick a side and live with it; a game door should get out of the way.
+##
+## Positive rotation carries the leaf toward its own local -X, so somebody on the +X
+## side is escaped by turning positive, and the reverse.
+func _away_from(leaf: Node3D, standing_at: Vector3) -> float:
+	return 1.0 if leaf.to_local(standing_at).x > 0.0 else -1.0
+
+
+## Whether [param standing_at] is inside the opening the leaf would shut into.
+##
+## Opening cannot trap anybody, because the leaf is sent away from them. Shutting
+## can: stand in the doorway with the door open, press the key, and the leaf swings
+## back through you and wedges you against the frame. So it does not.
+##
+## Measured in the parent's frame, which does not turn with the leaf, and against
+## the leaf's own bounds so the opening is whatever the door is wide.
+func _standing_in_the_doorway(leaf: Node3D, standing_at: Vector3) -> bool:
+	var parent := leaf.get_parent() as Node3D
+	var visual := leaf as VisualInstance3D
+	if parent == null or visual == null:
+		return false
+	var box := visual.get_aabb()
+	var here := parent.to_local(standing_at) - leaf.position
+	var across := here.z - (box.position.z + box.size.z * 0.5)
+	return absf(here.x) < SHOULDER_METRES and absf(across) < box.size.z * 0.5

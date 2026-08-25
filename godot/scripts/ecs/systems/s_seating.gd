@@ -12,27 +12,34 @@ class_name SSeating
 
 func _on_update(_delta: float) -> void:
 	for entry: Dictionary in multi_view([CInput, CLocomotion, CSeating, CCharacterRig,
-			ECSViewComponent]):
+			CPointer, ECSViewComponent]):
 		var body: CharacterBody3D = entry[&"ECSViewComponent"].view as CharacterBody3D
 		if body == null:
 			continue
 		_step(entry[&"CInput"], entry[&"CLocomotion"], entry[&"CSeating"],
-			entry[&"CCharacterRig"].rig, body)
+			entry[&"CPointer"], entry[&"CCharacterRig"].rig, body)
 
 
 func _step(intent: CInput, locomotion: CLocomotion, seating: CSeating,
-		rig: CharacterRig, body: CharacterBody3D) -> void:
+		pointer: CPointer, rig: CharacterRig, body: CharacterBody3D) -> void:
 	if seating.seated:
 		# a seated body has no walk, and the request that would have moved it is the
 		# one that gets it up again
 		intent.walk_units = 0.0
 		intent.strafe_units = 0.0
 		intent.jump_requested = false
-		if intent.interact_requested:
+		if intent.interact_requested or intent.pointer_clicked:
 			# consumed, so one press is one answer: without this the door behind the
 			# bench opens on the same press that got him out of it
 			intent.interact_requested = false
+			intent.pointer_clicked = false
 			_stand(locomotion, seating, rig, body)
+		return
+
+	# pointing first: a click names the bench, where [F] can only take the nearest one
+	if intent.pointer_clicked and pointer.seat != null and pointer.seat.free_to_take():
+		intent.pointer_clicked = false
+		_sit(locomotion, seating, rig, body, pointer.seat)
 		return
 	if not intent.interact_requested:
 		return

@@ -84,6 +84,7 @@ var _intent: CInput
 var _posture: CPosture
 var _foot_planting: CFootPlanting
 var _seating: CSeating
+var _pointer: CPointer
 var _control: SPlayerControl
 var _occupant: COccupant
 var _here: CLocation
@@ -150,9 +151,10 @@ func _ready() -> void:
 	_posture = CPosture.new()
 	_foot_planting = CFootPlanting.new()
 	_seating = CSeating.new()
+	_pointer = CPointer.new()
 	_scope.spawn().add(_viewer).add(_occupant).add(_here).add(_intent) \
 		.add(_locomotion).add(_carriage_camera()) \
-		.add(CCharacterRig.new(body)).add(CGait.new()).add(_posture).add(_foot_planting).add(_seating) \
+		.add(CCharacterRig.new(body)).add(CGait.new()).add(_posture).add(_foot_planting).add(_seating).add(_pointer).add(_the_highlight()) \
 		.add(ECSViewComponent.new(_player))
 	_control = SPlayerControl.new()
 	# a headless run has no window to steal focus from, and its tests press real actions
@@ -160,6 +162,8 @@ func _ready() -> void:
 	_control.drag_screens_per_unit = DRAG_SCREENS_PER_UNIT
 	_scope.add_system(&"player_control", _control)
 	_spawn_the_seats()
+	_scope.add_system(&"pointing", SPointing.new())
+	_scope.add_system(&"highlight", SHighlight.new())
 	_scope.add_system(&"seating", SSeating.new())
 	_scope.add_system(&"locomotion", SLocomotion.new())
 	_scope.add_system(&"camera_aim", SCameraAim.new())
@@ -172,7 +176,7 @@ func _ready() -> void:
 	occupancy.carriage_count = _consist.carriage_count
 	_scope.add_system(&"occupancy", occupancy)
 	_scope.add_system(&"cast_body", _cast_body_system())
-	_scope.add_system(&"cast_walk", SCastWalk.new())
+	_scope.add_system(&"cast_walk", _cast_walk_system())
 	_scope.add_system(&"door_traffic", SDoorTraffic.new())
 	_scope.spawn().add(CParallax.new()).add(ECSViewComponent.new(_forest))
 	_scope.add_system(&"parallax", SParallax.new())
@@ -182,9 +186,10 @@ func _ready() -> void:
 	lamps.lamp_glass = _consist.glow_material()
 	for leaf: Node3D in _consist.door_leaves():
 		var door := CDoor.new()
-		# the fore door is hinged on the opposite side to the aft one, so both swing
-		# clear of the doorway rather than one of them sweeping through it
-		door.swing_sign = 1.0 if leaf.position.x > 0.0 else -1.0
+		# opening outward by default, so a door swung by anything that is not the
+		# player -- a passenger walking through, a scripted beat -- still clears the
+		# aisle rather than sweeping down it. SDoor overrides this per press.
+		door.swing_sign = -1.0 if leaf.position.x > 0.0 else 1.0
 		_scope.spawn().add(door).add(ECSViewComponent.new(leaf))
 	_scope.add_system(&"door", SDoor.new())
 	_scope.add_system(&"carriage_lamps", lamps)
@@ -307,6 +312,19 @@ func _add_player_body() -> PlayerBody:
 	return body
 
 
+## How far off the centre line of the aisle anybody can stand before they are standing
+## in a bench. The benches decide it, so it is measured off them rather than written
+## down twice.
+func _aisle_half_width() -> float:
+	return maxf(Consist.SEAT_EDGE_Z - SCastWalk.SHOULDER_METRES, 0.05)
+
+
+func _cast_walk_system() -> SCastWalk:
+	var walking := SCastWalk.new()
+	walking.aisle_half_width = _aisle_half_width()
+	return walking
+
+
 ## Passengers hang off a node of their own rather than off the consist, because a
 ## carriage is culled by visibility and a rig is culled by being built at all.
 func _cast_body_system() -> SCastBody:
@@ -320,6 +338,7 @@ func _cast_body_system() -> SCastBody:
 	bodies.carriage_count = _consist.carriage_count
 	bodies.carriage_window = _consist.mesh_window
 	bodies.floor_height_metres = Consist.FLOOR_Y
+	bodies.aisle_half_width = _aisle_half_width()
 	bodies.forward_yaw_offset_radians = _locomotion.forward_yaw_offset_radians
 	return bodies
 
@@ -431,3 +450,14 @@ func _spawn_the_seats() -> void:
 		seat.facing_radians = anchor["facing"]
 		seat.carriage_index = anchor["carriage"]
 		_scope.spawn().add(seat)
+
+
+## The outline lives beside the consist rather than on the player, because what it marks
+## is out in the carriage and the player is the one thing it never draws.
+func _the_highlight() -> CHighlight:
+	var marker := SelectionHighlight.new()
+	marker.name = "Selection"
+	_consist.get_parent().add_child(marker)
+	var pointing := CHighlight.new()
+	pointing.view = marker
+	return pointing
