@@ -81,6 +81,15 @@
       },
       "description": "Where the player is standing: the carriage they are in and the room that carriage stands in for.\n\nEmitted only when one of them changes, never per frame. This replaces the in-engine debug label, so the information lives in the React panel with everything else."
     },
+    "RENDER_BUDGET": {
+      "bus": "render_budget",
+      "wire": "render:budget",
+      "payload": {
+        "shrink": "number",
+        "detail": "string"
+      },
+      "description": "How far the world's render resolution is currently divided, and the antialiasing that goes with it.\n\nThe engine picks this from measured frame time, not from a device name, so it changes during a run on hardware that cannot hold the frame rate. Emitted only when it changes. Without it a soft-looking phone gives no way to tell whether the scaler decided that or something else went wrong."
+    },
     "JOURNAL_ENTRY": {
       "bus": "journal_entry",
       "wire": "journal:entry",

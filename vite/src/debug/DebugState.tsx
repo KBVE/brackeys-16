@@ -9,6 +9,7 @@ import {
   useWorld,
   usePlayer,
   useViewer,
+  useRenderBudget,
   useLevel,
 } from '../state/gameStore';
 import { useClock } from '../state/paperStore';
@@ -31,6 +32,7 @@ export function DebugState() {
   const world = useWorld();
   const player = usePlayer();
   const viewer = useViewer();
+  const renderBudget = useRenderBudget();
   const level = useLevel();
   const clock = useClock();
   const fps = useFrameRate();
@@ -46,6 +48,10 @@ export function DebugState() {
             ? `${resolution.width}x${resolution.height} @${resolution.devicePixelRatio}x`
             : 'unknown'
         }
+      />
+      <Row
+        label="scale"
+        value={renderBudget ? renderBudget.detail : 'not reported'}
       />
       <Row label="boot" value={boot === 'loading' ? `loading ${progress}%` : boot} />
       <Row label="bridge" value={bridgeReady ? 'ready' : 'waiting'} />

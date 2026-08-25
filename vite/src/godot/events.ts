@@ -44,6 +44,9 @@ export interface GodotToJs {
   // Where the player is standing: the carriage they are in and the room that carriage
   // stands in for.
   'viewer:state': { carriage: number; location: string };
+  // How far the world's render resolution is currently divided, and the antialiasing
+  // that goes with it.
+  'render:budget': { shrink: number; detail: string };
   // One fact the run has produced: a conversation, an item used, a room entered.
   'journal:entry': { id: string; kind: number; actor: string; target: string; place: string; at: number };
 }
@@ -76,6 +79,7 @@ export const WIRE_FIELDS: Record<string, readonly string[]> = {
   'level:changed': ['level', 'index', 'total', 'outcome'],
   'world:clock': ['hour', 'minute'],
   'viewer:state': ['carriage', 'location'],
+  'render:budget': ['shrink', 'detail'],
   'journal:entry': ['id', 'kind', 'actor', 'target', 'place', 'at'],
 };
 
