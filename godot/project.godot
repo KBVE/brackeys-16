@@ -35,6 +35,8 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+window/dpi/allow_hidpi=false
+window/vsync/vsync_mode=0
 
 [editor_plugins]
 
@@ -130,5 +132,6 @@ plugins={}
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
+anti_aliasing/quality/msaa_3d=2
 environment/defaults/default_clear_color=Color(0.909804, 0.878431, 0.8, 1)
 environment/defaults/default_environment="res://default_env.tres"

@@ -57,7 +57,12 @@ jobs:
               status,
               '',
               `${compare.data.ahead_by} commit(s) ahead of main.`,
+              '',
+              '[KBVE Godot Workflow](https://kbve.com/application/godot/)'
+                + ' · [KBVE Git Notes](https://kbve.com/application/git/#cheatsheet)',
             ].join('\n')
+
+            const title = version ? `release: v${version}` : 'release: dev to main'
 
             const open = await github.rest.pulls.list({
               ...params, base: 'main', head: `${params.owner}:dev`, state: 'open',
@@ -65,8 +70,8 @@ jobs:
 
             if (open.data.length > 0) {
               const number = open.data[0].number
-              await github.rest.pulls.update({ ...params, pull_number: number, body })
-              core.notice(`Refreshed PR #${number}.`)
+              await github.rest.pulls.update({ ...params, pull_number: number, title, body })
+              core.notice(`Refreshed PR #${number} as "${title}".`)
               return
             }
 
@@ -74,7 +79,7 @@ jobs:
               ...params,
               base: 'main',
               head: 'dev',
-              title: version ? `release: v${version}` : 'release: dev to main',
+              title,
               body,
             })
             core.notice(`Opened PR #${created.data.number}.`)

@@ -20,6 +20,22 @@ godot/assets/characters/**/*.webp  filter=lfs diff=lfs merge=lfs -text
 godot/assets/characters/**/*.exr   filter=lfs diff=lfs merge=lfs -text
 godot/assets/characters/**/*.hdr   filter=lfs diff=lfs merge=lfs -text
 
+# assets/player is the slice of the above that the game actually loads, copied out
+# by tools/build_player_kit.gd so the Web export can exclude assets/characters
+# wholesale. Same blobs, so LFS stores them once.
+godot/assets/player/**/*.glb   filter=lfs diff=lfs merge=lfs -text
+godot/assets/player/**/*.gltf  filter=lfs diff=lfs merge=lfs -text
+godot/assets/player/**/*.fbx   filter=lfs diff=lfs merge=lfs -text
+godot/assets/player/**/*.bin   filter=lfs diff=lfs merge=lfs -text
+godot/assets/player/**/*.blend filter=lfs diff=lfs merge=lfs -text
+godot/assets/player/**/*.png   filter=lfs diff=lfs merge=lfs -text
+godot/assets/player/**/*.jpg   filter=lfs diff=lfs merge=lfs -text
+godot/assets/player/**/*.jpeg  filter=lfs diff=lfs merge=lfs -text
+godot/assets/player/**/*.tga   filter=lfs diff=lfs merge=lfs -text
+godot/assets/player/**/*.webp  filter=lfs diff=lfs merge=lfs -text
+godot/assets/player/**/*.exr   filter=lfs diff=lfs merge=lfs -text
+godot/assets/player/**/*.hdr   filter=lfs diff=lfs merge=lfs -text
+
 # Godot's .import and .tres sidecars are deliberately absent. They are text, the
 # rules above never match them (*.png does not match *.png.import), and spelling
 # out "-diff" to say so would mark them binary -- which is the opposite of what

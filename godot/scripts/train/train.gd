@@ -61,21 +61,18 @@ var _seed_running := true
 var _yaw_override := INF
 var _eye_override := INF
 var _viewer: CViewer
+var _locomotion: CLocomotion
+var _control: SPlayerControl
 var _occupant: COccupant
 var _here: CLocation
 var _time_of_day: CTimeOfDay
 var _run: CRun
-## Drag distance accumulated since the last frame, in movement units.
-var _drag := Vector2.ZERO
 ## Seconds until the next knock, and how much of the last one is left.
 var _jolt_countdown := 0.0
 var _jolt_energy := 0.0
 
 ## Torn down with the scene. The clock is not here; it lives on [Session].
 var _scope := ECSScope.new()
-
-## Which way the player faces, in radians. The body carries it; this is the input.
-var _facing := 0.0
 
 ## Holds the world's resolution against the frame clock. Built here rather than
 ## in the scene so a device that changes speed mid-run can be answered mid-run.
@@ -116,7 +113,18 @@ func _ready() -> void:
 	_viewer = CViewer.new()
 	_occupant = COccupant.new()
 	_here = CLocation.new()
-	_scope.spawn().add(_viewer).add(_occupant).add(_here).add(ECSViewComponent.new(_player))
+	_locomotion = CLocomotion.new()
+	_locomotion.eye_height_metres = _eye_override if is_finite(_eye_override) else AISLE_EYE
+	_locomotion.turn_radians_per_unit = TURN_RADIANS_PER_UNIT
+	_locomotion.walk_metres_per_unit = WALK_METRES_PER_UNIT
+	_scope.spawn().add(_viewer).add(_occupant).add(_here).add(CInput.new()) \
+		.add(_locomotion).add(CCharacterRig.new(_add_player_body())) \
+		.add(ECSViewComponent.new(_player))
+	_control = SPlayerControl.new()
+	_control.drag_screens_per_unit = DRAG_SCREENS_PER_UNIT
+	_scope.add_system(&"player_control", _control)
+	_scope.add_system(&"locomotion", SLocomotion.new())
+	_scope.add_system(&"character_animation", SCharacterAnimation.new())
 	_scope.add_system(&"viewer", SViewer.new())
 	var occupancy := SOccupancy.new()
 	occupancy.carriage_pitch = _consist.pitch
@@ -146,8 +154,7 @@ func _ready() -> void:
 		_time_of_day.phase = fposmod(_seed_phase, 1.0)
 	_begin()
 	if is_finite(_yaw_override):
-		_facing = _yaw_override
-		_apply_shot()
+		_locomotion.facing_radians = _yaw_override
 
 ## Driven by `-- --detail=tiling,strength,albedo`, to sweep without rebuilding.
 func _tune_detail(tiling: float, strength: float, albedo: float) -> void:
@@ -155,7 +162,7 @@ func _tune_detail(tiling: float, strength: float, albedo: float) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	_read_input(delta)
+	_read_clock_keys()
 	# after _apply_shot, which writes the resting height and would otherwise
 	# wipe the sway back out every frame
 	_advance_jolt(delta)
@@ -194,23 +201,6 @@ func _apply_render_budget() -> void:
 		"detail": _render_budget.describe(),
 	})
 
-## Walks [param metres] along whatever the camera is pointing at, flattened so
-## looking is not a way to climb.
-##
-## The step is already a distance, so it becomes a velocity only because
-## move_and_slide wants one; sliding is what carries the player along a wall
-## instead of stopping dead against it.
-func _walk(metres: float, delta: float) -> void:
-	var forward := -_cam.global_transform.basis.z
-	forward.y = 0.0
-	if forward.length_squared() < 0.0001 or is_zero_approx(metres):
-		_player.velocity = Vector3.ZERO
-		_player.move_and_slide()
-		return
-	_player.velocity = forward.normalized() * metres / maxf(delta, 0.0001)
-	_player.move_and_slide()
-
-
 ## Counts down to the next knock and bleeds the last one away.
 func _advance_jolt(delta: float) -> void:
 	_jolt_energy = maxf(_jolt_energy - delta / JOLT_FADE, 0.0)
@@ -224,28 +214,35 @@ func _advance_jolt(delta: float) -> void:
 func _exit_tree() -> void:
 	_scope.dispose()
 
-## Yaw rides the body, not the camera, so the player transform is the whole
-## answer to "which way is the player facing" and [SViewer] can just read it.
-##
-## X and Z belong to [method CharacterBody3D.move_and_slide] now, so this only
-## writes the parts the walk does not own.
-func _apply_shot() -> void:
-	_player.position.y = _eye_override if is_finite(_eye_override) else AISLE_EYE
-	_player.rotation.y = _facing
+## The body carries the yaw and [SLocomotion] writes it, so the camera only ever
+## needs framing: it hangs at the eye, a quarter turn round to look down the train.
+func _frame_the_shot() -> void:
 	_cam.position = Vector3.ZERO
-	_cam.rotation = Vector3(0.0, deg_to_rad(-90.0), 0.0)
+	_cam.rotation = Vector3(0.0, _locomotion.forward_yaw_offset_radians, 0.0)
 	_cam.near = 0.05
 	GameBridge.set_world_mode(StateBits.WorldMode.MODE_3D)
+
+
+## The rig is a child of the body, so walking and turning carry it for free and
+## nothing has to copy a transform onto it.
+func _add_player_body() -> PlayerBody:
+	var body := PlayerBody.new()
+	body.name = "Rig"
+	body.eye_height_metres = _locomotion.eye_height_metres
+	body.forward_yaw_offset_radians = _locomotion.forward_yaw_offset_radians
+	_player.add_child(body)
+	return body
 
 
 ## Starts the run. There is one scene and one camera, so this sets the framing
 ## and announces it; it never swaps anything.
 func _begin() -> void:
 	_run.level_index = 0
-	_facing = 0.0
+	_locomotion.facing_radians = 0.0
 	_player.velocity = Vector3.ZERO
-	_player.position = Vector3(START_X, AISLE_EYE, 0.0)
-	_apply_shot()
+	_player.position = Vector3(START_X, _locomotion.eye_height_metres, 0.0)
+	_player.rotation.y = 0.0
+	_frame_the_shot()
 	GameBridge.set_player_flags(StateBits.PLAYER_ALIVE)
 	Journal.record(StateBits.JournalKind.ENTERED, "player", "", LEVEL_NAME.to_lower())
 	_notify_level("start")
@@ -276,23 +273,11 @@ func _notify_level(outcome: String) -> void:
 ## far a swipe travels.
 func _input(event: InputEvent) -> void:
 	if event is InputEventScreenDrag:
-		var height := float(get_window().size.y)
-		if height > 0.0:
-			_drag += (event as InputEventScreenDrag).relative / height * DRAG_SCREENS_PER_UNIT
+		_control.accumulate_drag((event as InputEventScreenDrag).relative,
+			float(get_window().size.y))
 
 
-func _read_input(delta: float) -> void:
-	# a held key is a rate, so it scales with frame time; a drag is already a
-	# distance, so it must not. Swap either sign to invert that axis.
-	var turn := Input.get_axis(&"move_left", &"move_right") * delta - _drag.x
-	var walk := Input.get_axis(&"move_down", &"move_up") * delta + _drag.y
-	_drag = Vector2.ZERO
-	# wraps rather than clamps: the player can turn all the way round and look
-	# back down the train
-	_facing = wrapf(_facing - turn * TURN_RADIANS_PER_UNIT, -PI, PI)
-	_apply_shot()
-	_walk(walk * WALK_METRES_PER_UNIT, delta)
-
+func _read_clock_keys() -> void:
 	if Input.is_action_just_pressed(&"ui_accept"):
 		_time_of_day.running = not _time_of_day.running
 	if Input.is_action_just_pressed(&"ui_page_up"):
