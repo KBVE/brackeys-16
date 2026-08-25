@@ -127,6 +127,10 @@ test('the debug panel toggles and clears', async ({ page }) => {
   await expect(page.getByTestId('debug-panel')).toHaveCount(0);
   await openDebug(page);
   await expect(page.getByTestId('trace-item')).not.toHaveCount(0);
+  // A running train re-emits render:budget as the frame rate wanders, which
+  // refills the trace between the clear and the assertion.
+  await send(page, 'ui:pause', { paused: true });
+  await expect(row(page, 'run')).toHaveText(RUN_PAUSED);
   await page.getByTestId('debug-clear').click();
   await expect(page.getByTestId('trace-empty')).toBeVisible();
   await page.getByTestId('debug-close').click();
