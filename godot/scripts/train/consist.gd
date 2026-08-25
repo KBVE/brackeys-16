@@ -26,6 +26,18 @@ class_name Consist
 ## that is in the end a box. Z is inside the 1.69 shell, leaving the panelling
 ## thickness the player never reaches through.
 const FLOOR_Y := 0.0
+
+## Where the floorboards are actually drawn, found by casting a ray down the aisle
+## against a trimesh of the carriage. It is not the model's lowest vertex, which is a
+## bogie a metre under the rails, and it is not the busiest run of vertices either:
+## the car body has an underside at 0.04 and an underframe between, and both look
+## like floors to anything counting vertices. The deck is a metre and a quarter up.
+##
+## [constant FLOOR_Y] is a metre and a quarter below it and stays there. The player's
+## capsule is sized against it, and moving it lifts him off his own collider; nothing
+## stands on the collision floor anyway, because the walk pins Y rather than falling.
+## What needed the real number was the body, which was buried to the ankles without it.
+const DRAWN_FLOOR_Y := 1.2735
 const INTERIOR_HALF_Z := 1.5
 const WALL_HEIGHT := 3.5
 const SHELL_THICKNESS := 0.4

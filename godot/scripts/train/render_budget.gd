@@ -22,6 +22,11 @@ const DEGRADE_BELOW_FPS := 50.0
 ## Above this there is headroom to spend, if it holds long enough to trust.
 const UPGRADE_ABOVE_FPS := 58.0
 
+## A frame this long is a stall, not a workload: a scene streaming in, a tab coming
+## back from the background, the browser collecting garbage. Feeding one to the
+## average drops a level for something that is already over.
+const STALL_SECONDS := 0.25
+
 ## Frame rate is noisy per-frame, so decisions run on a smoothed value sampled on
 ## this cadence.
 const SAMPLE_SECONDS := 0.5
@@ -29,13 +34,22 @@ const SMOOTHING := 0.15
 
 ## Giving up pixels must be quick, because the player is watching it stutter now.
 ## Taking them back must be slow, or the scale oscillates every time a carriage
-## comes into view.
-const SECONDS_SLOW_BEFORE_DEGRADE := 1.5
+## comes into view. Quick is not instant: at 1.5 a single busy moment mid-aisle was
+## enough, and the player saw the whole run go soft a frame after it.
+const SECONDS_SLOW_BEFORE_DEGRADE := 3.0
 const SECONDS_FAST_BEFORE_UPGRADE := 6.0
 
 ## Each degrade doubles the wait before that level may be tried again, so a device
 ## that genuinely cannot hold a level stops re-testing it every few seconds.
 const UPGRADE_PENALTY_SECONDS := 20.0
+
+## Doubling with nothing to stop it is how one bad minute costs the rest of the run:
+## four degrades put the next attempt three minutes out and it never came back.
+const LONGEST_UPGRADE_PENALTY := 60.0
+
+## Hold a clean frame rate this long and the doubling is forgiven a step, so a
+## device that had one bad patch is not judged on it forever.
+const SECONDS_CLEAN_BEFORE_FORGIVEN := 30.0
 
 var shrink := FASTEST_SHRINK
 
@@ -45,6 +59,7 @@ var _seconds_slow := 0.0
 var _seconds_fast := 0.0
 var _upgrade_locked_for := 0.0
 var _upgrade_penalty := UPGRADE_PENALTY_SECONDS
+var _seconds_clean := 0.0
 
 
 ## Starts where the device is likely to cope, so the first seconds of a run are
@@ -63,6 +78,8 @@ func begin(has_touchscreen: bool, pixel_ratio: float) -> void:
 ## Feeds one frame in and returns the divisor to use now. The return is the whole
 ## answer, so the caller never has to ask twice or track state of its own.
 func sample(frames_per_second: float, delta: float) -> int:
+	if delta > STALL_SECONDS:
+		return shrink
 	_smoothed_fps = lerpf(_smoothed_fps, frames_per_second, SMOOTHING)
 	_upgrade_locked_for = maxf(_upgrade_locked_for - delta, 0.0)
 	_seconds_since_sample += delta
@@ -81,16 +98,33 @@ func sample(frames_per_second: float, delta: float) -> int:
 		_seconds_slow = 0.0
 		_seconds_fast = 0.0
 
+	_forgive_a_clean_stretch()
+
 	if _seconds_slow >= SECONDS_SLOW_BEFORE_DEGRADE and shrink < SLOWEST_SHRINK:
 		shrink += 1
 		_seconds_slow = 0.0
+		_seconds_clean = 0.0
 		_upgrade_locked_for = _upgrade_penalty
-		_upgrade_penalty *= 2.0
+		_upgrade_penalty = minf(_upgrade_penalty * 2.0, LONGEST_UPGRADE_PENALTY)
 	elif _seconds_fast >= SECONDS_FAST_BEFORE_UPGRADE and shrink > FASTEST_SHRINK \
 			and is_zero_approx(_upgrade_locked_for):
 		shrink -= 1
 		_seconds_fast = 0.0
 	return shrink
+
+
+## The doubling is what stops a device re-testing a level it cannot hold. It is also
+## what turns one stall into a run that never recovers, so a long clean stretch takes
+## a step back off it.
+func _forgive_a_clean_stretch() -> void:
+	if _smoothed_fps <= UPGRADE_ABOVE_FPS:
+		_seconds_clean = 0.0
+		return
+	_seconds_clean += SAMPLE_SECONDS
+	if _seconds_clean < SECONDS_CLEAN_BEFORE_FORGIVEN:
+		return
+	_seconds_clean = 0.0
+	_upgrade_penalty = maxf(_upgrade_penalty * 0.5, UPGRADE_PENALTY_SECONDS)
 
 
 ## Antialiasing costs a multiple of whatever the resolution already costs, so it
