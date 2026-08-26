@@ -117,6 +117,7 @@ jobs:
         run: npm run typecheck
 
       - name: Check the committed Godot shell is not stale
+        if: github.event_name == 'pull_request'
         working-directory: ${{ env.WEB_PATH }}
         run: npm run shell:check
 

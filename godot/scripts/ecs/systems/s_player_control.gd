@@ -33,6 +33,11 @@ var move_stick := Vector2.ZERO
 ## live, which is what keeps the tests driving real actions.
 var engaged: bool = true
 
+## Cleared by [TouchControls] while the thumbs are up. The web export emulates a mouse
+## from touch, so every thumb on a stick would otherwise also be a left click on
+## whatever the stick was sitting over.
+var reading_pointer_clicks: bool = true
+
 var _was_engaged := false
 var _was_clicking := false
 
@@ -117,8 +122,8 @@ func _on_update(delta: float) -> void:
 		or _tapped_secondary
 	# a click that woke an inert run is spent doing exactly that, or the first thing the
 	# player clicks to take control of the window is also the first thing they open
-	var pointer_clicked := _was_engaged and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) \
-		and not _was_clicking
+	var pointer_clicked := reading_pointer_clicks and _was_engaged \
+		and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and not _was_clicking
 	_was_clicking = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	_was_engaged = engaged
 	_look_units = Vector2.ZERO

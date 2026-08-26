@@ -17,10 +17,35 @@ class_name RenderBudget
 const FASTEST_SHRINK := 1
 const SLOWEST_SHRINK := 4
 
-## Below this we are dropping frames and must give pixels back.
-const DEGRADE_BELOW_FPS := 50.0
-## Above this there is headroom to spend, if it holds long enough to trust.
-const UPGRADE_ABOVE_FPS := 58.0
+## Where a run has to fall before pixels are worth giving up.
+##
+## Not a share of the refresh rate. Missing the panel's cadence is not the same as being
+## unplayable: this is a train you walk down at a stroll, and forty frames of it reads
+## as fine where a quarter-resolution aisle reads as broken. Judged at three quarters of
+## the refresh, every machine that merely failed to pin 60 went soft for nothing.
+const DEGRADE_BELOW_FPS := 24.0
+
+## A slow panel needs the floor brought down with it, or a 30Hz display never reaches a
+## fixed 24 and hands back pixels it was coping without.
+const DEGRADE_CEILING_SHARE := 0.6
+
+## Headroom is still measured against the panel, because that is the only thing a
+## browser can report: it paints on the compositor's clock and never beats the refresh.
+## An absolute bar above it is one no display can clear, so whatever level a run opened
+## at would be the level it died at.
+const UPGRADE_ABOVE_SHARE := 0.90
+
+## What to measure against when the platform will not say. Web reports nothing useful
+## for the refresh rate, and 60 is what a browser paints at unless told otherwise.
+const ASSUMED_REFRESH_HZ := 60.0
+const SLOWEST_CREDIBLE_REFRESH_HZ := 24.0
+const FASTEST_CREDIBLE_REFRESH_HZ := 240.0
+
+## A screen no bigger than this on its long edge is held in the hands. A touchscreen on
+## its own is not evidence of one: a Windows laptop with a touch panel reports exactly
+## what a phone reports, and starting it at a third of the resolution is how a machine
+## with a real GPU ends up looking like a phone.
+const HANDHELD_LONGEST_EDGE_PX := 1400
 
 ## A frame this long is a stall, not a workload: a scene streaming in, a tab coming
 ## back from the background, the browser collecting garbage. Feeding one to the
@@ -53,7 +78,8 @@ const SECONDS_CLEAN_BEFORE_FORGIVEN := 30.0
 
 var shrink := FASTEST_SHRINK
 
-var _smoothed_fps := 60.0
+var _refresh_hz := ASSUMED_REFRESH_HZ
+var _smoothed_fps := ASSUMED_REFRESH_HZ
 var _seconds_since_sample := 0.0
 var _seconds_slow := 0.0
 var _seconds_fast := 0.0
@@ -63,16 +89,35 @@ var _seconds_clean := 0.0
 
 
 ## Starts where the device is likely to cope, so the first seconds of a run are
-## not the worst ones. A touchscreen at two or more device pixels per CSS pixel
-## is a phone rendering several million fragments for a screen you hold at arm's
-## length, and it almost never holds 60 at full resolution.
-func begin(has_touchscreen: bool, pixel_ratio: float) -> void:
-	if has_touchscreen and pixel_ratio >= 2.0:
+## not the worst ones, and fixes what a healthy frame rate is worth on this display.
+##
+## Only a handheld opens below full resolution: one at two or more device pixels per
+## CSS pixel is drawing several million fragments for a screen held at arm's length and
+## almost never holds its refresh at full resolution. Everything else starts at full
+## resolution and is judged on its measured frame rate like anything else.
+func begin(has_touchscreen: bool, pixel_ratio: float, screen: Vector2i,
+		refresh_hz: float = 0.0) -> void:
+	_refresh_hz = refresh_hz if refresh_hz >= SLOWEST_CREDIBLE_REFRESH_HZ \
+		and refresh_hz <= FASTEST_CREDIBLE_REFRESH_HZ else ASSUMED_REFRESH_HZ
+	_smoothed_fps = _refresh_hz
+	var handheld := has_touchscreen \
+		and maxi(screen.x, screen.y) <= HANDHELD_LONGEST_EDGE_PX
+	if handheld and pixel_ratio >= 2.0:
 		shrink = 3
-	elif has_touchscreen:
+	elif handheld:
 		shrink = 2
 	else:
 		shrink = FASTEST_SHRINK
+
+
+## The frame rate a run has to beat to keep what it is holding.
+func degrade_below() -> float:
+	return minf(DEGRADE_BELOW_FPS, _refresh_hz * DEGRADE_CEILING_SHARE)
+
+
+## The frame rate a run has to hold before it is given pixels back.
+func upgrade_above() -> float:
+	return _refresh_hz * UPGRADE_ABOVE_SHARE
 
 
 ## Feeds one frame in and returns the divisor to use now. The return is the whole
@@ -87,10 +132,10 @@ func sample(frames_per_second: float, delta: float) -> int:
 		return shrink
 	_seconds_since_sample = 0.0
 
-	if _smoothed_fps < DEGRADE_BELOW_FPS:
+	if _smoothed_fps < degrade_below():
 		_seconds_fast = 0.0
 		_seconds_slow += SAMPLE_SECONDS
-	elif _smoothed_fps > UPGRADE_ABOVE_FPS:
+	elif _smoothed_fps > upgrade_above():
 		_seconds_slow = 0.0
 		_seconds_fast += SAMPLE_SECONDS
 	else:
@@ -117,7 +162,7 @@ func sample(frames_per_second: float, delta: float) -> int:
 ## what turns one stall into a run that never recovers, so a long clean stretch takes
 ## a step back off it.
 func _forgive_a_clean_stretch() -> void:
-	if _smoothed_fps <= UPGRADE_ABOVE_FPS:
+	if _smoothed_fps <= upgrade_above():
 		_seconds_clean = 0.0
 		return
 	_seconds_clean += SAMPLE_SECONDS

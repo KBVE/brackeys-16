@@ -13,22 +13,41 @@ class_name TouchControls
 ## [SPlayerControl], which is still the only thing that reads a device, so the character
 ## cannot tell a thumb from a keyboard.
 ##
-## Landscape is assumed: the sticks float wherever the thumb lands, so the only thing
-## the layout fixes in place is the button cluster, and it hangs off the bottom right
-## corner where the hand already is.
+## Landscape is assumed. The sticks still float wherever the thumb lands, but each
+## half draws a faint ring at the spot its thumb is expected to sit, so a player who
+## has never held this before can see there is a stick there at all. The button
+## cluster hangs off the bottom right corner where the hand already is.
 
 ## Button radius and where the cluster sits, in pixels off the bottom right corner.
 const BUTTON_RADIUS := 44.0
 const INTERACT_FROM_CORNER := Vector2(84.0, 196.0)
 const SECONDARY_FROM_CORNER := Vector2(184.0, 112.0)
 
+## Where the untouched rings are drawn, as a share of the screen. The walking one sits
+## inboard of the button cluster rather than mirroring the looking one, because the
+## outboard half of that corner is already buttons.
+const LOOKING_HOME_ACROSS := 0.16
+const WALKING_HOME_ACROSS := 0.60
+const HOME_DOWN := 0.76
+
 const RING := Color(1.0, 1.0, 1.0, 0.22)
 const KNOB := Color(1.0, 1.0, 1.0, 0.38)
+const RESTING_RING := Color(1.0, 1.0, 1.0, 0.14)
+const RESTING_KNOB := Color(1.0, 1.0, 1.0, 0.10)
 const LABEL := Color(1.0, 1.0, 1.0, 0.62)
 const LABEL_PIXELS := 22
 
 ## Written to rather than read from, so a device is still read in exactly one place.
 var control: SPlayerControl
+
+## Drawn beside these, and shown and hidden with them: a phone aims with the middle of
+## the screen, so the mark for where a look lands has to be up the whole time rather
+## than only while a thumb is on the looking stick.
+var crosshair: Crosshair
+
+## A touchscreen the engine failed to notice is still a touchscreen once something has
+## landed on it, so the first finger reveals the controls whatever [DisplayServer] said.
+var _a_finger_has_landed := false
 
 var _looking := TouchStick.new()
 var _walking := TouchStick.new()
@@ -45,7 +64,16 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	visible = _a_finger_has_landed or DisplayServer.is_touchscreen_available()
+	if crosshair != null:
+		crosshair.always_visible = visible
 	if control == null:
+		return
+	# emulate_mouse_from_touch turns every thumb into a left click at the thumb, which
+	# would pick up whatever the stick happens to be sitting over. A phone opens things
+	# with the taps and [F] instead.
+	control.reading_pointer_clicks = not visible
+	if not visible:
 		return
 	var height := float(size.y)
 	_looking.tick(delta)
@@ -59,9 +87,10 @@ func _process(delta: float) -> void:
 ## still reaches the evidence behind it, and a control that ignores the mouse is never
 ## offered gui events either.
 func _input(event: InputEvent) -> void:
-	if not visible:
+	if control == null:
 		return
 	if event is InputEventScreenTouch:
+		_a_finger_has_landed = true
 		var touch := event as InputEventScreenTouch
 		if touch.pressed:
 			_press(touch.index, touch.position)
@@ -117,20 +146,30 @@ func _secondary_at() -> Vector2:
 	return size - SECONDARY_FROM_CORNER
 
 
+func _looking_home() -> Vector2:
+	return Vector2(size.x * LOOKING_HOME_ACROSS, size.y * HOME_DOWN)
+
+
+func _walking_home() -> Vector2:
+	return Vector2(size.x * WALKING_HOME_ACROSS, size.y * HOME_DOWN)
+
+
 func _draw() -> void:
-	_draw_stick(_looking)
-	_draw_stick(_walking)
+	_draw_stick(_looking, _looking_home())
+	_draw_stick(_walking, _walking_home())
 	_draw_button(_interact_at(), "F", _interact_finger >= 0)
 	_draw_button(_secondary_at(), "G", _secondary_finger >= 0)
 
 
-## Only drawn while a thumb is on it. A stick that floats has nowhere to be until
-## somebody puts it somewhere, and an empty ring waiting in a corner is a lie about
-## where the stick is going to appear.
-func _draw_stick(stick: TouchStick) -> void:
-	if not stick.pressed:
-		return
+## Faint at its home while nobody is on it, and solid wherever the thumb actually put
+## it. The home ring is a label for the half rather than a promise about where the
+## stick appears, which is why it is drawn dimmer than the live one.
+func _draw_stick(stick: TouchStick, home: Vector2) -> void:
 	var throw := size.y * TouchStick.THROW_SCREENS
+	if not stick.pressed:
+		draw_arc(home, throw, 0.0, TAU, 48, RESTING_RING, 2.0, true)
+		draw_circle(home, throw * 0.36, RESTING_KNOB)
+		return
 	draw_arc(stick.origin, throw, 0.0, TAU, 48, RING, 2.0, true)
 	draw_circle(stick.origin + (stick.at - stick.origin).limit_length(throw),
 		throw * 0.36, KNOB)
