@@ -6,7 +6,13 @@ func _on_update(delta: float) -> void:
 		var body: CharacterBody3D = entry[&"ECSViewComponent"].view as CharacterBody3D
 		if body == null:
 			continue
-		if entry[&"CSeating"].seated or entry[&"CSeating"].moving():
+		var seating: CSeating = entry[&"CSeating"]
+		if seating.approaching:
+			# walking to a bench. [SSeating] is driving, and it has already written the
+			# stride it covered onto the locomotion for the legs to play; parking here
+			# would wipe that and slide him in on his heels.
+			continue
+		if seating.seated or seating.moving():
 			_sit_still(entry[&"CLocomotion"], body)
 			continue
 		_step(entry[&"CInput"], entry[&"CLocomotion"], body, delta)

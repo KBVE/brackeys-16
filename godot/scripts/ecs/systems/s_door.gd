@@ -69,7 +69,7 @@ func _answer(door: CDoor, leaf: Node3D, standing_at: Vector3, distance: float) -
 		if not door.is_open:
 			door.swing_sign = _away_from(leaf, standing_at)
 			door.is_open = true
-		elif not _standing_in_the_doorway(leaf, standing_at):
+		elif not standing_in_the_doorway(leaf, standing_at):
 			door.is_open = false
 	notify(GameEvents.DOOR_STATE, {
 		"open": door.is_open,
@@ -112,7 +112,7 @@ func _away_from(leaf: Node3D, standing_at: Vector3) -> float:
 ##
 ## Measured in the parent's frame, which does not turn with the leaf, and against
 ## the leaf's own bounds so the opening is whatever the door is wide.
-func _standing_in_the_doorway(leaf: Node3D, standing_at: Vector3) -> bool:
+static func standing_in_the_doorway(leaf: Node3D, standing_at: Vector3) -> bool:
 	var parent := leaf.get_parent() as Node3D
 	var visual := leaf as VisualInstance3D
 	if parent == null or visual == null:

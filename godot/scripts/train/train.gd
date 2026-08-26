@@ -81,6 +81,7 @@ var _posture: CPosture
 var _foot_planting: CFootPlanting
 var _seating: CSeating
 var _pointer: CPointer
+var _prompt: CPrompt
 var _seated_idle: CSeatedIdle
 var _control: SPlayerControl
 var _thumbs: TouchControls
@@ -151,9 +152,10 @@ func _ready() -> void:
 	_seating = CSeating.new()
 	_pointer = CPointer.new()
 	_seated_idle = _rolled_seated_idle()
+	_prompt = CPrompt.new()
 	_scope.spawn().add(_viewer).add(_occupant).add(_here).add(_intent) \
 		.add(_locomotion).add(_carriage_camera()) \
-		.add(CCharacterRig.new(body)).add(CGait.new()).add(_posture).add(_foot_planting).add(_seating).add(_seated_idle).add(_pointer).add(_the_highlight()) \
+		.add(CCharacterRig.new(body)).add(CGait.new()).add(_posture).add(_foot_planting).add(_seating).add(_seated_idle).add(_pointer).add(_prompt).add(_the_highlight()) \
 		.add(ECSViewComponent.new(_player))
 	_control = SPlayerControl.new()
 	# an exported build is somebody playing and starts live. A debug run is somebody
@@ -207,6 +209,12 @@ func _ready() -> void:
 	var crosshair := Crosshair.new()
 	crosshair.aiming = _intent
 	_frame.get_parent().add_child(crosshair)
+
+	_scope.add_system(&"prompt", SPrompt.new())
+	var label := InteractionLabel.new()
+	label.name = "InteractionLabel"
+	label.prompt = _prompt
+	_frame.get_parent().add_child(label)
 
 	_thumbs = TouchControls.new()
 	var thumbs := _thumbs

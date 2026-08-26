@@ -255,47 +255,69 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.check.outputs.version }}
+    outputs:
+      synced: ${{ steps.sync.outputs.synced }}
     steps:
-      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
+      - id: sync
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3
         with:
           github-token: ${{ secrets.UNITY_PAT || secrets.GITHUB_TOKEN }}
           script: |
             const branch = process.env.DEV_BRANCH
             const params = { owner: context.repo.owner, repo: context.repo.repo }
+            const markBranchInSyncWithMain = () => core.setOutput('synced', 'true')
             try {
               await github.rest.git.getRef({ ...params, ref: `heads/${branch}` })
             } catch (error) {
               if (error.status !== 404) throw error
               await github.rest.git.createRef({ ...params, ref: `refs/heads/${branch}`, sha: context.sha })
               core.notice(`Created ${branch} at ${context.sha}.`)
-              return
+              return markBranchInSyncWithMain()
             }
             try {
               await github.rest.git.updateRef({ ...params, ref: `heads/${branch}`, sha: context.sha, force: false })
               core.notice(`Fast-forwarded ${branch} to ${context.sha}.`)
+              return markBranchInSyncWithMain()
             } catch (error) {
               if (error.status !== 422) throw error
-              core.warning(`${branch} has diverged from main - opening a sync PR instead of moving the ref.`)
-              const open = await github.rest.pulls.list({
-                ...params, base: branch, head: `${params.owner}:main`, state: 'open',
-              })
-              if (open.data.length > 0) {
-                core.notice(`Sync PR #${open.data[0].number} is already open.`)
-                return
-              }
-              const created = await github.rest.pulls.create({
+            }
+            try {
+              const merge = await github.rest.repos.merge({
                 ...params,
                 base: branch,
                 head: 'main',
-                title: `chore: sync ${branch} with main`,
-                body: `\`${branch}\` has commits that are not on main, so it could not be fast-forwarded after v${process.env.VERSION} shipped. Merge this to bring it back in line.`,
+                commit_message: `chore: sync ${branch} with main after v${process.env.VERSION}`,
               })
-              core.notice(`Opened sync PR #${created.data.number}.`)
+              core.notice(
+                merge.status === 204
+                  ? `${branch} already contains main.`
+                  : `Merged main into ${branch} as ${merge.data.sha}.`
+              )
+              return markBranchInSyncWithMain()
+            } catch (error) {
+              if (error.status !== 409) throw error
+              core.warning(`main conflicts with ${branch} - opening a sync PR instead of merging.`)
             }
+            const open = await github.rest.pulls.list({
+              ...params, base: branch, head: `${params.owner}:main`, state: 'open',
+            })
+            if (open.data.length > 0) {
+              core.notice(`Sync PR #${open.data[0].number} is already open.`)
+              return
+            }
+            const created = await github.rest.pulls.create({
+              ...params,
+              base: branch,
+              head: 'main',
+              title: `chore: sync ${branch} with main`,
+              body: `\`${branch}\` conflicts with main, so it could not be merged automatically after v${process.env.VERSION} shipped. Resolve this to bring it back in line.`,
+            })
+            core.notice(`Opened sync PR #${created.data.number}.`)
 
   bump:
     name: Open bump PR
     needs: [check, publish, sync]
+    if: needs.sync.outputs.synced == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -312,10 +334,7 @@ jobs:
             const source = fs.readFileSync(file, 'utf8')
             const current = source.match(/^config\/version="(.*)"$/m)
             if (!current) {
-              core.setFailed(
-                `config/version is missing from ${file} on ${process.env.DEV_BRANCH}. ` +
-                `The sync job could not fast-forward that branch - merge the open sync PR first.`
-              )
+              core.setFailed(`config/version is missing from ${file} on ${process.env.DEV_BRANCH}.`)
               return
             }
             if (current[1] === process.env.NEXT) {

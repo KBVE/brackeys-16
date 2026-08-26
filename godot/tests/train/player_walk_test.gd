@@ -593,12 +593,20 @@ func test_pressing_use_beside_a_bench_sits_him_on_it() -> void:
 	).is_equal_approx(stood_eye, 0.001)
 
 
-## Waits out the sit-down or the stand-up. Polled rather than counted in frames: the
-## clip is a second and a bit of real time, and how many frames that is depends on what
-## else the machine is doing.
+## Waits out the walk in and the fold that follows it, or the stand-up. Polled rather
+## than counted in frames: the clips are a second and a bit of real time, and how many
+## frames that is depends on what else the machine is doing.
 func _fold_over(runner: GdUnitSceneRunner, seating: CSeating) -> void:
 	for _i in 400:
-		if not seating.moving():
+		if not seating.busy():
+			return
+		await runner.simulate_frames(1)
+
+
+## Waits for the walk to end and the fold to begin, which is where the old sit started.
+func _at_the_bench(runner: GdUnitSceneRunner, seating: CSeating) -> void:
+	for _i in 400:
+		if not seating.approaching:
 			return
 		await runner.simulate_frames(1)
 
@@ -619,15 +627,23 @@ func test_sitting_down_is_carried_rather_than_snapped() -> void:
 	await runner.simulate_frames(2)
 	train._intent.interact_requested = false
 
+	assert_bool(seating.approaching).override_failure_message(
+		"he should be walking to the bench, not already folding onto it"
+	).is_true()
+	assert_str(String(train._posture.state)).override_failure_message(
+		"the walk in should be walked, on the walking clip"
+	).is_equal(String(CPosture.AFOOT))
+
+	await _at_the_bench(runner, seating)
 	assert_bool(seating.moving()).override_failure_message(
-		"he should be on his way onto the cushion, not already on it"
+		"the fold never began once he had walked in"
 	).is_true()
 	assert_str(String(train._posture.state)).override_failure_message(
 		"the sit-down clip should be playing while he folds"
 	).is_equal(String(CPosture.SEATING))
 	assert_float(player.global_position.distance_to(stood_at)).override_failure_message(
 		"he arrived at the seat on the frame he asked for it"
-	).is_less(seating.moving_to.distance_to(stood_at))
+	).is_greater(0.0)
 
 	await _fold_over(runner, seating)
 	assert_bool(seating.seated).is_true()
@@ -636,6 +652,95 @@ func test_sitting_down_is_carried_rather_than_snapped() -> void:
 	).override_failure_message(
 		"the fold finished somewhere other than the seat it was aimed at"
 	).is_less(0.02)
+
+
+## The sit-down clip is authored for a body already standing in front of a bench. Begun
+## from wherever [F] was pressed, it carried him the last metre with his feet planted,
+## which is a man being dragged onto a seat rather than taking one. So he walks in first,
+## on his own legs, and folds only once he is standing where the clip expects.
+func test_he_walks_the_last_step_to_the_bench_before_folding() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(10)
+	var train: Node = runner.scene()
+	var player: CharacterBody3D = train.get_node("Screen/Frame/World/Player")
+	train._control.set_update(false)
+	var seating: CSeating = train._seating
+
+	# stood in the aisle, a little to one side so which bench is nearest is not a
+	# coin toss between the pair facing each other across it
+	var bench: CSeat = _nearest_free_seat(player)
+	assert_object(bench).is_not_null()
+	player.global_position = Vector3(bench.at.x,
+		train._locomotion.eye_height_metres, signf(bench.at.z) * 0.2)
+	await runner.simulate_frames(2)
+
+	train._intent.interact_requested = true
+	await runner.simulate_frames(2)
+	train._intent.interact_requested = false
+
+	var strode := 0.0
+	for _i in 400:
+		if not seating.approaching:
+			break
+		# both axes: the last step to a bench is as often a sidestep as a stride, and the
+		# blend space has clips for either
+		strode = maxf(strode, Vector2(train._locomotion.strafe_metres_per_second,
+			train._locomotion.forward_metres_per_second).length())
+		await runner.simulate_frames(1)
+	assert_float(strode).override_failure_message(
+		"he crossed the last step without a stride, so the feet skated"
+	).is_greater(0.15)
+
+	var stopped := Vector2(player.global_position.x - bench.at.x,
+		player.global_position.z - bench.at.z).length()
+	assert_float(stopped).override_failure_message(
+		"the fold began %.2fm from the cushion rather than the %.2fm the clip wants"
+		% [stopped, seating.stand_off_metres]
+	).is_equal_approx(seating.stand_off_metres, 0.2)
+	assert_float(absf(angle_difference(train._locomotion.facing_radians,
+		bench.facing_radians))).override_failure_message(
+		"he began folding without being square to the bench"
+	).is_less_equal(seating.approach_arrive_radians)
+
+	await _fold_over(runner, seating)
+	assert_bool(seating.seated).is_true()
+	assert_object(seating.seat).is_same(bench)
+
+
+## However badly the walk goes, it ends. A bench reached around somebody who will not
+## move is still a bench he asked to sit on.
+func test_a_walk_that_cannot_arrive_still_ends_in_a_seat() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(10)
+	var train: Node = runner.scene()
+	train._control.set_update(false)
+	var seating: CSeating = train._seating
+
+	train._intent.interact_requested = true
+	await runner.simulate_frames(2)
+	train._intent.interact_requested = false
+	assert_bool(seating.approaching).is_true()
+	# walking on the spot: the spot he is walking to is one he can never reach
+	seating.approach_at = Vector3(9999.0, 0.0, 9999.0)
+
+	await _fold_over(runner, seating)
+	assert_bool(seating.seated).override_failure_message(
+		"a walk that never arrived left him on his feet holding a seat"
+	).is_true()
+
+
+func _nearest_free_seat(player: CharacterBody3D) -> CSeat:
+	var found: CSeat = null
+	var nearest := INF
+	for seat: CSeat in Ecs.world.view(&"CSeat"):
+		if not seat.free_to_take():
+			continue
+		var away := Vector2(seat.at.x - player.global_position.x,
+			seat.at.z - player.global_position.z).length()
+		if away < nearest:
+			nearest = away
+			found = seat
+	return found
 
 
 ## The bench is not free the moment he asks to get up: there is a second of stand-up
