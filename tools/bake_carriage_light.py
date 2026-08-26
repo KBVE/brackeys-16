@@ -20,6 +20,7 @@ What is baked is irradiance only -- no albedo -- so the result multiplies the
 existing base colour rather than replacing it. That keeps one bake correct for
 every texture the carriage might be reskinned with.
 """
+import json
 import os
 import sys
 
@@ -174,7 +175,61 @@ def main(into, sources):
             export_yup=True,
             use_selection=True,
         )
+        prune_unlit_textures(destination)
         print(f"wrote {destination}")
+
+
+def prune_unlit_textures(path):
+    """Drops the normal and roughness maps out of the exported materials.
+
+    Nothing samples them once the carriage is unshaded, but a material that still
+    names a texture is a texture Godot loads: between them they are 7.4MB of source
+    art and a pair of compressed 2048s resident in VRAM for surfaces that are lit by
+    a vertex colour. On a phone that is the difference worth having.
+    """
+    with open(path) as f:
+        gltf = json.load(f)
+
+    for material in gltf.get("materials", []):
+        material.pop("normalTexture", None)
+        material.get("pbrMetallicRoughness", {}).pop("metallicRoughnessTexture", None)
+
+    kept = set()
+    for material in gltf.get("materials", []):
+        base = material.get("pbrMetallicRoughness", {}).get("baseColorTexture")
+        if base is not None:
+            kept.add(base["index"])
+        for slot in ("emissiveTexture", "occlusionTexture"):
+            if slot in material:
+                kept.add(material[slot]["index"])
+
+    # textures and images are indexed, so pruning means renumbering everything that
+    # points at them rather than deleting in place
+    textures = gltf.get("textures", [])
+    order = sorted(kept)
+    remap = {old: new for new, old in enumerate(order)}
+    gltf["textures"] = [textures[i] for i in order]
+    for material in gltf.get("materials", []):
+        base = material.get("pbrMetallicRoughness", {}).get("baseColorTexture")
+        if base is not None:
+            base["index"] = remap[base["index"]]
+        for slot in ("emissiveTexture", "occlusionTexture"):
+            if slot in material:
+                material[slot]["index"] = remap[material[slot]["index"]]
+
+    used_images = {t["source"] for t in gltf["textures"] if "source" in t}
+    images = gltf.get("images", [])
+    image_order = sorted(used_images)
+    image_remap = {old: new for new, old in enumerate(image_order)}
+    gltf["images"] = [images[i] for i in image_order]
+    for texture in gltf["textures"]:
+        if "source" in texture:
+            texture["source"] = image_remap[texture["source"]]
+
+    with open(path, "w") as f:
+        json.dump(gltf, f, indent=2)
+    print(f"  kept {len(gltf['images'])} image(s): "
+          f"{[i.get('uri') for i in gltf['images']]}")
 
 
 if __name__ == "__main__":
