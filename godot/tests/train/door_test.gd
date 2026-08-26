@@ -107,8 +107,16 @@ func test_a_door_out_of_reach_stays_shut() -> void:
 	# be crossing this vestibule swings it with nobody having pressed anything. That
 	# is its own suite's to check. What is under test here is the reach, so for the
 	# length of it the traffic is not running.
+	#
+	# Taking the system away freezes the count rather than clearing it, because the
+	# recount from nothing every tick is the system's own doing: whatever it last saw
+	# stays written, and a door held open at that moment stays held for the rest of
+	# the test. So the doors are let go by hand, and the leaf is given the time to
+	# finish shutting before anything is measured against it.
 	Ecs.remove_system(&"door_traffic")
-	await runner.simulate_frames(2)
+	for held: CDoor in _doors(train):
+		held.held_open_by = 0
+	await _await_still(runner, leaf)
 
 	player.global_position = leaf.global_position + Vector3(60.0, 0.0, 0.0)
 	var door: CDoor = _doors(train)[0]

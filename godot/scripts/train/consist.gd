@@ -74,6 +74,26 @@ const SEAT_FURTHEST_X := 7.0
 
 const INTERIOR_HALF_Z := 1.5
 
+## The gas lamps: how many, where the first one hangs, how far apart, how high, and
+## what colour they burn.
+##
+## tools/bake_carriage_light.py stands Blender lamps on these same numbers, so a lamp
+## moved here is a lamp that has to be baked again. It is also what [method _lamplight]
+## reads, which is how a prop ends up wearing the light of the wall behind it.
+const LAMP_FIRST_X := -6.2
+const LAMP_PITCH := 2.48
+const LAMP_HEIGHT := 4.05
+const LAMP_COLOUR := Color(1.0, 0.84, 0.6)
+const LAMP_RANGE := 7.0
+const LAMP_ENERGY := 4.0
+
+## What [method _lamplight] multiplies its falloff by, and what it never falls below.
+## Kept in step by eye with EXPOSURE and AMBIENT in tools/bake_carriage_light.py: the
+## walls are lit by Cycles and the props by this, and the only thing that matters is
+## that a crate does not look like it is standing in a different carriage.
+const PROP_EXPOSURE := 2.6
+const PROP_AMBIENT := Color(0.16, 0.14, 0.11)
+
 ## How far off the panelling a posted sheet sits. Enough that it does not fight the
 ## wall for the same pixels, little enough that it is stuck on rather than floating.
 const NOTICE_WALL_GAP := 0.02
@@ -95,6 +115,7 @@ var _carriages: Array[Node3D] = []
 var _lampsets: Array[Node3D] = []
 var _shared: Dictionary = {}
 var _prop_meshes: Dictionary = {}
+var _prop_atlas: Texture2D = null
 
 func _ready() -> void:
 	if carriage_scene == null:
@@ -117,11 +138,11 @@ func _ready() -> void:
 		lamps.name = "Lamps"
 		for j in range(lamps_per_car):
 			var lamp := OmniLight3D.new()
-			lamp.position = Vector3(-6.2 + j * 2.48, 4.05, 0.0)
-			lamp.omni_range = 7.0
+			lamp.position = _lamp_at(j)
+			lamp.omni_range = LAMP_RANGE
 			lamp.omni_attenuation = 1.4
-			lamp.light_color = Color(1.0, 0.84, 0.6)
-			lamp.light_energy = 4.0
+			lamp.light_color = LAMP_COLOUR
+			lamp.light_energy = LAMP_ENERGY
 			lamps.add_child(lamp)
 		carriage.add_child(lamps)
 		_add_shell(carriage)
@@ -239,6 +260,7 @@ func _furnish(carriage: Node3D, index: int) -> void:
 		instance.mesh = mesh
 		instance.position = _furnishing_offset(placement)
 		instance.rotation.y = float(placement.get("facing", 0.0))
+		_light_the_prop(instance)
 		room.add_child(instance)
 		_fit_box_collision(instance)
 
@@ -315,6 +337,29 @@ func notice_anchors() -> Array[Dictionary]:
 	return out
 
 
+## Where lamp [param index] hangs in a carriage, in carriage-local metres.
+func _lamp_at(index: int) -> Vector3:
+	return Vector3(LAMP_FIRST_X + index * LAMP_PITCH, LAMP_HEIGHT, 0.0)
+
+
+## What the lamps add up to at [param at], as the colour a prop standing there wears.
+##
+## Inverse square, the same falloff Blender baked the walls with, so a crate under a
+## lamp and the panelling behind it agree about how lit that end of the car is. Not the
+## same arithmetic -- Cycles bounced light off the roof and this does not -- which is
+## what [constant PROP_AMBIENT] stands in for.
+func _lamplight(at: Vector3) -> Color:
+	var gathered := 0.0
+	for j in range(lamps_per_car):
+		var away: float = maxf(_lamp_at(j).distance_to(at), 0.35)
+		gathered += LAMP_ENERGY / (away * away)
+	var lit: float = minf(gathered * PROP_EXPOSURE / float(maxi(lamps_per_car, 1)), 1.0)
+	return Color(
+		minf(PROP_AMBIENT.r + LAMP_COLOUR.r * lit, 1.0),
+		minf(PROP_AMBIENT.g + LAMP_COLOUR.g * lit, 1.0),
+		minf(PROP_AMBIENT.b + LAMP_COLOUR.b * lit, 1.0))
+
+
 ## Where a placement stands in its own carriage. The prop compiler puts every
 ## prop's origin on the ground under it, so the deck is the default height and
 ## nothing needs a fudge factor per prop. Anything standing on a surface rather
@@ -324,6 +369,33 @@ func _furnishing_offset(placement: Dictionary) -> Vector3:
 	return Vector3(float(placement.get("along", 0.0)),
 		FLOOR_Y + float(placement.get("above", 0.0)),
 		float(placement.get("across", 0.0)))
+
+
+## Dresses one prop in the light of where it stands.
+##
+## An override per instance rather than a shared material, because the tint is the one
+## thing about a prop that is not shared. The mesh and the atlas still are, so this
+## costs a material bind and not a copy of the crate.
+func _light_the_prop(instance: MeshInstance3D) -> void:
+	var lit := ShaderMaterial.new()
+	lit.shader = load("res://shaders/prop.gdshader")
+	lit.set_shader_parameter("tex_albedo", _prop_albedo())
+	lit.set_shader_parameter("baked_tint", _lamplight(instance.position))
+	for surface in range(instance.mesh.get_surface_count()):
+		instance.set_surface_override_material(surface, lit)
+
+
+## The prop atlas, taken off the first prop in the library. Every prop the compiler
+## builds shares it, which is the whole point of an atlas.
+func _prop_albedo() -> Texture2D:
+	if _prop_atlas != null:
+		return _prop_atlas
+	for mesh: Mesh in _prop_library().values():
+		var src := mesh.surface_get_material(0) as BaseMaterial3D
+		if src != null and src.albedo_texture != null:
+			_prop_atlas = src.albedo_texture
+			break
+	return _prop_atlas
 
 
 ## Prop name to mesh, harvested once out of [member props_scene].
@@ -452,8 +524,6 @@ func _material_for(src: StandardMaterial3D) -> ShaderMaterial:
 		if src.cull_mode == BaseMaterial3D.CULL_DISABLED \
 		else load("res://shaders/carriage.gdshader")
 	sm.set_shader_parameter("tex_albedo", src.albedo_texture)
-	sm.set_shader_parameter("tex_normal", src.normal_texture)
-	sm.set_shader_parameter("tex_mr", src.roughness_texture)
 	sm.set_shader_parameter("tex_detail", detail_normal)
 	_shared[key] = sm
 	return sm

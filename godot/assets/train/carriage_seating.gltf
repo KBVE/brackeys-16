@@ -1,163 +1,177 @@
 {
-	"asset":{
-		"generator":"Khronos glTF Blender I/O v5.0.21",
-		"version":"2.0"
-	},
-	"scene":0,
-	"scenes":[
-		{
-			"name":"Scene",
-			"nodes":[
-				0
-			]
-		}
-	],
-	"nodes":[
-		{
-			"mesh":0,
-			"name":"seating",
-			"translation":[
-				0,
-				1.22978675365448,
-				0
-			]
-		}
-	],
-	"materials":[
-		{
-			"name":"QR_BL_carriage",
-			"normalTexture":{
-				"index":0
-			},
-			"pbrMetallicRoughness":{
-				"baseColorTexture":{
-					"index":1
-				},
-				"metallicRoughnessTexture":{
-					"index":2
-				}
-			}
-		}
-	],
-	"meshes":[
-		{
-			"name":"seating",
-			"primitives":[
-				{
-					"attributes":{
-						"POSITION":0,
-						"NORMAL":1,
-						"TEXCOORD_0":2
-					},
-					"indices":3,
-					"material":0
-				}
-			]
-		}
-	],
-	"textures":[
-		{
-			"sampler":0,
-			"source":0
-		},
-		{
-			"sampler":0,
-			"source":1
-		},
-		{
-			"sampler":0,
-			"source":2
-		}
-	],
-	"images":[
-		{
-			"mimeType":"image/png",
-			"name":"Carriage_QR_BL_carriage_Normal",
-			"uri":"Carriage_QR_BL_carriage_Normal.png"
-		},
-		{
-			"mimeType":"image/png",
-			"name":"QR_BL_carriage_BaseColor",
-			"uri":"QR_BL_carriage_BaseColor.png"
-		},
-		{
-			"mimeType":"image/png",
-			"name":"Carriage_QR_BL_carriage_Metallic-Carriage_QR_BL_carriage_Roughness",
-			"uri":"Carriage_QR_BL_carriage_Metallic-Carriage_QR_BL_carriage_Roughness.png"
-		}
-	],
-	"accessors":[
-		{
-			"bufferView":0,
-			"componentType":5126,
-			"count":3464,
-			"max":[
-				8.659049034118652,
-				1.418165683746338,
-				1.5285234451293945
-			],
-			"min":[
-				-8.659049034118652,
-				0.03583415225148201,
-				-1.5285234451293945
-			],
-			"type":"VEC3"
-		},
-		{
-			"bufferView":1,
-			"componentType":5126,
-			"count":3464,
-			"type":"VEC3"
-		},
-		{
-			"bufferView":2,
-			"componentType":5126,
-			"count":3464,
-			"type":"VEC2"
-		},
-		{
-			"bufferView":3,
-			"componentType":5123,
-			"count":8898,
-			"type":"SCALAR"
-		}
-	],
-	"bufferViews":[
-		{
-			"buffer":0,
-			"byteLength":41568,
-			"byteOffset":0,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":41568,
-			"byteOffset":41568,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":27712,
-			"byteOffset":83136,
-			"target":34962
-		},
-		{
-			"buffer":0,
-			"byteLength":17796,
-			"byteOffset":110848,
-			"target":34963
-		}
-	],
-	"samplers":[
-		{
-			"magFilter":9729,
-			"minFilter":9987
-		}
-	],
-	"buffers":[
-		{
-			"byteLength":128644,
-			"uri":"carriage_seating.bin"
-		}
-	]
+  "asset": {
+    "generator": "Khronos glTF Blender I/O v5.0.21",
+    "version": "2.0"
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "mesh": 0,
+      "name": "seating",
+      "translation": [
+        0,
+        1.22978675365448,
+        0
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "name": "QR_BL_carriage.002",
+      "normalTexture": {
+        "index": 0
+      },
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 1
+        },
+        "metallicRoughnessTexture": {
+          "index": 2
+        }
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "seating",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1,
+            "TEXCOORD_0": 2,
+            "COLOR_0": 3
+          },
+          "indices": 4,
+          "material": 0
+        }
+      ]
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "source": 0
+    },
+    {
+      "sampler": 0,
+      "source": 1
+    },
+    {
+      "sampler": 0,
+      "source": 2
+    }
+  ],
+  "images": [
+    {
+      "mimeType": "image/png",
+      "name": "Carriage_QR_BL_carriage_Normal",
+      "uri": "Carriage_QR_BL_carriage_Normal.png"
+    },
+    {
+      "mimeType": "image/png",
+      "name": "QR_BL_carriage_BaseColor",
+      "uri": "QR_BL_carriage_BaseColor.png"
+    },
+    {
+      "mimeType": "image/png",
+      "name": "Carriage_QR_BL_carriage_Metallic-Carriage_QR_BL_carriage_Roughness",
+      "uri": "Carriage_QR_BL_carriage_Metallic-Carriage_QR_BL_carriage_Roughness.png"
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 5781,
+      "max": [
+        8.659049034118652,
+        1.418165683746338,
+        1.5285234451293945
+      ],
+      "min": [
+        -8.659049034118652,
+        0.03583415225148201,
+        -1.5285234451293945
+      ],
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 5781,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 5781,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5123,
+      "count": 5781,
+      "normalized": true,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 4,
+      "componentType": 5123,
+      "count": 8898,
+      "type": "SCALAR"
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteLength": 69372,
+      "byteOffset": 0,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 69372,
+      "byteOffset": 69372,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 46248,
+      "byteOffset": 138744,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 46248,
+      "byteOffset": 184992,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteLength": 17796,
+      "byteOffset": 231240,
+      "target": 34963
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 249036,
+      "uri": "carriage_seating.bin"
+    }
+  ]
 }

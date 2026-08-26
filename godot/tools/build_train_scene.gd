@@ -47,8 +47,6 @@ func _material_for(src: StandardMaterial3D) -> ShaderMaterial:
 		if src.cull_mode == BaseMaterial3D.CULL_DISABLED \
 		else load("res://shaders/carriage.gdshader")
 	sm.set_shader_parameter("tex_albedo", src.albedo_texture)
-	sm.set_shader_parameter("tex_normal", src.normal_texture)
-	sm.set_shader_parameter("tex_mr", src.roughness_texture)
 	sm.set_shader_parameter("tex_detail", load("res://assets/train/detail_normal.png"))
 	_shared[key] = sm
 	return sm
