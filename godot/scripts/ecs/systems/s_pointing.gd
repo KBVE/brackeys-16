@@ -22,6 +22,8 @@ func _look(camera: Camera3D, pointer: CPointer, body: Node3D) -> void:
 	pointer.seat = null
 	pointer.door = null
 	pointer.door_leaf = null
+	pointer.notice = null
+	pointer.notice_sheet = null
 
 	var viewport := camera.get_viewport()
 	var world := camera.get_world_3d()
@@ -43,9 +45,11 @@ func _look(camera: Camera3D, pointer: CPointer, body: Node3D) -> void:
 	_claim(pointer, at)
 
 
-## Whichever anchor is nearest where the ray landed. Doors win ties, because a door in
+## Whichever anchor is nearest where the ray landed. Doors beat seats, because a door in
 ## the end wall of a carriage is a metre from the last bench and the one being pointed
-## at is nearly always the one you cannot walk past.
+## at is nearly always the one you cannot walk past. Notices beat both, on the same
+## argument and harder: they hang on the wall above the benches, and the ray that
+## reaches one has already passed everything else in the carriage.
 func _claim(pointer: CPointer, at: Vector3) -> void:
 	var nearest := pointer.seat_snap_metres
 	for seat: CSeat in view(&"CSeat"):
@@ -68,4 +72,19 @@ func _claim(pointer: CPointer, at: Vector3) -> void:
 			pointer.door = entry[&"CDoor"]
 			pointer.door_leaf = leaf
 			pointer.seat = null
+			pointer.has_target = true
+
+	nearest = pointer.notice_snap_metres
+	for entry: Dictionary in multi_view([CNotice, ECSViewComponent]):
+		var sheet: Node3D = entry[&"ECSViewComponent"].view as Node3D
+		if sheet == null or not sheet.is_visible_in_tree():
+			continue
+		var away := at.distance_to(entry[&"CNotice"].at)
+		if away < nearest:
+			nearest = away
+			pointer.notice = entry[&"CNotice"]
+			pointer.notice_sheet = sheet
+			pointer.seat = null
+			pointer.door = null
+			pointer.door_leaf = null
 			pointer.has_target = true

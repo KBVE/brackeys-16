@@ -8,9 +8,20 @@ const FLAGS_ALIVE = 'ALIVE (0x1)';
 const RUN_PAUSED = 'PAUSED (3)';
 const RUN_MENU = 'MENU (1)';
 
+/**
+ * &swiftshader -> the runner draws on software GL by flag, which is precisely what
+ *                 GpuWarning is there to report. It is a modal, so it sits over
+ *                 everything a test wants to click until it is acknowledged.
+ */
+async function dismissGpuWarning(page: Page) {
+  const dismiss = page.getByTestId('gpu-warning-dismiss');
+  if (await dismiss.count()) await dismiss.click();
+}
+
 async function booted(page: Page) {
   await page.goto('/index.html');
   await expect(page.locator('#godot-canvas')).toBeVisible();
+  await dismissGpuWarning(page);
   // &live -> the curtain lifts on the first real scene, not when the engine
   //          merely started, so this is the point the run is actually on screen
   await expect(page.getByTestId('boot-curtain')).toHaveAttribute('aria-hidden', 'true');
@@ -135,4 +146,17 @@ test('the debug panel toggles and clears', async ({ page }) => {
   await expect(page.getByTestId('trace-empty')).toBeVisible();
   await page.getByTestId('debug-close').click();
   await expect(page.getByTestId('debug-panel')).toHaveCount(0);
+});
+
+test('software rendering is reported to the reader', async ({ page }) => {
+  await page.goto('/index.html');
+  const dismiss = page.getByTestId('gpu-warning-dismiss');
+  await expect(dismiss).toBeVisible();
+  await dismiss.click();
+  await expect(dismiss).toHaveCount(0);
+
+  // dismissed for the tab, so a reload inside the same context stays quiet
+  await page.reload();
+  await expect(page.locator('#godot-canvas')).toBeVisible();
+  await expect(page.getByTestId('gpu-warning-dismiss')).toHaveCount(0);
 });

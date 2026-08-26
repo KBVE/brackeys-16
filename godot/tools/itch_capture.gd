@@ -29,6 +29,12 @@ const PLATES := {
 	"capsule": Vector2i(1260, 1000),
 }
 
+## Where the player is stood for the plate, when the plate wants a particular thing in
+## frame. A posted notice is a metre of paper on a wall four carriages long, so the
+## odds of the spawn pose catching one are what they sound like.
+const POSED := {"notice": Vector2i(1280, 960)}
+const NOTICE_STANDOFF := 2.2
+
 
 func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
@@ -36,6 +42,10 @@ func _ready() -> void:
 	await _frames(SETTLE_FRAMES)
 	for plate in PLATES:
 		await _capture(plate, PLATES[plate])
+	for plate in POSED:
+		_stand_at_a_notice()
+		await _frames(RESIZE_FRAMES)
+		await _capture(plate, POSED[plate])
 	get_tree().quit()
 
 
@@ -50,6 +60,28 @@ func _capture(plate: String, size: Vector2i) -> void:
 		push_error("itch_capture: %s failed to write (%d)" % [path, err])
 		return
 	print("plate %s written: %dx%d" % [path, image.get_width(), image.get_height()])
+
+
+## Puts the player in the aisle in front of the first posted sheet, looking at it.
+func _stand_at_a_notice() -> void:
+	var train: Node3D = get_parent().get_node_or_null("Train")
+	var consist: Consist = train.find_child("Consist", true, false) if train != null else null
+	if consist == null:
+		push_error("itch_capture: no consist to find a notice in")
+		return
+	var posted := consist.notice_anchors()
+	if posted.is_empty():
+		push_error("itch_capture: nothing posted in the train")
+		return
+	var sheet: Vector3 = posted[0]["at"]
+	var player: Node3D = train.find_child("Player", true, false)
+	var camera: Camera3D = player.find_child("Camera3D", true, false) if player != null else null
+	if camera == null:
+		push_error("itch_capture: no player camera")
+		return
+	# out into the aisle and back down the car, so the sheet is across the frame
+	player.global_position = sheet + Vector3(0.0, -1.3, -signf(sheet.z) * NOTICE_STANDOFF)
+	camera.look_at(sheet)
 
 
 func _frames(count: int) -> void:

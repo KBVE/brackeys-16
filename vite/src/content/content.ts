@@ -58,6 +58,18 @@ export interface Item extends Prose {
   reveals: string[];
 }
 
+export interface Notice extends Prose {
+  id: string;
+  title: string;
+  /** Basename of the sheet under public/notices, which is also the notice id. */
+  image: string;
+  carriage: number;
+  along: number;
+  side: 1 | -1;
+  above: number;
+  width: number;
+}
+
 interface Content {
   locations: Location[];
   gazette: {
@@ -70,6 +82,7 @@ interface Content {
   articles: Article[];
   passengers: Passenger[];
   items: Item[];
+  notices: Notice[];
 }
 
 const content = data as unknown as Content;
@@ -82,6 +95,7 @@ export const locations = content.locations;
 export const articles = content.articles;
 export const passengers = content.passengers;
 export const items = content.items;
+export const notices = content.notices;
 
 export const roomName = (id: LocationId): string =>
   locations.find((l) => l.id === id)?.name ?? id.replace('_', ' ');
@@ -92,6 +106,10 @@ export const locationOf = (id: LocationId): Location | null =>
 export const listedAs = (p: Passenger): string => p.listed ?? p.name;
 
 export const carriedItems = (): Item[] => items.filter((i) => i.carried);
+
+/** The sheet Godot named on notice:read, or null when nothing is posted under that id. */
+export const noticeById = (id: string): Notice | null =>
+  notices.find((n) => n.id === id) ?? null;
 
 export const sectionOf = (entry: Prose, key: string): Section | null =>
   entry.sections[key] ?? null;

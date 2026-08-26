@@ -268,6 +268,22 @@ for (const l of content.locations) {
   }
 }
 
+/**
+ * &wall -> a notice hangs in a carriage, so the carriage it names has to be a room in
+ *          the consist. Without this a sheet authored one carriage past the end of the
+ *          train simply never appears, which looks like a missing texture rather than a
+ *          missing room.
+ */
+const carriageCount = aboard.length;
+for (const n of content.notices) {
+  if (n.carriage >= carriageCount) {
+    throw new Error(
+      `${n.source}: notice "${n.id}" hangs in carriage ${n.carriage},`
+      + ` but the consist authors ${carriageCount} (0..${carriageCount - 1})`,
+    );
+  }
+}
+
 const frame = JSON.parse(readFileSync(FRAME, 'utf8'));
 for (const key of Object.keys(frame)) if (key.startsWith('$')) delete frame[key];
 
