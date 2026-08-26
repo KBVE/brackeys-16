@@ -49,6 +49,8 @@ export interface GodotToJs {
   // How far the world's render resolution is currently divided, and the antialiasing
   // that goes with it.
   'render:budget': { shrink: number; detail: string };
+  // A posted notice on a carriage wall was read; `id` is a shared/data/notices id.
+  'notice:read': { id: string };
   // One fact the run has produced: a conversation, an item used, a room entered.
   'journal:entry': { id: string; kind: number; actor: string; target: string; place: string; at: number };
 }
@@ -83,6 +85,7 @@ export const WIRE_FIELDS: Record<string, readonly string[]> = {
   'viewer:state': ['carriage', 'location'],
   'door:state': ['open', 'locked', 'distance'],
   'render:budget': ['shrink', 'detail'],
+  'notice:read': ['id'],
   'journal:entry': ['id', 'kind', 'actor', 'target', 'place', 'at'],
 };
 

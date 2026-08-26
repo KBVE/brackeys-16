@@ -52,6 +52,18 @@ static func furnishings_at(carriage: int) -> Array:
 			return room.get("furnishings", [])
 	return []
 
+## The sheets posted in the carriage at [param carriage], in carriage-local metres.
+##
+## Keyed by position along the train for the same reason [method furnishings_at] is:
+## [Consist] builds carriages by index, and the mdx is what ties an id to a place.
+static func notices_in(carriage: int) -> Array:
+	return notices().filter(
+		func(n: Dictionary) -> bool: return int(n.get("carriage", -1)) == carriage)
+
+
+static func notices() -> Array:
+	return data().get("notices", [])
+
 static func gazette() -> Dictionary:
 	return data().get("gazette", {})
 

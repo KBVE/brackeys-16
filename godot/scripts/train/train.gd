@@ -60,10 +60,6 @@ const PLAYER_RADIUS := 0.30
 ## which has to go that way.
 const CAMERA_YAW_OFFSET := -PI * 0.5
 
-## Screen heights a finger travels for one unit of movement, so a swipe covers
-## the same arc on any display.
-const DRAG_SCREENS_PER_UNIT := 2.6
-
 @onready var _frame: SubViewportContainer = $Screen/Frame
 @onready var _world: SubViewport = $Screen/Frame/World
 @onready var _player: CharacterBody3D = $Screen/Frame/World/Player
@@ -87,6 +83,7 @@ var _seating: CSeating
 var _pointer: CPointer
 var _seated_idle: CSeatedIdle
 var _control: SPlayerControl
+var _thumbs: TouchControls
 var _occupant: COccupant
 var _here: CLocation
 var _time_of_day: CTimeOfDay
@@ -164,11 +161,16 @@ func _ready() -> void:
 	# inert until [Tab] says otherwise. Headless is the tests, which press real actions.
 	_control.engaged = DisplayServer.get_name() == "headless" \
 		or not OS.has_feature("editor")
-	_control.drag_screens_per_unit = DRAG_SCREENS_PER_UNIT
 	_scope.add_system(&"player_control", _control)
 	_spawn_the_seats()
 	_scope.add_system(&"pointing", SPointing.new())
 	_scope.add_system(&"highlight", SHighlight.new())
+	for posting: Dictionary in _consist.notice_anchors():
+		var notice := CNotice.new()
+		notice.notice_id = posting["id"]
+		notice.at = posting["at"]
+		_scope.spawn().add(notice).add(ECSViewComponent.new(posting["sheet"]))
+	_scope.add_system(&"notice", SNotice.new())
 	_scope.add_system(&"seating", SSeating.new())
 	_scope.add_system(&"locomotion", SLocomotion.new())
 	_scope.add_system(&"camera_aim", SCameraAim.new())
@@ -205,6 +207,16 @@ func _ready() -> void:
 	var crosshair := Crosshair.new()
 	crosshair.aiming = _intent
 	_frame.get_parent().add_child(crosshair)
+
+	_thumbs = TouchControls.new()
+	var thumbs := _thumbs
+	thumbs.name = "Thumbs"
+	thumbs.control = _control
+	# drawn only where there is something to draw them for. A desktop run builds them
+	# anyway, so a touchscreen plugged in mid-run is a visibility change rather than a
+	# scene that has to be rebuilt.
+	thumbs.visible = DisplayServer.is_touchscreen_available()
+	_frame.get_parent().add_child(thumbs)
 
 	# the world owns the camera now, so picking is its viewport's job, not the
 	# window's
@@ -426,22 +438,16 @@ func _notify_level(outcome: String) -> void:
 	})
 
 
-## Drag pans the camera. A tap produces no drag event, so the WIN and LOSE plates
-## keep their picking and no on-screen stick is needed.
-##
-## A mouse looks the same way, on the right button, and the pointer is never
-## captured: the left button has to stay a pointer or there is nothing to click the
-## evidence with. The web export already swallows the context menu.
+## The mouse looks on the right button, and the pointer is never captured: the left
+## button has to stay a pointer or there is nothing to click the evidence with. The web
+## export already swallows the context menu. Fingers are [TouchControls]' to read.
 ##
 ## _input, not _unhandled_input: the SubViewportContainer consumes pointer events
 ## to forward them inward, so nothing reaches the unhandled pass. Sizes come from
 ## the window rather than the world, so lowering RENDER_SHRINK cannot change how
-## far a swipe travels.
+## far a look travels.
 func _input(event: InputEvent) -> void:
-	if event is InputEventScreenDrag:
-		_control.accumulate_drag((event as InputEventScreenDrag).relative,
-			float(get_window().size.y))
-	elif event is InputEventMouseMotion \
+	if event is InputEventMouseMotion \
 			and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 		_control.accumulate_look((event as InputEventMouseMotion).relative,
 			float(get_window().size.y))

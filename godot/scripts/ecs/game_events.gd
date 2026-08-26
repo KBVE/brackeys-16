@@ -110,6 +110,16 @@ const DOOR_STATE := &"door_state"
 ## Payload: {"shrink": number, "detail": string}. Reaches JS as "render:budget".
 const RENDER_BUDGET := &"render_budget"
 
+## A posted notice on a carriage wall was read; `id` is a shared/data/notices id.
+##
+## The poster in the world is a quad the player points at; the sheet React opens over it
+## is the notice itself. Only the id crosses the boundary, because both runtimes already
+## hold the compiled notice and sending the prose would be sending what the other side
+## is reading from.
+##
+## Payload: {"id": string}. Reaches JS as "notice:read".
+const NOTICE_READ := &"notice_read"
+
 ## One fact the run has produced: a conversation, an item used, a room entered.
 ##
 ## `id` is a ULID, so entries sort by creation without comparing any other field. `kind`
@@ -167,6 +177,7 @@ const OUTBOUND_WIRE: Dictionary[StringName, String] = {
 	VIEWER_STATE: "viewer:state",
 	DOOR_STATE: "door:state",
 	RENDER_BUDGET: "render:budget",
+	NOTICE_READ: "notice:read",
 	JOURNAL_ENTRY: "journal:entry",
 }
 
@@ -184,6 +195,7 @@ const WIRE_FIELDS: Dictionary[String, Array] = {
 	"viewer:state": ["carriage", "location"],
 	"door:state": ["open", "locked", "distance"],
 	"render:budget": ["shrink", "detail"],
+	"notice:read": ["id"],
 	"journal:entry": ["id", "kind", "actor", "target", "place", "at"],
 }
 

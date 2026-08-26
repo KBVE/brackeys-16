@@ -18,6 +18,11 @@ func _on_update(_delta: float) -> void:
 
 
 func _mark(pointer: CPointer, marker: SelectionHighlight) -> void:
+	if pointer.notice_sheet != null:
+		var sheet := _meshes_of(pointer.notice_sheet)
+		if not sheet.is_empty():
+			marker.show_meshes(sheet)
+			return
 	if pointer.seat != null:
 		marker.show_seat(pointer.seat.at)
 		return

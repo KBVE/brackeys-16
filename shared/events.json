@@ -100,6 +100,14 @@
       },
       "description": "How far the world's render resolution is currently divided, and the antialiasing that goes with it.\n\nThe engine picks this from measured frame time, not from a device name, so it changes during a run on hardware that cannot hold the frame rate. Emitted only when it changes. Without it a soft-looking phone gives no way to tell whether the scaler decided that or something else went wrong."
     },
+    "NOTICE_READ": {
+      "bus": "notice_read",
+      "wire": "notice:read",
+      "payload": {
+        "id": "string"
+      },
+      "description": "A posted notice on a carriage wall was read; `id` is a shared/data/notices id.\n\nThe poster in the world is a quad the player points at; the sheet React opens over it is the notice itself. Only the id crosses the boundary, because both runtimes already hold the compiled notice and sending the prose would be sending what the other side is reading from."
+    },
     "JOURNAL_ENTRY": {
       "bus": "journal_entry",
       "wire": "journal:entry",

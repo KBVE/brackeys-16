@@ -372,10 +372,10 @@ func test_a_look_leaves_the_camera_where_it_found_it() -> void:
 	).is_equal_approx(rested, Vector3.ONE * 0.001)
 
 
-## The crosshair used to read the mouse itself, which meant a finger dragging on a
-## touchscreen aimed at nothing. It reads the intent now, and the intent knows a drag
-## is a look.
-func test_a_drag_raises_the_look_the_crosshair_watches() -> void:
+## The crosshair used to read the mouse itself, which meant a thumb on a touchscreen
+## aimed at nothing. It reads the intent now, and the intent knows a look stick is a
+## look whoever is holding it.
+func test_the_look_stick_raises_the_look_the_crosshair_watches() -> void:
 	var runner := scene_runner(SCENE)
 	await runner.simulate_frames(6)
 	var train: Node = runner.scene()
@@ -384,10 +384,10 @@ func test_a_drag_raises_the_look_the_crosshair_watches() -> void:
 		"a look was already underway with nothing touching the screen"
 	).is_false()
 
-	train._control.accumulate_drag(Vector2(40.0, 0.0), 720.0)
+	train._control.look_stick = Vector2(0.6, 0.0)
 	await runner.simulate_frames(1)
 	assert_bool(train._intent.holding_look).override_failure_message(
-		"dragging a finger did not count as looking, so the crosshair stays hidden on touch"
+		"a thumb on the look stick did not count as looking, so the crosshair stays hidden on touch"
 	).is_true()
 
 
@@ -670,6 +670,36 @@ func test_the_seat_is_held_until_the_stand_up_finishes() -> void:
 	assert_bool(bench.free_to_take()).override_failure_message(
 		"the bench was never handed back once he was up"
 	).is_true()
+
+
+## The phone build has no keys. A thumb tapped on the walking half is the same request
+## the space bar makes, and it has to arrive as one: the character leaves the floor.
+func test_a_tap_on_the_walking_half_gets_him_off_the_floor() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(10)
+	var train: Node = runner.scene()
+	var thumbs: TouchControls = train._thumbs
+	thumbs.visible = true
+	thumbs.size = Vector2(1600.0, 720.0)
+
+	var down := InputEventScreenTouch.new()
+	down.index = 0
+	down.position = Vector2(1200.0, 500.0)
+	down.pressed = true
+	thumbs._input(down)
+	var up := InputEventScreenTouch.new()
+	up.index = 0
+	up.position = down.position
+	thumbs._input(up)
+
+	var left_the_floor := false
+	for _i in 60:
+		await runner.simulate_frames(1)
+		if train._locomotion.airborne():
+			left_the_floor = true
+			break
+	assert_bool(left_the_floor).override_failure_message(
+		"a tap on the walking half never reached the jump").is_true()
 
 
 ## A bench with somebody already on it is not somewhere to sit, however close it is.

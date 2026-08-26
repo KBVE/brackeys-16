@@ -20,6 +20,7 @@ Runnin commands for them:
     python3 tools/gen-itch-art.py
 """
 import io
+import json
 import os
 import random
 import subprocess
@@ -119,7 +120,19 @@ CLIPPINGS = [
 ]
 
 PLATE_DIR = "godot/reports/itch"
-OUT_DIR = "itch"
+# Under vite/public so the store art ships with the build and is reachable by URL,
+# rather than sitting in a folder at the repo root that nothing serves.
+OUT_DIR = "vite/public/itch"
+
+# The same sheet is printed three times. The store page gets the full plate; the modal
+# React opens gets a web copy; the poster hanging in the carriage wears a small one,
+# because it is read through a modal rather than off the wall and a wall texture at
+# store resolution is a megabyte of VRAM nobody looks at.
+SHIPPED = "godot/data/content.gen.json"
+WEB_DIR = "vite/public/notices"
+WEB_WIDTH = 1000
+TEXTURE_DIR = "godot/assets/notices"
+TEXTURE_WIDTH = 512
 
 SERIF = "/System/Library/Fonts/Supplemental/Georgia.ttf"
 SERIF_BOLD = "/System/Library/Fonts/Supplemental/Georgia Bold.ttf"
@@ -577,6 +590,31 @@ def wrap_check(tile):
     return "seamless" if wrap <= max(near * 3, 1.0) else "SEAM", wrap, near
 
 
+def shipped():
+    """Which sheets hang in the train, by notice id, out of the compiled content.
+
+    Read rather than listed here: shared/data/notices already says which image each
+    posting wears, and a second list would be a second thing to keep in step.
+    """
+    if not os.path.exists(SHIPPED):
+        print(f"  no {SHIPPED}, nothing shipped into the game (run npm run gen)")
+        return {}
+    with open(SHIPPED) as f:
+        return {n["image"]: n["id"] for n in json.load(f).get("notices", [])}
+
+
+def ship(im, notice_id):
+    """Writes the web copy and the in-world texture for one posted notice."""
+    for directory, width in ((WEB_DIR, WEB_WIDTH), (TEXTURE_DIR, TEXTURE_WIDTH)):
+        os.makedirs(directory, exist_ok=True)
+        scaled = im.resize((width, max(1, round(im.size[1] * width / im.size[0]))),
+                           Image.LANCZOS) if im.size[0] > width else im.copy()
+        dst = os.path.join(directory, f"{notice_id}.png")
+        scaled.save(dst, optimize=True)
+        print(f"    -> {dst} {scaled.size[0]}x{scaled.size[1]}"
+              f"  {os.path.getsize(dst) / 1024:.0f} KB")
+
+
 def load(name):
     path = os.path.join(PLATE_DIR, f"{name}.png")
     if not os.path.exists(path):
@@ -587,6 +625,7 @@ def load(name):
 
 def main(out=OUT_DIR):
     os.makedirs(out, exist_ok=True)
+    posted = shipped()
     jobs = [("header", header), ("capsule", capsule),
             ("background", lambda _: background()), ("embed-bg", lambda _: embed())]
     jobs += [(spec["name"], lambda plate, spec=spec: {"stub": stub, "notice": notice, "banner": banner}.get(spec.get("layout"), clipping)(spec, plate))
@@ -601,6 +640,8 @@ def main(out=OUT_DIR):
             flag, wrap, near = wrap_check(im)
             note = f"  wrap {wrap:4.2f} vs {near:4.2f}  {flag}"
         print(f"  {name:14} {im.size[0]}x{im.size[1]}  {os.path.getsize(dst) / 1024:.0f} KB  {dst}{note}")
+        if name in posted:
+            ship(im, posted[name])
 
 
 if __name__ == "__main__":

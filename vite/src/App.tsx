@@ -1,10 +1,13 @@
 import { useEffect } from 'react';
 import { GodotGame } from './godot/GodotGame';
+import { GpuWarning } from './godot/GpuWarning';
 import { DebugPanel } from './debug/DebugPanel';
 import { Newspaper } from './paper/Newspaper';
 import { Dossier } from './paper/Dossier';
+import { Notice } from './paper/Notice';
 import { setView, toggleView, useView } from './state/paperStore';
 import { closeResearch, useResearchStore } from './state/researchStore';
+import { closeNotice, useNoticeStore } from './state/noticeStore';
 import {
   useBridgeReady,
   usePlaying,
@@ -48,6 +51,10 @@ function useEscapeKeyLayering() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
+      if (useNoticeStore.getState().reading) {
+        closeNotice();
+        return;
+      }
       if (useResearchStore.getState().open) {
         closeResearch();
         return;
@@ -75,6 +82,8 @@ export default function App() {
         <DebugPanel />
       </div>
       <Dossier />
+      <Notice />
+      <GpuWarning />
     </div>
   );
 }

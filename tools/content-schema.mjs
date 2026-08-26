@@ -150,6 +150,38 @@ const furnishing = z.object({
   cushionHeight: z.number().optional(),
 });
 
+/**
+ * A sheet posted on a carriage wall, and where it hangs.
+ *
+ * &wall -> placed the way a furnishing is, in carriage-local metres, for the same
+ *          reason: the consist moves every world X when it changes length. `along`
+ *          runs down the train from the carriage centre and `side` picks which wall,
+ *          because a notice is on a wall rather than standing on the floor and the
+ *          across is therefore the wall, not a free number.
+ * &image -> the basename tools/gen-itch-art.py writes, without extension. The same
+ *           sheet is printed three sizes: the store page, the modal, and the texture
+ *           the poster in the world wears.
+ */
+export const notice = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  image: z.string().min(1),
+  carriage: z.number().int().min(0),
+  along: z.number(),
+  side: z.union([z.literal(1), z.literal(-1)]),
+  /**
+   * Metres above the deck to the middle of the sheet.
+   *
+   * The default clears the seat backs, which stand 1.33 above the floor: a sheet at
+   * head height is a sheet the bench in front of it hides from everywhere but the
+   * seat it is behind. Posted between the windows, it is read from the aisle.
+   */
+  above: z.number().min(0).default(1.95),
+  /** Printed width in metres; the height follows the image's own aspect. */
+  width: z.number().min(0.1).default(0.8),
+  ...prose,
+});
+
 export const location = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -170,4 +202,5 @@ export const collections = {
   articles: article,
   passengers: passenger,
   items: item,
+  notices: notice,
 };

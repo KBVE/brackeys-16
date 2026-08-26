@@ -74,6 +74,10 @@ const SEAT_FURTHEST_X := 7.0
 
 const INTERIOR_HALF_Z := 1.5
 
+## How far off the panelling a posted sheet sits. Enough that it does not fight the
+## wall for the same pixels, little enough that it is stuck on rather than floating.
+const NOTICE_WALL_GAP := 0.02
+
 ## The end wall and the hole in it. Without this a shut door is decoration: the
 ## player simply walks through the wall beside it, because the shell is a floor and
 ## two sides and has never had ends.
@@ -108,6 +112,7 @@ func _ready() -> void:
 		# and after the reskin, because props carry the atlas material the prop
 		# compiler gave them and the carriage shader would paint over it
 		_furnish(carriage, i)
+		_post_notices(carriage, i)
 		var lamps := Node3D.new()
 		lamps.name = "Lamps"
 		for j in range(lamps_per_car):
@@ -236,6 +241,78 @@ func _furnish(carriage: Node3D, index: int) -> void:
 		instance.rotation.y = float(placement.get("facing", 0.0))
 		room.add_child(instance)
 		_fit_box_collision(instance)
+
+
+## Hangs the sheets posted in carriage [param index] on its wall.
+##
+## A quad rather than a prop: a notice is printed matter, and what a poster is in this
+## world is an image at a size, which is exactly what a quad wearing a texture is. The
+## width is authored and the height follows the image's own aspect, so a strip and a
+## framed notice hang as themselves rather than both being squared off.
+##
+## Unshaded on purpose. The carriage lamps swing with the sway and a lit poster reads
+## as a lamp rather than as paper; ink on paper under gaslight is closer to flat.
+func _post_notices(carriage: Node3D, index: int) -> void:
+	var posted: Array = GameContent.notices_in(index)
+	if posted.is_empty():
+		return
+	var wall := Node3D.new()
+	wall.name = "Notices"
+	carriage.add_child(wall)
+	for notice: Dictionary in posted:
+		var texture: Texture2D = load("res://assets/notices/%s.png" % notice.get("id", ""))
+		if texture == null:
+			push_error("Consist: no sheet at res://assets/notices/%s.png" % notice.get("id", ""))
+			continue
+		var width := float(notice.get("width", 0.8))
+		var quad := QuadMesh.new()
+		quad.size = Vector2(width, width * texture.get_height() / texture.get_width())
+		var paper := StandardMaterial3D.new()
+		paper.albedo_texture = texture
+		paper.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		# the sheet is one-sided, and from the far wall you would be reading its back
+		paper.cull_mode = BaseMaterial3D.CULL_BACK
+		quad.material = paper
+		var sheet := MeshInstance3D.new()
+		sheet.name = String(notice.get("id", "notice"))
+		sheet.mesh = quad
+		sheet.position = _notice_offset(notice)
+		# a quad faces +Z unturned, so the sheet on the far wall is turned about
+		sheet.rotation.y = 0.0 if float(notice.get("side", 1)) < 0.0 else PI
+		wall.add_child(sheet)
+
+
+## Where a sheet hangs in its own carriage. [code]along[/code] runs down the train the
+## way a furnishing's does; the wall it is stuck to is [code]side[/code] and not a free
+## number, because a notice on the aisle centreline is a notice hanging in mid air.
+func _notice_offset(notice: Dictionary) -> Vector3:
+	return Vector3(float(notice.get("along", 0.0)),
+		FLOOR_Y + float(notice.get("above", 1.95)),
+		float(notice.get("side", 1)) * (INTERIOR_HALF_Z - NOTICE_WALL_GAP))
+
+
+## Every posted sheet in the consist, in world space, with the node wearing it.
+##
+## The mirror of [method seat_anchors] and [method prop_anchors]: authored locally,
+## resolved through the same [method _offset].
+func notice_anchors() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for i in range(carriage_count):
+		var wall := _carriages[i].get_node_or_null("Notices")
+		if wall == null:
+			continue
+		for notice: Dictionary in GameContent.notices_in(i):
+			var sheet := wall.get_node_or_null(String(notice.get("id", "")))
+			if sheet == null:
+				continue
+			out.append({
+				"at": global_position + Vector3(_offset(i), 0.0, 0.0)
+					+ _notice_offset(notice),
+				"id": StringName(notice.get("id", "")),
+				"sheet": sheet,
+				"carriage": i,
+			})
+	return out
 
 
 ## Where a placement stands in its own carriage. The prop compiler puts every

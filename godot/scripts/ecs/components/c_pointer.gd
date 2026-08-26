@@ -18,6 +18,8 @@ var has_target: bool = false
 var seat: CSeat = null
 var door: CDoor = null
 var door_leaf: Node3D = null
+var notice: CNotice = null
+var notice_sheet: Node3D = null
 
 ## True on the frame the pointer was pressed. An edge like the rest of the intents, so
 ## holding the button on a door does not swing it open and shut.
@@ -36,3 +38,8 @@ var reach_metres: float = 4.5
 ## on a bench finds the seat it is nearest rather than falling through the gaps.
 var seat_snap_metres: float = 1.2
 var door_snap_metres: float = 1.6
+
+## Tighter than either, because a poster is a sheet on a wall a metre from the seat
+## backs and the bench behind it. Pointing at a notice is aiming at it; standing near
+## the wall is not, which is why [SNotice] has no reach of its own.
+var notice_snap_metres: float = 0.6
