@@ -17,6 +17,18 @@ func _leaves(train: Node) -> Array[Node3D]:
 	return train.get_node(WORLD + "/Consist").door_leaves()
 
 
+## The CDoor behind each leaf, in the same order, so a test can say what the door
+## itself thinks as well as where its mesh ended up.
+func _doors(train: Node) -> Array[CDoor]:
+	var found: Array[CDoor] = []
+	for leaf: Node3D in _leaves(train):
+		for entry: Dictionary in Ecs.world.multi_view([CDoor, ECSViewComponent]):
+			if entry[&"ECSViewComponent"].view == leaf:
+				found.append(entry[&"CDoor"])
+				break
+	return found
+
+
 ## Waits for the leaf to stop moving rather than for a frame count. The swing takes
 ## CDoor.seconds_to_swing, the runner's frames are not that long, and a fixed count
 ## was passing or failing on where in the arc it happened to stop.
@@ -90,15 +102,28 @@ func test_a_door_out_of_reach_stays_shut() -> void:
 	var player: Node3D = train.get_node(WORLD + "/Player")
 
 	train._control.set_update(false)
+	# The leaf answers to two systems, and only one of them is the key: [SDoorTraffic]
+	# holds a door open for anybody walking through it, so a passenger who happens to
+	# be crossing this vestibule swings it with nobody having pressed anything. That
+	# is its own suite's to check. What is under test here is the reach, so for the
+	# length of it the traffic is not running.
+	Ecs.remove_system(&"door_traffic")
+	await runner.simulate_frames(2)
+
 	player.global_position = leaf.global_position + Vector3(60.0, 0.0, 0.0)
+	var door: CDoor = _doors(train)[0]
 	var before := leaf.rotation.y
 	train._intent.interact_requested = true
 	await runner.simulate_frames(1)
 	train._intent.interact_requested = false
 	await runner.simulate_frames(20)
 
-	assert_float(leaf.rotation.y).override_failure_message(
+	assert_bool(door.is_open).override_failure_message(
 		"a door sixty metres away answered the key"
+	).is_false()
+	assert_float(leaf.rotation.y).override_failure_message(
+		"the leaf sixty metres away turned with the door still shut (held by %d)"
+		% door.held_open_by
 	).is_equal_approx(before, 0.001)
 
 
