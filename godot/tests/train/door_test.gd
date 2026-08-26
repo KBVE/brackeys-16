@@ -107,8 +107,16 @@ func test_a_door_out_of_reach_stays_shut() -> void:
 	# be crossing this vestibule swings it with nobody having pressed anything. That
 	# is its own suite's to check. What is under test here is the reach, so for the
 	# length of it the traffic is not running.
+	#
+	# Taking the system away freezes the count rather than clearing it, because the
+	# recount from nothing every tick is the system's own doing: whatever it last saw
+	# stays written, and a door held open at that moment stays held for the rest of
+	# the test. So the doors are let go by hand, and the leaf is given the time to
+	# finish shutting before anything is measured against it.
 	Ecs.remove_system(&"door_traffic")
-	await runner.simulate_frames(2)
+	for held: CDoor in _doors(train):
+		held.held_open_by = 0
+	await _await_still(runner, leaf)
 
 	player.global_position = leaf.global_position + Vector3(60.0, 0.0, 0.0)
 	var door: CDoor = _doors(train)[0]
@@ -182,7 +190,18 @@ func test_the_doorway_is_blocked_shut_and_clear_open() -> void:
 	await runner.simulate_frames(2)
 	var train := _train(runner)
 	var leaf := _leaves(train)[0]
+	var door: CDoor = _doors(train)[0]
 	var player: Node3D = train.get_node(WORLD + "/Player")
+
+	# [SDoorTraffic] holds a door open for anybody crossing the vestibule, and it
+	# rewrites the leaf's rotation through [SDoor] every tick. Both halves of this
+	# test say where the leaf is, so the traffic stands down and the doors are let
+	# go by hand for the length of it.
+	train._control.set_update(false)
+	Ecs.remove_system(&"door_traffic")
+	for held: CDoor in _doors(train):
+		held.held_open_by = 0
+	await _await_still(runner, leaf)
 
 	var centre := leaf.global_position \
 		+ leaf.global_transform.basis.z * -(Consist.DOORWAY_HALF_Z) \
@@ -204,7 +223,13 @@ func test_the_doorway_is_blocked_shut_and_clear_open() -> void:
 	# there is CDoor's, and tested above; what is in question here is where the leaf
 	# ends up. Waiting a fixed number of frames caught it at 61 degrees, still across
 	# the doorway, and the test passed or failed on where in the arc it stopped.
-	leaf.rotation.y = PI * 0.5
+	#
+	# Driven through CDoor rather than by turning the mesh, because [SDoor] writes
+	# the leaf's rotation from the swing every tick and puts a hand-turned leaf
+	# straight back where the component says it should be.
+	door.is_open = true
+	door.swing = 1.0
+	leaf.rotation.y = door.open_radians * door.swing_sign
 	await runner.simulate_frames(2)
 
 	assert_int(space.intersect_shape(query, 8).size()).override_failure_message(

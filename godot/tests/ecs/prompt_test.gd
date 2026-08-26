@@ -170,3 +170,62 @@ func test_a_bare_carriage_offers_nothing() -> void:
 	await runner.simulate_frames(4)
 	assert_bool(_prompt(train).offers_anything()).override_failure_message(
 		"a bare carriage offered %s" % _prompt(train).action).is_false()
+
+
+## The door nearest the middle of the guard's van, which is the one carriage with
+## nothing else in it to answer the key first.
+func _van_door(consist: Consist) -> Dictionary:
+	var aboard := GameContent.carriage_locations()
+	var van := aboard.find(&"guard_van")
+	if van < 0:
+		return {}
+	var middle := (van - (consist.carriage_count - 1) / 2.0) * consist.pitch
+	var found: Dictionary = {}
+	var nearest := INF
+	for entry: Dictionary in Ecs.world.multi_view([CDoor, ECSViewComponent]):
+		var leaf: Node3D = entry[&"ECSViewComponent"].view as Node3D
+		if leaf == null:
+			continue
+		var away := absf(leaf.global_position.x - middle)
+		if away < nearest:
+			nearest = away
+			found = entry
+	return found
+
+
+## Reach is floor distance, not distance from the eye.
+##
+## A leaf is measured from its hinge on the floor and a player from their eyes, so in
+## three dimensions a [member CDoor.reach_metres] of 2.2 was really 1.5 metres of floor
+## and a door a stride and a half away reported itself out of reach. [SSeating] and
+## [SDoorTraffic] both already measure theirs flat.
+func test_reach_is_measured_along_the_floor() -> void:
+	var runner := scene_runner(SCENE)
+	await runner.simulate_frames(10)
+	var train: Node = runner.scene()
+	var consist: Consist = train.get_node("Screen/Frame/World/Consist")
+	var door := _van_door(consist)
+	assert_bool(door.is_empty()).override_failure_message(
+		"the consist has lost its guard's van").is_false()
+	var leaf: Node3D = door[&"ECSViewComponent"].view as Node3D
+	var player := _player(train)
+
+	# Along the aisle rather than across it, so the standing spot is beside the door
+	# and not in the doorway. Well inside the reach flat, and outside it from the eye.
+	var flat := 1.9
+	var aboard := GameContent.carriage_locations()
+	var middle := (aboard.find(&"guard_van") - (consist.carriage_count - 1) / 2.0) \
+		* consist.pitch
+	# Inward, so the standing spot is in the van rather than in whatever is coupled to
+	# the far side of that door.
+	_stand_at(train, Vector3(leaf.global_position.x
+		+ signf(middle - leaf.global_position.x) * flat, 0.0, leaf.global_position.z))
+	await runner.simulate_frames(4)
+
+	var straight := leaf.global_position.distance_to(player.global_position)
+	assert_float(straight).override_failure_message(
+		"the eye is not high enough above the hinge for this test to mean anything"
+	).is_greater(door[&"CDoor"].reach_metres)
+	assert_bool(_prompt(train).within_reach).override_failure_message(
+		"a door %.2fm away along the floor (%.2fm from the eye) was out of reach"
+		% [flat, straight]).is_true()

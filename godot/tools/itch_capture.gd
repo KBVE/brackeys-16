@@ -32,7 +32,7 @@ const PLATES := {
 ## Where the player is stood for the plate, when the plate wants a particular thing in
 ## frame. A posted notice is a metre of paper on a wall four carriages long, so the
 ## odds of the spawn pose catching one are what they sound like.
-const POSED := {"notice": Vector2i(1280, 960)}
+const POSED := {"notice": Vector2i(1280, 960), "props": Vector2i(1280, 960)}
 const NOTICE_STANDOFF := 2.2
 
 
@@ -43,7 +43,10 @@ func _ready() -> void:
 	for plate in PLATES:
 		await _capture(plate, PLATES[plate])
 	for plate in POSED:
-		_stand_at_a_notice()
+		if plate == "props":
+			_stand_at_a_prop()
+		else:
+			_stand_at_a_notice()
 		await _frames(RESIZE_FRAMES)
 		await _capture(plate, POSED[plate])
 	get_tree().quit()
@@ -82,6 +85,28 @@ func _stand_at_a_notice() -> void:
 	# out into the aisle and back down the car, so the sheet is across the frame
 	player.global_position = sheet + Vector3(0.0, -1.3, -signf(sheet.z) * NOTICE_STANDOFF)
 	camera.look_at(sheet)
+
+
+## Puts the player in the aisle looking at the furnished end of the dining car, which
+## is where a prop and a baked wall are in frame together.
+func _stand_at_a_prop() -> void:
+	var train: Node3D = get_parent().get_node_or_null("Train")
+	var consist: Consist = train.find_child("Consist", true, false) if train != null else null
+	if consist == null:
+		return
+	var props := consist.prop_anchors()
+	if props.is_empty():
+		push_error("itch_capture: nothing furnished in the train")
+		return
+	var prop: Vector3 = props[props.size() / 2]["at"]
+	var player: Node3D = train.find_child("Player", true, false)
+	var camera: Camera3D = player.find_child("Camera3D", true, false) if player != null else null
+	if camera == null:
+		return
+	# out into the aisle and back along the car: standing where the prop is puts the
+	# camera inside the table it was meant to be looking at
+	player.global_position = Vector3(prop.x + 3.2, Consist.FLOOR_Y + 1.5, consist.global_position.z)
+	camera.look_at(prop + Vector3(0.0, 0.5, 0.0))
 
 
 func _frames(count: int) -> void:

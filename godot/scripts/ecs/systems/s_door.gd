@@ -51,7 +51,7 @@ func _on_update(delta: float) -> void:
 			continue
 		if not asked:
 			continue
-		var distance := leaf.global_position.distance_to(standing_at)
+		var distance := reach_to(leaf, standing_at)
 		if distance <= door.reach_metres and distance < nearest_distance:
 			nearest_distance = distance
 			nearest = entry
@@ -102,6 +102,18 @@ func _swing(door: CDoor, leaf: Node3D, delta: float) -> void:
 ## side is escaped by turning positive, and the reverse.
 func _away_from(leaf: Node3D, standing_at: Vector3) -> float:
 	return 1.0 if leaf.to_local(standing_at).x > 0.0 else -1.0
+
+
+## How far [param standing_at] is from a leaf, for reach.
+##
+## Flat, the way [SSeating] and [SDoorTraffic] both measure theirs. A leaf is measured
+## from its hinge on the floor and a player from their eyes, so somebody standing a
+## stride from a door is also a metre and a half above it: taken in three dimensions a
+## [member CDoor.reach_metres] of 2.2 was really 1.5 metres of floor, and a door within
+## arm's length reported itself out of reach.
+static func reach_to(leaf: Node3D, standing_at: Vector3) -> float:
+	return Vector2(leaf.global_position.x - standing_at.x,
+		leaf.global_position.z - standing_at.z).length()
 
 
 ## Whether [param standing_at] is inside the opening the leaf would shut into.

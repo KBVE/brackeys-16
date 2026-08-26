@@ -101,7 +101,7 @@ func _offer_a_door(prompt: CPrompt, pointer: CPointer, standing_at: Vector3) -> 
 
 	prompt.under_the_pointer = pointed
 	prompt.within_reach = leaf != null \
-		and leaf.global_position.distance_to(standing_at) <= door.reach_metres
+		and SDoor.reach_to(leaf, standing_at) <= door.reach_metres
 	prompt.action = CPrompt.SHUT_THE_DOOR if door.is_open else CPrompt.OPEN_THE_DOOR
 	if door.is_locked:
 		prompt.refusal = CPrompt.LOCKED
@@ -124,7 +124,7 @@ func _nearest_door(standing_at: Vector3) -> Dictionary:
 		var leaf: Node3D = entry[&"ECSViewComponent"].view as Node3D
 		if leaf == null:
 			continue
-		var away := leaf.global_position.distance_to(standing_at)
+		var away := SDoor.reach_to(leaf, standing_at)
 		if away <= entry[&"CDoor"].reach_metres and away < nearest:
 			nearest = away
 			found = entry
