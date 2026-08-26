@@ -7,9 +7,10 @@ class_name Crosshair
 ## [RenderBudget] divides everything inside that container, and a crosshair is two
 ## pixels wide before it is divided by anything.
 ##
-## Only drawn while a look is underway. The rest of the time the cursor is the aim
-## point and a second one would only argue with it. Which device raised the look is
-## [CInput]'s problem, not this one's, so a drag on a touchscreen brings it up too.
+## On a mouse it is only drawn while a look is underway, because the rest of the time
+## the cursor is the aim point and a second one would only argue with it. A phone has
+## no cursor to argue with and aims with the middle of the screen the whole time, so
+## [TouchControls] pins it up for as long as the thumbs are showing.
 
 const ARM_PIXELS := 7.0
 const GAP_PIXELS := 3.0
@@ -21,13 +22,16 @@ const OUTLINE := Color(0.0, 0.0, 0.0, 0.35)
 ## thing that reads devices and a second reader would disagree with it on touch.
 var aiming: CInput
 
+## Set by [TouchControls] once it knows there is a thumb rather than a mouse.
+var always_visible := false
+
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_process(true)
 
 func _process(_delta: float) -> void:
-	var wanted := aiming != null and aiming.holding_look
+	var wanted := aiming != null and (always_visible or aiming.holding_look)
 	if wanted != visible:
 		visible = wanted
 	if visible:

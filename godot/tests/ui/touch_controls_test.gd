@@ -122,3 +122,53 @@ func test_the_buttons_are_pressed_rather_than_the_stick_under_them() -> void:
 	_touch(thumbs, 1, thumbs._secondary_at(), false)
 	assert_bool(thumbs.control._tapped_secondary).override_failure_message(
 		"[G] did not ask for the second answer").is_true()
+
+
+## The engine can report no touchscreen on a phone browser, so the first finger has to
+## be enough on its own or the controls are never drawn at all.
+func test_a_finger_reveals_the_controls_whatever_the_display_server_says() -> void:
+	var thumbs := _thumbs()
+	thumbs.visible = false
+	_touch(thumbs, 0, Vector2(1200.0, 500.0), true)
+	thumbs._process(0.016)
+
+	assert_bool(thumbs.visible).override_failure_message(
+		"a thumb landed and the controls stayed hidden").is_true()
+
+
+## A phone aims with the middle of the screen and has no cursor to aim with instead,
+## so the mark stays up rather than coming and going with the looking thumb.
+func test_the_crosshair_is_pinned_up_while_the_thumbs_are() -> void:
+	var thumbs := _thumbs()
+	var crosshair: Crosshair = auto_free(Crosshair.new())
+	thumbs.crosshair = crosshair
+	_touch(thumbs, 0, Vector2(1200.0, 500.0), true)
+	thumbs._process(0.016)
+
+	assert_bool(crosshair.always_visible).is_true()
+
+
+## emulate_mouse_from_touch makes every thumb a left click at the thumb, which would
+## open whatever the stick was resting over.
+func test_the_thumbs_stop_the_pointer_opening_things() -> void:
+	var thumbs := _thumbs()
+	assert_bool(thumbs.control.reading_pointer_clicks).is_true()
+	_touch(thumbs, 0, Vector2(1200.0, 500.0), true)
+	thumbs._process(0.016)
+
+	assert_bool(thumbs.control.reading_pointer_clicks).override_failure_message(
+		"a tap would still be picking up whatever it landed on").is_false()
+
+
+## The resting rings are the only thing that says there is a stick there at all, so
+## each has to sit in its own half and clear of the button cluster.
+func test_the_resting_rings_sit_in_their_own_half() -> void:
+	var thumbs := _thumbs()
+	var throw := SCREEN.y * TouchStick.THROW_SCREENS
+
+	assert_bool(thumbs._looking_home().x + throw < SCREEN.x * 0.5).override_failure_message(
+		"the looking ring reaches into the walking half").is_true()
+	assert_bool(thumbs._walking_home().x - throw > SCREEN.x * 0.5).override_failure_message(
+		"the walking ring reaches into the looking half").is_true()
+	assert_float(thumbs._walking_home().distance_to(thumbs._secondary_at())).is_greater(
+		throw + TouchControls.BUTTON_RADIUS)

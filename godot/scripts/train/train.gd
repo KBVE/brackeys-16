@@ -212,9 +212,10 @@ func _ready() -> void:
 	var thumbs := _thumbs
 	thumbs.name = "Thumbs"
 	thumbs.control = _control
-	# drawn only where there is something to draw them for. A desktop run builds them
-	# anyway, so a touchscreen plugged in mid-run is a visibility change rather than a
-	# scene that has to be rebuilt.
+	thumbs.crosshair = crosshair
+	# built on every platform and shown only where there is a thumb, so a touchscreen
+	# the engine notices late is a visibility change rather than a scene that has to be
+	# rebuilt. TouchControls keeps that up to date itself.
 	thumbs.visible = DisplayServer.is_touchscreen_available()
 	_frame.get_parent().add_child(thumbs)
 
@@ -222,7 +223,8 @@ func _ready() -> void:
 	# window's
 	_world.physics_object_picking = true
 	_render_budget.begin(DisplayServer.is_touchscreen_available(),
-		DisplayServer.screen_get_scale())
+		DisplayServer.screen_get_scale(), DisplayServer.screen_get_size(),
+		DisplayServer.screen_get_refresh_rate())
 	_apply_render_budget()
 	# React's ui:restart and an in-world loss take the same path
 	Ecs.world.add_callable(GameEvents.UI_RESTART, _on_ui_restart)

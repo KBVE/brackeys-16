@@ -1,0 +1,63 @@
+name: Shell
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'vite/src/**'
+      - 'vite/index.html'
+      - 'vite/vite.shell.config.ts'
+      - 'vite/tsconfig*.json'
+      - 'vite/package.json'
+      - 'vite/package-lock.json'
+      - '.github/workflows/shell.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: shell-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  WEB_PATH: vite
+  SHELL_FILE: godot/web/shell.html
+
+jobs:
+  rebuild:
+    name: Rebuild the Godot shell
+    if: "!contains(github.event.head_commit.message, 'rebuild the godot shell')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          token: ${{ secrets.UNITY_PAT || secrets.GITHUB_TOKEN }}
+          ref: ${{ github.ref_name }}
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ${{ env.WEB_PATH }}/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: ${{ env.WEB_PATH }}
+        run: npm ci
+
+      - name: Build the shell
+        working-directory: ${{ env.WEB_PATH }}
+        run: npm run build:shell
+
+      - name: Commit the shell if it moved
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- "${SHELL_FILE}"; then
+            echo "::notice::${SHELL_FILE} is already in step with vite/src"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "${SHELL_FILE}"
+          git commit -m 'chore(web): rebuild the godot shell'
+          git pull --rebase origin ${{ github.ref_name }}
+          git push origin HEAD:${{ github.ref_name }}
