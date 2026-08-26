@@ -252,6 +252,7 @@ jobs:
   sync:
     name: Sync dev with main
     needs: [check, publish]
+    if: ${{ !cancelled() && needs.check.result == 'success' }}
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.check.outputs.version }}
@@ -317,7 +318,7 @@ jobs:
   bump:
     name: Open bump PR
     needs: [check, publish, sync]
-    if: needs.sync.outputs.synced == 'true'
+    if: needs.publish.result == 'success' && needs.sync.outputs.synced == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
